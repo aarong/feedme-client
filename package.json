@@ -49,6 +49,7 @@
     "eslint-plugin-prettier": "^3.0.1",
     "express": "^4.16.4",
     "fs-copy-file-sync": "^1.1.1",
+    "ghooks": "^2.0.4",
     "gulp": "^4.0.0",
     "gulp-babel": "^8.0.0",
     "gulp-cli": "^2.0.1",
@@ -81,5 +82,10 @@
   "homepage": "https://github.com/aarong/feedme-client#readme",
   "engines": {
     "node": ">=6.0.0"
+  },
+  "config": {
+    "ghooks": {
+      "pre-commit": "npm run build"
+    }
   }
 }

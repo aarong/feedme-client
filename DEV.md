@@ -210,8 +210,6 @@ Significant new features should be developed in feature branches.
 # Fork and clone the repo locally
 git checkout -b my-new-feature
 # Make changes
-npm run test-src
-npm run build
 git commit -m "Added my new feature."
 git push origin my-new-feature
 # Submit a pull request
