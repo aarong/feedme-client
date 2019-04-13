@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.com/aarong/feedme-client.svg?branch=master)](https://travis-ci.com/aarong/feedme-client)
 
+![Feedme](logo.svg)
+
 # Feedme Javascript Client
 
 A client library created and maintained as a core part of the
