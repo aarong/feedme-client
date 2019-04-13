@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/aarong/feedme-client.svg?branch=master)](https://travis-ci.com/aarong/feedme-client)
 
-![Feedme](logo.svg)
+[![Feedme](logo.svg)](https://feedme.global)
 
 # Feedme Javascript Client
 
