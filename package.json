@@ -17,7 +17,8 @@
     "test-src": "npm run lint-src && jest",
     "test-build-node": "node tests/tests.node.js",
     "test-build-browsers": "node tests/tests.browsers.js",
-    "coverage": "jest --coverage"
+    "coverage": "jest --coverage",
+    "coveralls": "jest --coverage --coverageReporters=text-lcov | coveralls"
   },
   "dependencies": {
     "ajv": "^6.6.2",
@@ -39,6 +40,7 @@
     "babel-plugin-add-module-exports": "1.0.0",
     "babelify": "^10.0.0",
     "browserify": "^16.2.3",
+    "coveralls": "^3.0.3",
     "del": "^4.0.0",
     "documentation": "^9.1.1",
     "eslint": "^5.12.0",

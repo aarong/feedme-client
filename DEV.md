@@ -182,8 +182,9 @@ TO DO
 
 - `npm run lint` Check for linting errors in `src` and `tests`.
 
-- `npm run coverage` Check Jest unit test coverage and put the results in
-  `coverage`.
+- `npm run coverage` Display Jest unit test coverage.
+
+- `npm run coveralls` Used by Travis to pass coverage information to Coveralls.
 
 - `npm run test-src` Run linting and Jest unit tests on the source code. Aliased
   by `npm run test`. (Jest)
