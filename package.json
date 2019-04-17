@@ -1,6 +1,6 @@
 {
   "name": "feedme-client",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Feedme client library for Javascript.",
   "license": "MIT",
   "author": "Aaron G",
