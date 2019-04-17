@@ -1,8 +1,6 @@
 [![Build Status](https://travis-ci.com/aarong/feedme-client.svg?branch=master)](https://travis-ci.com/aarong/feedme-client)
 [![Coverage Status](https://coveralls.io/repos/github/aarong/feedme-client/badge.svg?branch=master)](https://coveralls.io/github/aarong/feedme-client?branch=master)
 
-[![Coverage Status](https://coveralls.io/repos/github/aarong/feedme-client/badge.svg?branch=master)](https://coveralls.io/github/aarong/feedme-client?branch=master)
-
 [![Feedme](logo.svg)](https://feedme.global)
 
 # Feedme Javascript Client
