@@ -7,7 +7,7 @@ branches:
 
 jobs:
   include:
-    - stage: Test # Don't test widely unless target v6 works (smoke test)
+    - stage: Test
       language: node_js
       node_js: "6"
       script:
@@ -22,3 +22,15 @@ jobs:
       language: node_js
       node_js: "10"
       script: npm run build # test-src, build, test-build-node
+    - stage: Deploy # Runs on each build, but only publishes on new version
+      language: node_js
+      node_js: "6" # Maximum compatibility
+      script: npm run build
+      deploy: # Can't use npm provider because you need to publish the build folder
+        provider: script
+        skip_cleanup: true # Preserve the build so it can be published
+        script:
+          echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" >>
+          $HOME/.npmrc && npm publish build
+        on:
+          tags: true # Only deploy to NPM on tagged commits (new versions)
