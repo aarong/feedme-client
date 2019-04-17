@@ -10,7 +10,7 @@ This documentation is for developers of the Feedme client library itself.
   - [Source Files](#source-files)
 - [Target Node and NPM Versions](#target-node-and-npm-versions)
 - [Target Browsers](#target-browsers)
-- [NPM scripts](#npm-scripts)
+- [NPM Scripts](#npm-scripts)
 - [Development and Deployment Workflow](#development-and-deployment-workflow)
 - [Transport API](#transport-api)
   - [Fundamentals](#fundamentals)
@@ -176,7 +176,7 @@ dependency-related version constraints.
 
 TO DO
 
-## NPM scripts
+## NPM Scripts
 
 - `npm run docs` Generate source code documentation in `docs`.
 
