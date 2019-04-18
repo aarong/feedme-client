@@ -48,7 +48,7 @@ Install the client:
 npm install feedme-client
 ```
 
-The client expects the application to inject a transport, through which it will
+The client expects the application to provide a transport, through which it will
 communicate with the server.
 
 ```shell
