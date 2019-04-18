@@ -84,7 +84,7 @@ connect to the server.
 
 ### CDN
 
-A client browser bundle can be included in a website as follows:
+The browser bundle can be included in a website as follows:
 
 ```html
 <script
