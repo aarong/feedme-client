@@ -29,6 +29,7 @@ jobs:
       script:
         - npm run build
         - echo "$TRAVIS_TAG" ## Temp
+        - echo "$NPM_AUTH_TOKEN" ## Temp
       deploy: # Can't use npm provider because you need to publish the build folder
         provider: script
         skip_cleanup: true # Preserve the build so it can be published
