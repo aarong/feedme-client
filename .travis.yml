@@ -26,7 +26,9 @@ jobs:
     - stage: Deploy # Runs on each build, but only publishes on new version
       language: node_js
       node_js: "6" # Maximum compatibility
-      script: npm run build
+      script:
+        - npm run build
+        - echo $TRAVIS_TAG
       deploy: # Can't use npm provider because you need to publish the build folder
         provider: script
         skip_cleanup: true # Preserve the build so it can be published
@@ -35,4 +37,3 @@ jobs:
           $HOME/.npmrc && npm publish build
         on:
           tags: true # Only deploy to NPM on tagged commits (new versions)
-          all_branches: true # Otherwise version-tagged commits not deployed
