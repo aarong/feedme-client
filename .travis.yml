@@ -4,6 +4,7 @@ addons:
 branches:
   only:
     - master
+    - /^v*$/ # version tags
 
 jobs:
   include:
