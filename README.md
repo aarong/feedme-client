@@ -700,9 +700,8 @@ reveals actions on the feed.
 
 ## Sample Code
 
-The following boilerplate code initializes a client with the WebSocket
-transport, creates a feed object, connects to the server, reporting results to
-the console.
+The following code initializes a client with the WebSocket transport, creates a
+feed object, connects to the server, reporting results to the console.
 
 ```javascript
 var feedmeClient = require("feedme-client");
