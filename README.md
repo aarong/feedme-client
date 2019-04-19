@@ -89,7 +89,7 @@ The browser bundle can be included in a website as follows:
 ```html
 <script
   type="text/javascript"
-  src="https://cdn.jsdelivr.net/npm/feedme-client/build/browser.js"
+  src="https://cdn.jsdelivr.net/npm/feedme-client/bundle.js"
 ></script>
 ```
 
