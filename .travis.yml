@@ -4,7 +4,7 @@ addons:
 branches:
   only:
     - master
-    - /^v.*$/ # version tags (Travis branch name = tag name)
+    - /^v.*$/ # Tagged builds (Travis branch name = tag name)
 
 jobs:
   include:
@@ -28,9 +28,6 @@ jobs:
       node_js: "6" # Maximum compatibility
       script:
         - npm run build
-        - echo "$TRAVIS_TAG" ## Temp
-        - echo "$TRAVIS_BRANCH" ## Temp
-        - echo "$NPM_AUTH_TOKEN" ## Temp
       deploy: # Can't use npm provider because you need to publish the build folder
         provider: script
         skip_cleanup: true # Preserve the build so it can be published
