@@ -67,7 +67,8 @@ Jasmine recognizes source maps in Node, but unfortunately not in the browser.
 
   Created by `npm run build`. Contains files ready to be deployed as an NPM
   package. Includes an entrypoint for Node (`index.js`) and a UMD module for
-  browsers (`bundle.js`).
+  browsers (`bundle.js` has no sourcemaps and is used by applications, while
+  `bundle.withmaps.js` has sourcemaps and is used for testing and debugging).
 
   LICENSE, README.md, and package.json are included.
 

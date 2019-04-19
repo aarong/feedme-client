@@ -21,7 +21,7 @@ does not support ES6).
 Works in any path. Gulp.src/dest are always relative to package root (Gulpfile).
 
 */
-const browserBundle = () => {
+const browserBundleWithmaps = () => {
   const b = browserify({
     entries: path.join(__dirname, "src/main.browser.js"),
     debug: true,
@@ -33,7 +33,7 @@ const browserBundle = () => {
       presets: [["@babel/preset-env", { targets: "> 0.25%, not dead" }]] // Working?
     })
     .bundle()
-    .pipe(source("bundle.js"))
+    .pipe(source("bundle.withmaps.js"))
     .pipe(buffer())
     .pipe(sourcemaps.init({ loadMaps: true })) // Browserify source maps are piped in
     .pipe(babel({ plugins: ["add-module-exports"] })) // No feedmeClient.default({})
@@ -41,6 +41,12 @@ const browserBundle = () => {
     .pipe(sourcemaps.write("."))
     .pipe(gulp.dest(path.join(__dirname, "build")));
 };
+
+const browserBundleNomaps = () =>
+  gulp
+    .src("build/bundle.withmaps.js")
+    .pipe(rename("bundle.js"))
+    .pipe(gulp.dest("build/"));
 
 const nodeTranspile = () =>
   gulp
@@ -63,7 +69,8 @@ const copy2 = () =>
 export const build = gulp.series(
   // eslint-disable-line import/prefer-default-export
   clean,
-  browserBundle,
+  browserBundleWithmaps,
+  browserBundleNomaps,
   nodeTranspile,
   copy1,
   copy2

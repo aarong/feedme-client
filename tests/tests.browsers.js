@@ -21,16 +21,16 @@ var pollInterval = 10000;
 async.series(
   [
     function(cb) {
-      // Set up the webroot with the tests and built bundle
+      // Set up the webroot with the tests and built bundle.withmaps
 
       copyFileSync(__dirname + "/tests.js", __dirname + "/webroot/tests.js");
       copyFileSync(
-        __dirname + "/../build/bundle.js",
-        __dirname + "/webroot/bundle.js"
+        __dirname + "/../build/bundle.withmaps.js",
+        __dirname + "/webroot/bundle.withmaps.js"
       );
       copyFileSync(
-        __dirname + "/../build/bundle.js.map",
-        __dirname + "/webroot/bundle.js.map"
+        __dirname + "/../build/bundle.withmaps.js.map",
+        __dirname + "/webroot/bundle.withmaps.js.map"
       );
 
       cb();
