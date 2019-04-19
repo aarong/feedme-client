@@ -2,6 +2,7 @@ import gulp from "gulp";
 import del from "del";
 import sourcemaps from "gulp-sourcemaps";
 import rename from "gulp-rename";
+import replace from "gulp-replace";
 import browserify from "browserify";
 import source from "vinyl-source-stream";
 import buffer from "vinyl-buffer";
@@ -45,6 +46,7 @@ const browserBundleWithmaps = () => {
 const browserBundleNomaps = () =>
   gulp
     .src("build/bundle.withmaps.js")
+    .pipe(replace("//# sourceMappingURL=bundle.withmaps.js.map\n", ""))
     .pipe(rename("bundle.js"))
     .pipe(gulp.dest("build/"));
 
