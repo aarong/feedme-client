@@ -4,7 +4,7 @@ addons:
 branches:
   only:
     - master
-    - /^v*$/ # version tags (Travis branch name = tag name)
+    - /^v.*$/ # version tags (Travis branch name = tag name)
 
 jobs:
   include:
@@ -38,5 +38,5 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" >>
           $HOME/.npmrc && npm publish build
         on:
-          branch: /^v*$/ # version tags
+          branch: /^v.*$/ # version tags
           # tags: true # Only deploy to NPM on tagged commits (new versions)
