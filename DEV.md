@@ -9,7 +9,6 @@ This documentation is for developers of the Feedme client library itself.
 - [Source Modules](#source-modules)
   - [Source Files](#source-files)
 - [Target Node and NPM Versions](#target-node-and-npm-versions)
-- [Target Browsers](#target-browsers)
 - [NPM Scripts](#npm-scripts)
 - [Development and Deployment Workflow](#development-and-deployment-workflow)
 - [Transport API](#transport-api)
@@ -172,10 +171,6 @@ published to NPM, as it should be compatible with later versions of Node.
 Since production installs run code transpiled for Node 6, there is no guarantee
 that they will support earlier versions of Node even though there are far fewer
 dependency-related version constraints.
-
-## Target Browsers
-
-TO DO
 
 ## NPM Scripts
 

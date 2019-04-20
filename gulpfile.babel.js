@@ -31,7 +31,7 @@ const browserBundleWithmaps = () => {
 
   return b
     .transform("babelify", {
-      presets: [["@babel/preset-env", { targets: "> 0.25%, not dead" }]] // Working?
+      presets: [["@babel/preset-env"]] // Uses browserslist config in package.json
     })
     .bundle()
     .pipe(source("bundle.withmaps.js"))

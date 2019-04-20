@@ -91,5 +91,10 @@
     "ghooks": {
       "pre-commit": "npm run build"
     }
-  }
+  },
+  "browserslist": [
+    "> 0.25%",
+    "maintained node versions",
+    "not dead"
+  ]
 }

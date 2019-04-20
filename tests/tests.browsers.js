@@ -10,14 +10,55 @@ var sauceTests;
 var sauceResults;
 
 // Config
-var saucePlatforms = [
-  ["Windows 7", "firefox", "27"]
-  // ["Linux", "chrome", "latest"]
-];
 var port = 3000;
 var sauceTunnelId = process.env.TRAVIS_JOB_NUMBER || "feedme-client-tunnel"; // Travis sets tunnel id to job number
 var pollInterval = 10000;
+saucePlatforms = [
+  // Available Sauce platforms: https://saucelabs.com/platforms
+  // Ideally you would test everything in browserslist, but many of those
+  // platforms aren't available on Sauce -- instead, test maximally on Sauce platforms
+  // General approach is to tests earliest and latest browser versions available on all platforms
 
+  // If you include a bad platform-browser combination, Sauce never returns results even when
+  // the good ones are done, and does not return an error either (bad tests not listed on dashboard)
+
+  // REST API only supports desktop platforms, not mobile (confirmed with support)
+  // For mobile platforms you need to use Appium directly, or one of their testing frameworks:
+  // https://github.com/saucelabs-sample-test-frameworks
+
+  ["Windows 10", "Firefox", "4"],
+  ["Windows 10", "Firefox", "latest"],
+  ["Windows 10", "Chrome", "26"],
+  ["Windows 10", "Chrome", "latest"],
+  ["Windows 10", "MicrosoftEdge", "13"],
+  ["Windows 10", "MicrosoftEdge", "latest"],
+  ["Windows 10", "Internet Explorer", "11"],
+  ["Windows 8", "Internet Explorer", "10"],
+
+  // IE 9 does not support Jasmine
+  // ["Windows 7", "Internet Explorer", "9"],
+
+  // macOS 10.14 tests get 500 error - what is localhost:3000 pointing to? Sauce Connect issue?
+  // ["macOS 10.14", "Safari", "latest"],
+  // ["macOS 10.14", "Firefox", "latest"],
+  // ["macOS 10.14", "Chrome", "latest"],
+
+  ["macOS 10.13", "Firefox", "latest"],
+  ["macOS 10.13", "Chrome", "latest"],
+
+  // Safari tests hang - Jasmine results show in the browser and there are
+  // no console errors, but Sauce doesn't return
+  // ["macOS 10.13", "Safari", "latest"],
+  // ["macOS 10.13", "Safari", "11"],
+  // ["macOS 10.12", "Safari", "10"],
+
+  // macOS 10.10, 10.11 would not spawn tests (missing and hang like bad combo)
+
+  ["Linux", "Firefox", "latest"],
+  ["Linux", "Chrome", "latest"]
+];
+
+// Run the tests
 async.series(
   [
     function(cb) {
