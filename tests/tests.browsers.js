@@ -23,7 +23,8 @@ saucePlatforms = [
   // the good ones are done, and does not return an error either (bad tests not listed on dashboard)
 
   // REST API only supports desktop platforms, not mobile (confirmed with support)
-  // For mobile platforms you need to use Appium directly, or one of their testing frameworks:
+  // For mobile platforms you need to use Appium directly (see their platform
+  // configurator), or one of their testing frameworks:
   // https://github.com/saucelabs-sample-test-frameworks
 
   ["Windows 10", "Firefox", "4"],

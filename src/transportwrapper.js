@@ -391,8 +391,8 @@ proto._processTransportConnecting = function _processTransportConnecting(
   }
 
   // Emit
-  this.emit("connecting");
   this._lastEmission = "connecting";
+  this.emit("connecting");
 };
 
 /**
@@ -425,8 +425,8 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
   }
 
   // Emit
-  this.emit("connect");
   this._lastEmission = "connect";
+  this.emit("connect");
 };
 
 /**
@@ -520,10 +520,10 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   }
 
   // Emit
+  this._lastEmission = "disconnect";
   if (args.length === 0) {
     this.emit("disconnect");
   } else {
     this.emit("disconnect", args[0]);
   }
-  this._lastEmission = "disconnect";
 };

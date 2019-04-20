@@ -1404,8 +1404,6 @@ proto._connectTimeoutCancel = function _connectTimeoutCancel() {
  * @throws {Error} Passed through from session.connect()
  */
 proto._connect = function _connect() {
-  dbg("Connect requested");
-
   // Connect the session - could fail, so before the timeout is set
   // If it works, you know you were disconnected
   this._session.connect();
