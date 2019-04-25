@@ -5,17 +5,6 @@ This documentation is for developers of the Feedme client library itself.
 <!-- TOC depthFrom:2 -->
 
 - [Getting Started](#getting-started)
-- [Directory Structure](#directory-structure)
-- [Source Modules](#source-modules)
-  - [Source Files](#source-files)
-- [Target Node and NPM Versions](#target-node-and-npm-versions)
-- [NPM Scripts](#npm-scripts)
-- [Development and Deployment Workflow](#development-and-deployment-workflow)
-- [Transport API](#transport-api)
-  - [Fundamentals](#fundamentals)
-  - [Transport States](#transport-states)
-  - [Transport Methods](#transport-methods)
-  - [Transport Events](#transport-events)
 
 <!-- /TOC -->
 
@@ -59,6 +48,11 @@ npm run test-build-browsers
 ```
 
 Jasmine recognizes source maps in Node, but unfortunately not in the browser.
+
+To enable debugging output set the `debug` environment variable to
+`feedme-client*`.
+
+````
 
 ## Directory Structure
 
@@ -210,7 +204,7 @@ git checkout -b my-new-feature
 git commit -m "Added my new feature."
 git push origin my-new-feature
 # Submit a pull request
-```
+````
 
 Commits to the master branch are built and tested by Travis CI. If the NPM
 package version has been incremented, then Travis will deploy by publishing the
