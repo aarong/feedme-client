@@ -61,6 +61,43 @@ harnessProto.createClientListener = function() {
   return l;
 };
 
+harnessProto.createFeedListener = function(feed) {
+  var l = {
+    opening: jasmine.createSpy(),
+    open: jasmine.createSpy(),
+    close: jasmine.createSpy(),
+    action: jasmine.createSpy()
+  };
+  l.spyClear = function() {
+    l.opening.calls.reset();
+    l.open.calls.reset();
+    l.close.calls.reset();
+    l.action.calls.reset();
+  };
+  feed.on("opening", l.opening);
+  feed.on("open", l.open);
+  feed.on("close", l.close);
+  feed.on("action", l.action);
+  return l;
+};
+
+harnessProto.connectClient = function() {
+  this.client.connect();
+  this.transport.state.and.returnValue("connecting");
+  this.transport.emit("connecting");
+  this.transport.state.and.returnValue("connected");
+  this.transport.emit("connect");
+  this.transport.emit(
+    "message",
+    JSON.stringify({
+      MessageType: "HandshakeResponse",
+      Success: true,
+      Version: "0.1",
+      ClientId: "SOME_CLIENT_ID"
+    })
+  );
+};
+
 // Configuration
 
 describe("The connectTimeoutMs option", function() {
@@ -334,19 +371,667 @@ describe("The connectRetryMs option", function() {
   });
 });
 
-describe("The connectRetryBackoffMs option", function() {});
+describe("The connectRetryBackoffMs and connectRetryMaxMs options", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
 
-describe("The connectRetryMaxMs option", function() {});
+  it("should back off as configured", function() {
+    var opts = {
+      connectRetryMs: 1000,
+      connectRetryBackoffMs: 1000,
+      connectRetryMaxMs: 10000
+    };
+    var harness = harnessFactory(opts);
 
-describe("The connectRetryMaxAttempts option", function() {});
+    // Run a bunch of retries
+    harness.client.connect();
+    for (var i = 0; i < 20; i++) {
+      // How long should it wait?
+      var ms = Math.min(
+        opts.connectRetryMs + i * opts.connectRetryBackoffMs,
+        opts.connectRetryMaxMs
+      );
 
-describe("The actionTimeout option", function() {});
+      // Begin connection attempt and have it fail
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
 
-describe("The feedTimeout option", function() {});
+      // Advance to immediately before the retry and verify that
+      // transport.connect() was not called
+      harness.transport.spyClear();
+      jasmine.clock().tick(ms - epsilon);
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count()).toBe(0);
 
-describe("The reconnect option", function() {});
+      // Advance to immediately after the retry and ensure that
+      // transport.connect() was called
+      harness.transport.spyClear();
+      jasmine.clock().tick(2 * epsilon);
+      expect(harness.transport.connect.calls.count()).toBe(1);
+      expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      for (var j = 0; j < harness.transport.state.calls.count(); j++) {
+        expect(harness.transport.state.calls.argsFor(j).length).toBe(0);
+      }
+    }
+  });
 
-describe("The reopenMaxAttempts and reopenTrailingMs options", function() {});
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The connectRetryMaxAttempts option", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  it("if greater than zero, should stop connection retries as configured", function() {
+    var opts = {
+      connectRetryMs: 0,
+      connectRetryBackoffMs: 0,
+      connectRetryMaxAttempts: 10
+    };
+    var harness = harnessFactory(opts);
+
+    // Run a bunch of retries
+    harness.client.connect();
+    for (var i = 0; i <= opts.connectRetryMaxAttempts; i++) {
+      // Begin connection attempt and have it fail
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+      // Advance to immediately after the retry and ensure that
+      // transport.connect() was called if fewer than max retries and
+      // not called otherwise
+      harness.transport.spyClear();
+      jasmine.clock().tick(0); // async
+      if (i < opts.connectRetryMaxAttempts) {
+        expect(harness.transport.connect.calls.count()).toBe(1);
+        expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
+      } else {
+        expect(harness.transport.connect.calls.count()).toBe(0);
+      }
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      for (var j = 0; j < harness.transport.state.calls.count(); j++) {
+        expect(harness.transport.state.calls.argsFor(j).length).toBe(0);
+      }
+    }
+  });
+
+  it("if zero, should always make connection retries", function() {
+    var opts = {
+      connectRetryMs: 0,
+      connectRetryBackoffMs: 0,
+      connectRetryMaxAttempts: 0
+    };
+    var harness = harnessFactory(opts);
+
+    // Run a bunch of retries
+    harness.client.connect();
+    for (var i = 0; i <= 100; i++) {
+      // Begin connection attempt and have it fail
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+      // Advance to immediately after the retry and ensure that
+      // transport.connect() was called
+      harness.transport.spyClear();
+      jasmine.clock().tick(0); // async
+      expect(harness.transport.connect.calls.count()).toBe(1);
+      expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      for (var j = 0; j < harness.transport.state.calls.count(); j++) {
+        expect(harness.transport.state.calls.argsFor(j).length).toBe(0);
+      }
+    }
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The actionTimeoutMs option", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  it("if greater than zero, should timeout as configured", function() {
+    var opts = {
+      actionTimeoutMs: 1000
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Invoke the action
+    var cb = jasmine.createSpy();
+    var cbLate = jasmine.createSpy();
+    harness.client.action("SomeAction", { Some: "Args" }, cb, cbLate);
+
+    // Advance to immediately before the timeout and ensure that
+    // neither callback was called
+    jasmine.clock().tick(opts.actionTimeoutMs - epsilon);
+    expect(cb.calls.count()).toBe(0);
+    expect(cbLate.calls.count()).toBe(0);
+
+    // Advance to immediately after the timeout and ensure that cb was called
+    jasmine.clock().tick(2 * epsilon);
+    expect(cb.calls.count()).toBe(1);
+    expect(cb.calls.argsFor(0).length).toBe(1);
+    expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+    expect(cb.calls.argsFor(0)[0].message).toBe(
+      "TIMEOUT: The server did not respond within the allocated time."
+    );
+    expect(cbLate.calls.count()).toBe(0);
+  });
+
+  it("if zero, should never timeout", function() {
+    var opts = {
+      actionTimeoutMs: 0
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Invoke the action
+    var cb = jasmine.createSpy();
+    var cbLate = jasmine.createSpy();
+    harness.client.action("SomeAction", { Some: "Args" }, cb, cbLate);
+
+    // Advance to the end of time and ensure no callbacks
+    jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
+    expect(cb.calls.count()).toBe(0);
+    expect(cbLate.calls.count()).toBe(0);
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The feedTimeoutMs option", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  it("if greater than zero, should timeout as configured", function() {
+    var opts = {
+      feedTimeoutMs: 1000
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Ask to open the feed
+    var feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+    feed.desireOpen();
+
+    // Advance to immediately before the timeout and ensure that no events have fired
+    var feedListener = harness.createFeedListener(feed);
+    jasmine.clock().tick(opts.feedTimeoutMs - epsilon);
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+
+    // Advance to immediately after the timeout and ensure that close was fired
+    jasmine.clock().tick(2 * epsilon);
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(1);
+    expect(feedListener.close.calls.argsFor(0).length).toBe(1);
+    expect(feedListener.close.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+    expect(feedListener.close.calls.argsFor(0)[0].message).toBe(
+      "TIMEOUT: The server did not respond to feed open request within the allocated time."
+    );
+    expect(feedListener.action.calls.count()).toBe(0);
+  });
+
+  it("if zero, should never timeout", function() {
+    var opts = {
+      feedTimeoutMs: 0
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Ask to open the feed
+    var feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+    feed.desireOpen();
+
+    // Advance to the end of time and ensure that no events have fired
+    var feedListener = harness.createFeedListener(feed);
+    jasmine.clock().tick(Math.MAX_SAFE_INTEGER);
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The reconnect option", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  it("if true, should reconnect if the connection fails", function() {
+    var opts = {
+      reconnect: true
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Disconnect the transport and ensure that transport.connect() is called
+    harness.transport.spyClear();
+    harness.transport.state.and.returnValue("disconnected");
+    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    expect(harness.transport.connect.calls.count()).toBe(1);
+    expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
+    expect(harness.transport.send.calls.count()).toBe(0);
+    expect(harness.transport.disconnect.calls.count()).toBe(0);
+    for (var i = 0; i < harness.transport.state.calls.count(); i++) {
+      expect(harness.transport.state.calls.argsFor(i).length).toBe(0);
+    }
+  });
+
+  it("if false, should not reconnect if the connection fails", function() {
+    var opts = {
+      reconnect: false
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Disconnect the transport and ensure that transport.connect() is called
+    harness.transport.spyClear();
+    harness.transport.state.and.returnValue("disconnected");
+    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    expect(harness.transport.connect.calls.count()).toBe(0);
+    expect(harness.transport.send.calls.count()).toBe(0);
+    expect(harness.transport.disconnect.calls.count()).toBe(0);
+    for (var i = 0; i < harness.transport.state.calls.count(); i++) {
+      expect(harness.transport.state.calls.argsFor(i).length).toBe(0);
+    }
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The reopenMaxAttempts and reopenTrailingMs options", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  it("if reopenMaxAttempts is negative, should always try to re-open the feed", function() {
+    var opts = {
+      reopenMaxAttempts: -1
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Open the feed
+    var feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+    feed.desireOpen();
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedOpenResponse",
+        Success: true,
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedData: {}
+      })
+    );
+
+    var feedListener = harness.createFeedListener(feed);
+    for (i = 0; i < 20; i++) {
+      feedListener.spyClear();
+
+      // Transmit a bad action revelation; the session will ask to close the feed
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionRevelation",
+          ActionName: "SomeAction",
+          ActionData: {},
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" },
+          FeedDeltas: [{ Path: [], Operation: "Delete" }]
+        })
+      );
+
+      // Check that the feed is re-opened on success
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedCloseResponse",
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" }
+        })
+      );
+      expect(feedListener.opening.calls.count()).toBe(1);
+      expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
+      expect(feedListener.open.calls.count()).toBe(0);
+      expect(feedListener.close.calls.count()).toBe(1);
+      expect(feedListener.close.calls.argsFor(0).length).toBe(1);
+      expect(feedListener.close.calls.argsFor(0)[0]).toEqual(
+        jasmine.any(Error)
+      );
+      expect(feedListener.close.calls.argsFor(0)[0].message).toBe(
+        "BAD_ACTION_REVELATION: The server passed an invalid feed delta."
+      );
+      expect(feedListener.action.calls.count()).toBe(0);
+
+      // Successfully re-open the feed
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedOpenResponse",
+          Success: true,
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" },
+          FeedData: {}
+        })
+      );
+    }
+  });
+
+  it("if reopenMaxAttempts is zero, should not try to re-open the feed", function() {
+    var opts = {
+      reopenMaxAttempts: 0
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Open the feed
+    var feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+    feed.desireOpen();
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedOpenResponse",
+        Success: true,
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedData: {}
+      })
+    );
+
+    var feedListener = harness.createFeedListener(feed);
+
+    // Transmit a bad action revelation; the session will ask to close the feed
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "ActionRevelation",
+        ActionName: "SomeAction",
+        ActionData: {},
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedDeltas: [{ Path: [], Operation: "Delete" }]
+      })
+    );
+
+    // Check that the feed is not re-opened on success
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedCloseResponse",
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" }
+      })
+    );
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(1);
+    expect(feedListener.close.calls.argsFor(0).length).toBe(1);
+    expect(feedListener.close.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+    expect(feedListener.close.calls.argsFor(0)[0].message).toBe(
+      "BAD_ACTION_REVELATION: The server passed an invalid feed delta."
+    );
+    expect(feedListener.action.calls.count()).toBe(0);
+  });
+
+  it("if reopenMaxAttempts is positive and reopenTrailingMs is positive, should respect that limit", function() {
+    var opts = {
+      reopenMaxAttempts: 5,
+      reopenTrailingMs: 1000
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Open the feed
+    var feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+    feed.desireOpen();
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedOpenResponse",
+        Success: true,
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedData: {}
+      })
+    );
+
+    // Have the feed fail reopenMaxAttempts times
+    var feedListener = harness.createFeedListener(feed);
+    for (i = 0; i < opts.reopenMaxAttempts; i++) {
+      // Transmit a bad action revelation; the session will ask to close the feed
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionRevelation",
+          ActionName: "SomeAction",
+          ActionData: {},
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" },
+          FeedDeltas: [{ Path: [], Operation: "Delete" }]
+        })
+      );
+
+      // Check that the feed is re-opened on success
+      feedListener.spyClear();
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedCloseResponse",
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" }
+        })
+      );
+      expect(feedListener.opening.calls.count()).toBe(1);
+      expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
+      expect(feedListener.open.calls.count()).toBe(0);
+      expect(feedListener.close.calls.count()).toBe(0);
+      expect(feedListener.action.calls.count()).toBe(0);
+
+      // Successfully re-open the feed
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedOpenResponse",
+          Success: true,
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" },
+          FeedData: {}
+        })
+      );
+    }
+
+    // Transmit a final bad action revelation; the session will ask to close the feed
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "ActionRevelation",
+        ActionName: "SomeAction",
+        ActionData: {},
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedDeltas: [{ Path: [], Operation: "Delete" }]
+      })
+    );
+
+    // Check that the feed is NOT re-opened on success
+    feedListener.spyClear();
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedCloseResponse",
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" }
+      })
+    );
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+
+    // Advance reopenTrailingMs and ensure the feed is reopened
+    feedListener.spyClear();
+    jasmine.clock().tick(opts.reopenTrailingMs);
+    expect(feedListener.opening.calls.count()).toBe(1);
+    expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+  });
+
+  it("if reopenMaxAttempts is positive and reopenTrailingMs is zero, should respect that limit over the duration of the connection", function() {
+    var opts = {
+      reopenMaxAttempts: 5,
+      reopenTrailingMs: 0
+    };
+    var harness = harnessFactory(opts);
+    harness.connectClient();
+
+    // Open the feed
+    var feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+    feed.desireOpen();
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedOpenResponse",
+        Success: true,
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedData: {}
+      })
+    );
+
+    // Have the feed fail reopenMaxAttempts times
+    var feedListener = harness.createFeedListener(feed);
+    for (i = 0; i < opts.reopenMaxAttempts; i++) {
+      // Transmit a bad action revelation; the session will ask to close the feed
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionRevelation",
+          ActionName: "SomeAction",
+          ActionData: {},
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" },
+          FeedDeltas: [{ Path: [], Operation: "Delete" }]
+        })
+      );
+
+      // Check that the feed is re-opened on success
+      feedListener.spyClear();
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedCloseResponse",
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" }
+        })
+      );
+      expect(feedListener.opening.calls.count()).toBe(1);
+      expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
+      expect(feedListener.open.calls.count()).toBe(0);
+      expect(feedListener.close.calls.count()).toBe(0);
+      expect(feedListener.action.calls.count()).toBe(0);
+
+      // Successfully re-open the feed
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedOpenResponse",
+          Success: true,
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Args" },
+          FeedData: {}
+        })
+      );
+    }
+
+    // Transmit a final bad action revelation; the session will ask to close the feed
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "ActionRevelation",
+        ActionName: "SomeAction",
+        ActionData: {},
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" },
+        FeedDeltas: [{ Path: [], Operation: "Delete" }]
+      })
+    );
+
+    // Check that the feed is NOT re-opened on success
+    feedListener.spyClear();
+    harness.transport.emit(
+      "message",
+      JSON.stringify({
+        MessageType: "FeedCloseResponse",
+        FeedName: "SomeFeed",
+        FeedArgs: { Feed: "Args" }
+      })
+    );
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+
+    // Run all timers and make sure the feed is not reopened
+    feedListener.spyClear();
+    jasmine.clock().tick(Math.MAX_SAFE_INTEGER);
+    expect(feedListener.opening.calls.count()).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+
+    // Disconnect and reconnect and make sure the feed is reopened
+    harness.client.disconnect();
+    harness.transport.state.and.returnValue("disconnected");
+    harness.transport.emit("disconnect");
+    feedListener.spyClear();
+    harness.connectClient();
+    expect(feedListener.opening.calls.count()).toBe(1);
+    expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
+    expect(feedListener.open.calls.count()).toBe(0);
+    expect(feedListener.close.calls.count()).toBe(0);
+    expect(feedListener.action.calls.count()).toBe(0);
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
 
 // Client functions
 

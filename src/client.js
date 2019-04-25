@@ -372,7 +372,9 @@ export default function clientFactory(options) {
   /**
    * Timers to decrement reopen counts once options.reopenTrailingMs has elapsed.
    * Don't need to be able to reference by feed. There may be zero, one, or
-   * more than one for a given feed.
+   * more than one for a given feed. Reopen timers are not created if
+   * reopenTrailingMs is 0, as failures are counted over the duration of the
+   * connection.
    * @memberof client
    * @instance
    * @private
@@ -862,25 +864,27 @@ proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
       if (reopenCount < this._options.reopenMaxAttempts) {
         this._reopenCounts[feedSerial] = reopenCount + 1;
         // Decrement after trailingMs (track reopens forever if trailingMs is 0)
-        const timer = setTimeout(() => {
-          // Decrement the reopen counter and stop tracking the timer
-          this._reopenCounts[feedSerial] -= 1;
-          _pull(this._reopenTimers, timer);
+        if (this._options.reopenTrailingMs > 0) {
+          const timer = setTimeout(() => {
+            // Decrement the reopen counter and stop tracking the timer
+            this._reopenCounts[feedSerial] -= 1;
+            _pull(this._reopenTimers, timer);
 
-          // Consider reopening the feed if we're just moving back below the threshold
-          if (
-            this._reopenCounts[feedSerial] + 1 ===
-            this._options.reopenMaxAttempts
-          ) {
-            this._considerFeedState(feedName, feedArgs); // Reopen it
-          }
+            // Consider reopening the feed if we're just moving back below the threshold
+            if (
+              this._reopenCounts[feedSerial] + 1 ===
+              this._options.reopenMaxAttempts
+            ) {
+              this._considerFeedState(feedName, feedArgs); // Reopen it
+            }
 
-          // Delete the reopen counter if it is back to 0
-          if (this._reopenCounts[feedSerial] === 0) {
-            delete this._reopenCounts[feedSerial];
-          }
-        }, this._options.reopenTrailingMs);
-        this._reopenTimers.push(timer);
+            // Delete the reopen counter if it is back to 0
+            if (this._reopenCounts[feedSerial] === 0) {
+              delete this._reopenCounts[feedSerial];
+            }
+          }, this._options.reopenTrailingMs);
+          this._reopenTimers.push(timer);
+        }
         this._considerFeedState(feedName, feedArgs); // Reopen it
       }
     }
@@ -1283,6 +1287,8 @@ proto._informServerActionRevelation = function _informServerActionRevelation(
  * @param {object} feedArgs
  */
 proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
+  dbg("Considering feed state");
+
   // Do nothing if the session is not connected
   if (this.state() !== "connected") {
     return;
@@ -1304,7 +1310,6 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
 
   // Open the feed?
   if (actualState === "closed" && desiredState === "open") {
-    // let timedOut = false;
     this._informServerFeedOpening(feedName, feedArgs);
     this._feedOpenTimeout(
       feedName,
