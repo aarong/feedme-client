@@ -1000,7 +1000,7 @@ describe("The client.action() function", () => {
         expect(cbl.mock.calls.length).toBe(0);
       });
 
-      it("if timed out, should call callback() and callbackLate() - exception next", () => {
+      it("if timed out, should call callback() and callbackLate()", () => {
         harness.session.action = jest.fn((an, aa, cbi) => {
           setTimeout(() => {
             // Async
@@ -1021,26 +1021,6 @@ describe("The client.action() function", () => {
         expect(cbl.mock.calls[0].length).toBe(2);
         expect(cbl.mock.calls[0][0]).toBe(undefined);
         expect(cbl.mock.calls[0][1]).toEqual({ action: "data" });
-      });
-
-      it("if timed out, should call callback() and not callbackLate on disconnect", () => {
-        harness.session.action = jest.fn((an, aa, cbi) => {
-          setTimeout(() => {
-            // Async
-            cbi(new Error("DISCONNECTED: ."));
-          }, config.defaults.actionTimeoutMs + 1);
-        });
-        const cb = jest.fn();
-        const cbl = jest.fn();
-        harness.client.action("myAction", { arg: "val" }, cb, cbl);
-        jest.runAllTimers(); // Trigger async callback (which clears timeout)
-        expect(cb.mock.calls.length).toBe(1);
-        expect(cb.mock.calls[0].length).toBe(1);
-        expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
-        expect(cb.mock.calls[0][0].message).toBe(
-          "TIMEOUT: The server did not respond within the allocated time."
-        );
-        expect(cbl.mock.calls.length).toBe(0);
       });
     });
 

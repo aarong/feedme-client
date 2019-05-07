@@ -929,7 +929,7 @@ describe("The transport connect event", () => {
         JSON.parse(harness.transportWrapper.send.mock.calls[0][0])
       ).toEqual({
         MessageType: "Handshake",
-        Version: "0.1"
+        Versions: ["0.1"]
       });
     });
 
@@ -1118,10 +1118,10 @@ describe("The transport disconnect(err) event", () => {
       harness.feedOpenSuccess("MyFeed2", { arg: "val" }, {});
       const fccb = jest.fn();
       harness.session.feedClose("MyFeed2", { arg: "val" }, fccb);
-      const err = new Error(
-        "DISCONNECTED: Error message passed by the transport."
+      harness.transportWrapper.emit(
+        "disconnect",
+        new Error("DISCONNECTED: Message from the transport")
       );
-      harness.transportWrapper.emit("disconnect", err);
       expect(acb.mock.calls.length).toBe(1);
       expect(acb.mock.calls[0].length).toBe(1);
       expect(acb.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -1130,7 +1130,10 @@ describe("The transport disconnect(err) event", () => {
       );
       expect(focb.mock.calls.length).toBe(1);
       expect(focb.mock.calls[0].length).toBe(1);
-      expect(focb.mock.calls[0][0]).toBe(err);
+      expect(focb.mock.calls[0][0]).toBeInstanceOf(Error);
+      expect(focb.mock.calls[0][0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
       expect(fccb.mock.calls.length).toBe(1);
       expect(fccb.mock.calls[0].length).toBe(0);
     });

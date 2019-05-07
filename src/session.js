@@ -719,7 +719,7 @@ proto._processTransportConnect = function _processTransportConnect() {
   this._transportWrapper.send(
     JSON.stringify({
       MessageType: "Handshake",
-      Version: config.specVersion
+      Versions: [config.specVersion]
     })
   );
 };
@@ -778,18 +778,22 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
 
   // Send action callbacks an error
   _each(actionCallbacks, val => {
+    dbg("Returning disconnect error to action() callback");
     val(cbErr);
   });
 
   // For each feed, emit or callback according to state
   _each(feedStates, (feedState, feedSerial) => {
     if (feedState === "opening") {
-      feedOpenCallbacks[feedSerial](err); // Error
+      dbg("Returning disconnect error to feedOpen() callback");
+      feedOpenCallbacks[feedSerial](cbErr); // Error
     } else if (feedState === "open") {
+      dbg("Emitting unexpectedFeedClosing/Closed for open feed");
       const { feedName, feedArgs } = feedSerializer.unserialize(feedSerial);
       this.emit("unexpectedFeedClosing", feedName, feedArgs, cbErr);
       this.emit("unexpectedFeedClosed", feedName, feedArgs, cbErr);
     } else {
+      dbg("Returning success to feedClose() callback");
       feedCloseCallbacks[feedSerial](); // Success (closing or terminated)
     }
   });

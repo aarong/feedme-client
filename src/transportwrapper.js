@@ -306,10 +306,14 @@ proto.send = function send(msg) {
  * @throws Transport errors and 'TRANSPORT_ERROR: ...'
  */
 proto.disconnect = function disconnect(err) {
-  // Try to send the message
+  // Try to disconnect
   let transportErr;
   try {
-    this._transport.disconnect(err);
+    if (err) {
+      this._transport.disconnect(err);
+    } else {
+      this._transport.disconnect();
+    }
   } catch (e) {
     transportErr = e;
   }

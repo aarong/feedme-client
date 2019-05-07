@@ -318,7 +318,8 @@ The `options` argument is an object with the following properties:
     ... where `err` is an `Error` object.
 
   - `callbackLate` - Optional function. Invoked when the server responds to an
-    action request after it has timed out.
+    action request after it has timed out and when the client disconnects from
+    the server after the action request has timed out.
 
     The function is invoked in the same manner as `callback` with the exception
     that it will never receive a `TIMEOUT` error.
@@ -608,7 +609,9 @@ reveals actions on the feed.
   Emitted when the actual state of the feed object changes from `opening` or
   `open` to `closed`, and when the error condition has changed since an earlier
   `close` event was emitted (for example, when feed access is denied by the
-  server and then the client disconnects from the server).
+  server and then the client disconnects from the server, or when the feed is
+  desired closed and then desired open but the client is not connected to the
+  server).
 
   If the event was triggered by a call to `feed.desireClosed()` then no
   arguments are passed to the listeners.

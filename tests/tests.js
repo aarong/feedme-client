@@ -1,9 +1,20 @@
 var emitter = require("component-emitter");
+var check = require("check-types");
 
-// Build integration tests run on Node and in the browser
-// Test API promises in the user documentation
-// Assume an in-scope feedmeClient() factory function
+/*
 
+Build integration/functional tests run on Node and in the browser.
+Assume an in-scope feedmeClient() factory function.
+
+Tests API promises in the user documentation, ensures that the client
+interacts appropriately with the transport, and ensures that messages
+send via the transport abide by the Feedme spec.
+
+1. Do configuration options work as documented?
+2. Do app-initiated operations work as documented?
+3. Do transport-initiated operations work as documented?
+
+*/
 var epsilon = 1;
 
 var harnessProto = {};
@@ -98,7 +109,12 @@ harnessProto.connectClient = function() {
   );
 };
 
-// Configuration
+/*
+
+Configuration tests and associated functionality.
+Ensure that initialization options behave as documented.
+
+*/
 
 describe("The connectTimeoutMs option", function() {
   beforeEach(function() {
@@ -655,7 +671,7 @@ describe("The reconnect option", function() {
     var harness = harnessFactory(opts);
     harness.connectClient();
 
-    // Disconnect the transport and ensure that transport.connect() is called
+    // Disconnect the transport and ensure that transport.connect() is not called
     harness.transport.spyClear();
     harness.transport.state.and.returnValue("disconnected");
     harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
@@ -1033,50 +1049,5224 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", function() {
   });
 });
 
-// Client functions
+/*
+
+App-initiated operations.
+
+Includes all client and feed functions except for basic state-retrieving
+functions (listed below). Tested only under the default configuration.
+
+Each app-initiated operation has a group of tests that check all the way through
+to conclusion, emulating any direct transport responses.
+
+For each operation, check
+  - Error and return values
+  - Client and feed state function return values/errors
+      client.state()
+      client.id()
+      feed.desiredState()
+      feed.state()
+      feed.data()
+  - Client and feed events
+  - Transport calls
+  - Callbacks
+
+*/
 
 describe("The client.connect() function", function() {
-  // Events (client and feed)
-  // State functions
-  // Transport -- NO, just the client-facing stuff!
-  // Callbacks
-  // Return value
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  // Errors and return values
+
+  describe("throw and return", function() {
+    it("should throw if connecting", function() {
+      var harness = harnessFactory();
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      expect(function() {
+        harness.client.connect();
+      }).toThrow(new Error("INVALID_STATE: Already connecting or connected."));
+    });
+
+    it("should throw if connected", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+      expect(function() {
+        harness.client.connect();
+      }).toThrow(new Error("INVALID_STATE: Already connecting or connected."));
+    });
+
+    it("should return nothing on success", function() {
+      var harness = harnessFactory();
+      expect(harness.client.connect()).toBeUndefined();
+    });
+  });
+
+  // Client and feed state functions
+
+  describe("client and feed state function effects", function() {
+    it("should work correctly through a successful connection cycle", function() {
+      // Create a disconnected client and feed objects
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Check all state functions
+      expect(harness.client.state()).toBe("disconnected");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+
+      // Call client.connect() and have the transport emit connecting
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+
+      // Check all state functions
+      expect(harness.client.state()).toBe("connecting");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+
+      // Have the transport emit connect and emit a successful handshake response
+      // so that the client becomes connected
+      harness.transport.state.and.returnValue("connected");
+      harness.transport.emit("connect");
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "HandshakeResponse",
+          Success: true,
+          Version: "0.1",
+          ClientId: "SOME_CLIENT_ID"
+        })
+      );
+
+      // Check all state functions
+      expect(harness.client.state()).toBe("connected");
+      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("opening");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+
+      // Have the transport return success to feed open request
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedOpenResponse",
+          Success: true,
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Arg" },
+          FeedData: { Feed: "Data" }
+        })
+      );
+
+      // Check all state functions
+      expect(harness.client.state()).toBe("connected");
+      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("open");
+      expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+    });
+
+    describe("should work correctly through a failing connection cycle", function() {
+      var harness;
+      var feedWantedOpen;
+      var feedWantedClosed;
+      beforeEach(function() {
+        // Create a connecting client and two feeds
+        harness = harnessFactory();
+        feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        feedWantedOpen.desireOpen();
+        feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        harness.client.connect();
+        harness.transport.state.and.returnValue("connecting");
+        harness.transport.emit("connecting");
+      });
+
+      it("if due to timeout, should update appropriately", function() {
+        // Trigger the timeout
+        jasmine
+          .clock()
+          .tick(harness.client._options.connectTimeoutMs + epsilon);
+        // The client will disconnect the transport
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit(
+          "disconnect",
+          harness.transport.disconnect.calls.argsFor(0)[0]
+        );
+
+        // Check all state functions
+        expect(harness.client.state()).toBe("disconnected");
+        expect(function() {
+          harness.client.id();
+        }).toThrow(new Error("INVALID_STATE: Not connected."));
+        expect(feedWantedOpen.desiredState()).toBe("open");
+        expect(feedWantedOpen.state()).toBe("closed");
+        expect(function() {
+          feedWantedOpen.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+        expect(feedWantedClosed.desiredState()).toBe("closed");
+        expect(feedWantedClosed.state()).toBe("closed");
+        expect(function() {
+          feedWantedClosed.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+      });
+
+      it("if due to app call to client.disconnect(), should update appropriately", function() {
+        // Have the client disconnect
+        harness.client.disconnect();
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect"); // Requested
+
+        // Check all state functions
+        expect(harness.client.state()).toBe("disconnected");
+        expect(function() {
+          harness.client.id();
+        }).toThrow(new Error("INVALID_STATE: Not connected."));
+        expect(feedWantedOpen.desiredState()).toBe("open");
+        expect(feedWantedOpen.state()).toBe("closed");
+        expect(function() {
+          feedWantedOpen.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+        expect(feedWantedClosed.desiredState()).toBe("closed");
+        expect(feedWantedClosed.state()).toBe("closed");
+        expect(function() {
+          feedWantedClosed.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+      });
+
+      it("if due to transport internal failure, should update appropriately", function() {
+        // Have the transport disconnect
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+        // Check all state functions
+        expect(harness.client.state()).toBe("disconnected");
+        expect(function() {
+          harness.client.id();
+        }).toThrow(new Error("INVALID_STATE: Not connected."));
+        expect(feedWantedOpen.desiredState()).toBe("open");
+        expect(feedWantedOpen.state()).toBe("closed");
+        expect(function() {
+          feedWantedOpen.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+        expect(feedWantedClosed.desiredState()).toBe("closed");
+        expect(feedWantedClosed.state()).toBe("closed");
+        expect(function() {
+          feedWantedClosed.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+      });
+
+      it("if due to handshake rejection, should update appropriately", function() {
+        // Have the transport connect and emit a handshake failure
+        harness.transport.state.and.returnValue("connected");
+        harness.transport.emit("connect");
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "HandshakeResponse",
+            Success: false
+          })
+        ); // The client will disconnect the transport
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit(
+          "disconnect",
+          harness.transport.disconnect.calls.argsFor(0)[0]
+        );
+
+        // Check all state functions
+        expect(harness.client.state()).toBe("disconnected");
+        expect(function() {
+          harness.client.id();
+        }).toThrow(new Error("INVALID_STATE: Not connected."));
+        expect(feedWantedOpen.desiredState()).toBe("open");
+        expect(feedWantedOpen.state()).toBe("closed");
+        expect(function() {
+          feedWantedOpen.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+        expect(feedWantedClosed.desiredState()).toBe("closed");
+        expect(feedWantedClosed.state()).toBe("closed");
+        expect(function() {
+          feedWantedClosed.data();
+        }).toThrow(
+          new Error("INVALID_FEED_STATE: The feed object is not open.")
+        );
+      });
+    });
+  });
+
+  // Client and feed events
+
+  describe("client and feed event effects", function() {
+    it("should work correctly through a successful connection cycle", function() {
+      // Create a disconnected client and feed objects
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Create listeners
+      var clientListener = harness.createClientListener();
+      var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+      var feedWantedClosedListener = harness.createFeedListener(
+        feedWantedClosed
+      );
+
+      // Call client.connect() and have the transport emit connecting
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+
+      // Check all client and feed events
+      expect(clientListener.connecting.calls.count()).toBe(1);
+      expect(clientListener.connecting.calls.argsFor(0).length).toBe(0);
+      expect(clientListener.connect.calls.count()).toBe(0);
+      expect(clientListener.disconnect.calls.count()).toBe(0);
+      expect(clientListener.badServerMessage.calls.count()).toBe(0);
+      expect(clientListener.badClientMessage.calls.count()).toBe(0);
+      expect(clientListener.transportError.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+      // Reset listeners
+      clientListener.spyClear();
+      feedWantedOpenListener.spyClear();
+      feedWantedClosedListener.spyClear();
+
+      // Have the transport emit connect and emit a successful handshake response
+      // so that the client becomes connected
+      harness.transport.state.and.returnValue("connected");
+      harness.transport.emit("connect");
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "HandshakeResponse",
+          Success: true,
+          Version: "0.1",
+          ClientId: "SOME_CLIENT_ID"
+        })
+      );
+
+      // Check all client and feed events
+      expect(clientListener.connecting.calls.count()).toBe(0);
+      expect(clientListener.connect.calls.count()).toBe(1);
+      expect(clientListener.connect.calls.argsFor(0).length).toBe(0);
+      expect(clientListener.disconnect.calls.count()).toBe(0);
+      expect(clientListener.badServerMessage.calls.count()).toBe(0);
+      expect(clientListener.badClientMessage.calls.count()).toBe(0);
+      expect(clientListener.transportError.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+      expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+      // Reset listeners
+      clientListener.spyClear();
+      feedWantedOpenListener.spyClear();
+      feedWantedClosedListener.spyClear();
+
+      // Have the transport return success to feed open request
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "FeedOpenResponse",
+          Success: true,
+          FeedName: "SomeFeed",
+          FeedArgs: { Feed: "Arg" },
+          FeedData: { Feed: "Data" }
+        })
+      );
+
+      // Check all client and feed events
+      expect(clientListener.connecting.calls.count()).toBe(0);
+      expect(clientListener.connect.calls.count()).toBe(0);
+      expect(clientListener.disconnect.calls.count()).toBe(0);
+      expect(clientListener.badServerMessage.calls.count()).toBe(0);
+      expect(clientListener.badClientMessage.calls.count()).toBe(0);
+      expect(clientListener.transportError.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count(1)).toBe(1);
+      expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+    });
+
+    describe("should work correctly through a failing connection cycle", function() {
+      var harness;
+      var feedWantedOpen;
+      var feedWantedClosed;
+      beforeEach(function() {
+        // Create a connecting client and two feeds
+        harness = harnessFactory();
+        feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        feedWantedOpen.desireOpen();
+        feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        harness.client.connect();
+        harness.transport.state.and.returnValue("connecting");
+        harness.transport.emit("connecting");
+      });
+
+      it("if due to timeout, should update appropriately", function() {
+        // Create listeners
+        var clientListener = harness.createClientListener();
+        var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+        var feedWantedClosedListener = harness.createFeedListener(
+          feedWantedClosed
+        );
+
+        // Trigger the timeout
+        jasmine
+          .clock()
+          .tick(harness.client._options.connectTimeoutMs + epsilon);
+        // The client will disconnect the transport
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit(
+          "disconnect",
+          harness.transport.disconnect.calls.argsFor(0)[0]
+        );
+
+        // Check all client and feed events
+        expect(clientListener.connecting.calls.count()).toBe(0);
+        expect(clientListener.connect.calls.count()).toBe(0);
+        expect(clientListener.disconnect.calls.count()).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0).length).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0)[0]).toEqual(
+          jasmine.any(Error)
+        );
+        expect(clientListener.disconnect.calls.argsFor(0)[0].message).toBe(
+          harness.transport.disconnect.calls.argsFor(0)[0].message
+        );
+        expect(clientListener.badServerMessage.calls.count()).toBe(0);
+        expect(clientListener.badClientMessage.calls.count()).toBe(0);
+        expect(clientListener.transportError.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+      });
+
+      it("if due to app call to client.disconnect(), should update appropriately", function() {
+        // Create listeners
+        var clientListener = harness.createClientListener();
+        var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+        var feedWantedClosedListener = harness.createFeedListener(
+          feedWantedClosed
+        );
+
+        // Have the client disconnect
+        harness.client.disconnect();
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect"); // Requested
+
+        // Check all client and feed events
+        expect(clientListener.connecting.calls.count()).toBe(0);
+        expect(clientListener.connect.calls.count()).toBe(0);
+        expect(clientListener.disconnect.calls.count()).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0).length).toBe(0);
+        expect(clientListener.badServerMessage.calls.count()).toBe(0);
+        expect(clientListener.badClientMessage.calls.count()).toBe(0);
+        expect(clientListener.transportError.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+      });
+
+      it("if due to transport internal failure, should update appropriately", function() {
+        // Create listeners
+        var clientListener = harness.createClientListener();
+        var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+        var feedWantedClosedListener = harness.createFeedListener(
+          feedWantedClosed
+        );
+
+        // Have the transport disconnect
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+        // Check all client and feed events
+        expect(clientListener.connecting.calls.count()).toBe(0);
+        expect(clientListener.connect.calls.count()).toBe(0);
+        expect(clientListener.disconnect.calls.count()).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0).length).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0)[0]).toEqual(
+          jasmine.any(Error)
+        );
+        expect(clientListener.disconnect.calls.argsFor(0)[0].message).toBe(
+          "DISCONNECTED: ..."
+        );
+        expect(clientListener.badServerMessage.calls.count()).toBe(0);
+        expect(clientListener.badClientMessage.calls.count()).toBe(0);
+        expect(clientListener.transportError.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+      });
+
+      it("if due to handshake rejection, should update appropriately", function() {
+        // Create listeners
+        var clientListener = harness.createClientListener();
+        var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+        var feedWantedClosedListener = harness.createFeedListener(
+          feedWantedClosed
+        );
+
+        // Have the transport connect and emit a handshake failure
+        harness.transport.state.and.returnValue("connected");
+        harness.transport.emit("connect");
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "HandshakeResponse",
+            Success: false
+          })
+        ); // The client will disconnect the transport
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit(
+          "disconnect",
+          harness.transport.disconnect.calls.argsFor(0)[0]
+        );
+
+        // Check all client and feed events
+        expect(clientListener.connecting.calls.count()).toBe(0);
+        expect(clientListener.connect.calls.count()).toBe(0);
+        expect(clientListener.disconnect.calls.count()).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0).length).toBe(1);
+        expect(clientListener.disconnect.calls.argsFor(0)[0]).toEqual(
+          jasmine.any(Error)
+        );
+        expect(clientListener.disconnect.calls.argsFor(0)[0].message).toBe(
+          "HANDSHAKE_REJECTED: The server rejected the handshake."
+        );
+        expect(clientListener.badServerMessage.calls.count()).toBe(0);
+        expect(clientListener.badClientMessage.calls.count()).toBe(0);
+        expect(clientListener.transportError.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+      });
+    });
+  });
+
+  // Transport calls
+
+  describe("transport calls", function() {
+    describe("should work correctly through a successful connection cycle", function() {
+      it("if a feed is desired open, make appropriate transport calls", function() {
+        // Create a disconnected client and feed objects
+        var harness = harnessFactory();
+        var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        feedWantedOpen.desireOpen();
+        var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+        // Call client.connect()
+        harness.client.connect();
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(1);
+        expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport emit connecting
+        harness.transport.state.and.returnValue("connecting");
+        harness.transport.emit("connecting");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport emit connect
+        harness.transport.state.and.returnValue("connected");
+        harness.transport.emit("connect");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+          JSON.stringify({
+            MessageType: "Handshake",
+            Versions: ["0.1"]
+          })
+        );
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport emit a successful handshake response
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "HandshakeResponse",
+            Success: true,
+            Version: "0.1",
+            ClientId: "SOME_CLIENT_ID"
+          })
+        );
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+          JSON.stringify({
+            MessageType: "FeedOpen",
+            FeedName: "SomeFeed",
+            FeedArgs: { Feed: "Arg" }
+          })
+        );
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // // Have the transport return success to feed open request
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "FeedOpenResponse",
+            Success: true,
+            FeedName: "SomeFeed",
+            FeedArgs: { Feed: "Arg" },
+            FeedData: { Feed: "Data" }
+          })
+        );
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+      });
+
+      it("if no feeds are desired open, make appropriate transport calls", function() {
+        // Create a disconnected client and feed objects
+        var harness = harnessFactory();
+        var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+        // Call client.connect()
+        harness.client.connect();
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(1);
+        expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport emit connecting
+        harness.transport.state.and.returnValue("connecting");
+        harness.transport.emit("connecting");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport emit connect
+        harness.transport.state.and.returnValue("connected");
+        harness.transport.emit("connect");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+          JSON.stringify({
+            MessageType: "Handshake",
+            Versions: ["0.1"]
+          })
+        );
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport emit a successful handshake response
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "HandshakeResponse",
+            Success: true,
+            Version: "0.1",
+            ClientId: "SOME_CLIENT_ID"
+          })
+        );
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+      });
+    });
+
+    describe("should work correctly through a failing connection cycle", function() {
+      var harness;
+      var feedWantedOpen;
+      beforeEach(function() {
+        // Create a connecting client and two feeds
+        harness = harnessFactory();
+        feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        feedWantedOpen.desireOpen();
+        harness.client.connect();
+        harness.transport.state.and.returnValue("connecting");
+        harness.transport.emit("connecting");
+      });
+
+      it("if due to timeout, should be appropriate", function() {
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Trigger the timeout
+        jasmine
+          .clock()
+          .tick(harness.client._options.connectTimeoutMs + epsilon);
+        // The client will disconnect the transport
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit(
+          "disconnect",
+          harness.transport.disconnect.calls.argsFor(0)[0]
+        );
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(1);
+        expect(harness.transport.disconnect.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.disconnect.calls.argsFor(0)[0]).toEqual(
+          jasmine.any(Error)
+        );
+        expect(harness.transport.disconnect.calls.argsFor(0)[0].message).toBe(
+          "TIMEOUT: The connection attempt timed out."
+        );
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Connection retries are tested alongside configuration
+      });
+
+      it("if due to app call to client.disconnect(), should be appropriate", function() {
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the client disconnect
+        harness.client.disconnect();
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect"); // Requested
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(1);
+        expect(harness.transport.disconnect.calls.argsFor(0).length).toBe(0); // Requested
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Connection retries are tested alongside configuration
+      });
+
+      it("if due to transport internal failure, should be appropriate", function() {
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport disconnect
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Connection retries are tested alongside configuration
+      });
+
+      it("if due to handshake rejection, should be appropriate", function() {
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport connect so the client submits a handshake
+        harness.transport.state.and.returnValue("connected");
+        harness.transport.emit("connect");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+          JSON.stringify({
+            MessageType: "Handshake",
+            Versions: ["0.1"]
+          })
+        );
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport handshake failure
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "HandshakeResponse",
+            Success: false
+          })
+        ); // The client will call transport.disconnect()
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(1);
+        expect(harness.transport.disconnect.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.disconnect.calls.argsFor(0)[0]).toEqual(
+          jasmine.any(Error)
+        );
+        expect(harness.transport.disconnect.calls.argsFor(0)[0].message).toBe(
+          "HANDSHAKE_REJECTED: The server rejected the handshake."
+        );
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Absence of connection retry are tested alongside configuration
+      });
+    });
+  });
+
+  // Callbacks - N/A
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
 });
 
-describe("The client.disconnect() function", function() {});
+describe("The client.disconnect() function", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
 
-describe("The client.action() function", function() {});
+  // Errors and return values
 
-describe("The client.feed() function", function() {});
+  describe("throw and return", function() {
+    it("should throw if disconnected", function() {
+      var harness = harnessFactory();
+      expect(function() {
+        harness.client.disconnect();
+      }).toThrow(new Error("INVALID_STATE: Already disconnected."));
+    });
 
-// Client events
+    it("should return void if not disconnected", function() {
+      var harness = harnessFactory();
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      expect(harness.client.disconnect()).toBeUndefined();
+    });
+  });
 
-describe("The client connecting event", function() {});
+  // Client and feed state functions
 
-describe("The client connect event", function() {});
+  describe("client and feed state function effects", function() {
+    it("should work correctly if called while transport connecting", function() {
+      // Create a disconnected client and two feeds
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
 
-describe("The client disconnect event", function() {});
+      // Put the client in a connecting state
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
 
-describe("The client badServerMessage event", function() {});
+      // Check all state functions
+      expect(harness.client.state()).toBe("connecting");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
 
-describe("The client badClientMessage event", function() {});
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
 
-describe("The client transportError event", function() {});
+      // Check all state functions
+      expect(harness.client.state()).toBe("disconnected");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+    });
 
-// Feed functions
+    it("should work correctly if called while awaiting handshake response", function() {
+      // Create a disconnected client and two feeds
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
 
-describe("The feed.desireOpen() function", function() {});
+      // Get the client so it is awaiting a handshake response
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      harness.transport.state.and.returnValue("connected");
+      harness.transport.emit("connect"); // Transport will send Handshake message
 
-describe("The feed.desireClosed() function", function() {});
+      // Check all state functions
+      expect(harness.client.state()).toBe("connecting");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
 
-describe("The feed.destroy() function", function() {});
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
 
-// Feed events
+      // Check all state functions
+      expect(harness.client.state()).toBe("disconnected");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+    });
 
-describe("The feed opening event", function() {});
+    it("should work correctly if called while while client is connected", function() {
+      // Create a connected client and two feeds
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      harness.connectClient();
 
-describe("The feed open event", function() {});
+      // Check all state functions
+      expect(harness.client.state()).toBe("connected");
+      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("opening");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
 
-describe("The feed close event", function() {});
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
 
-describe("The feed action and action:name events", function() {});
+      // Check all state functions
+      expect(harness.client.state()).toBe("disconnected");
+      expect(function() {
+        harness.client.id();
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+      expect(feedWantedOpen.desiredState()).toBe("open");
+      expect(feedWantedOpen.state()).toBe("closed");
+      expect(function() {
+        feedWantedOpen.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+      expect(feedWantedClosed.desiredState()).toBe("closed");
+      expect(feedWantedClosed.state()).toBe("closed");
+      expect(function() {
+        feedWantedClosed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+    });
+  });
+
+  // Client and feed events
+
+  describe("client and feed event effects", function() {
+    it("should work correctly if called while transport connecting", function() {
+      // Create a disconnected client and two feeds
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Put the client in a connecting state
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+
+      // Create listeners
+      var clientListener = harness.createClientListener();
+      var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+      var feedWantedClosedListener = harness.createFeedListener(
+        feedWantedClosed
+      );
+
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check all client and feed events
+      expect(clientListener.connecting.calls.count()).toBe(0);
+      expect(clientListener.connect.calls.count()).toBe(0);
+      expect(clientListener.disconnect.calls.count()).toBe(1);
+      expect(clientListener.disconnect.calls.argsFor(0).length).toBe(0); // Requested
+      expect(clientListener.badServerMessage.calls.count()).toBe(0);
+      expect(clientListener.badClientMessage.calls.count()).toBe(0);
+      expect(clientListener.transportError.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(0); // Feed was never opening (no handshake)
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+    });
+
+    it("should work correctly if called while awaiting handshake response", function() {
+      // Create a disconnected client and two feeds
+      var harness = harnessFactory();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Get the client so it is awaiting a handshake response
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      harness.transport.state.and.returnValue("connected");
+      harness.transport.emit("connect"); // Transport will send Handshake message
+
+      // Create listeners
+      var clientListener = harness.createClientListener();
+      var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+      var feedWantedClosedListener = harness.createFeedListener(
+        feedWantedClosed
+      );
+
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check all client and feed events
+      expect(clientListener.connecting.calls.count()).toBe(0);
+      expect(clientListener.connect.calls.count()).toBe(0);
+      expect(clientListener.disconnect.calls.count()).toBe(1);
+      expect(clientListener.disconnect.calls.argsFor(0).length).toBe(0); // Requested
+      expect(clientListener.badServerMessage.calls.count()).toBe(0);
+      expect(clientListener.badClientMessage.calls.count()).toBe(0);
+      expect(clientListener.transportError.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(0); // Feed was never opening (no handshake)
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+      // Reset listeners
+      clientListener.spyClear();
+      feedWantedOpenListener.spyClear();
+      feedWantedClosedListener.spyClear();
+    });
+
+    it("should work correctly if called while while client is connected", function() {
+      // Create a connected client and two feeds
+      var harness = harnessFactory();
+      harness.connectClient();
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feedWantedOpen.desireOpen();
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Create listeners
+      var clientListener = harness.createClientListener();
+      var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+      var feedWantedClosedListener = harness.createFeedListener(
+        feedWantedClosed
+      );
+
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check all client and feed events
+      expect(clientListener.connecting.calls.count()).toBe(0);
+      expect(clientListener.connect.calls.count()).toBe(0);
+      expect(clientListener.disconnect.calls.count()).toBe(1);
+      expect(clientListener.disconnect.calls.argsFor(0).length).toBe(0); // Requested
+      expect(clientListener.badServerMessage.calls.count()).toBe(0);
+      expect(clientListener.badClientMessage.calls.count()).toBe(0);
+      expect(clientListener.transportError.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(1); // Feed was opening
+      expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+      expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+        jasmine.any(Error)
+      );
+      expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+      // Reset listeners
+      clientListener.spyClear();
+      feedWantedOpenListener.spyClear();
+      feedWantedClosedListener.spyClear();
+    });
+  });
+
+  // Transport calls
+
+  describe("transport calls", function() {
+    it("should work correctly if called while transport connecting", function() {
+      // Create a disconnected client and two feeds
+      var harness = harnessFactory();
+
+      // Put the client in a connecting state
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+
+      // Reset transport spies
+      harness.transport.spyClear();
+
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(1);
+      expect(harness.transport.disconnect.calls.argsFor(0).length).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+
+    it("should work correctly if called while awaiting handshake response", function() {
+      // Create a disconnected client and two feeds
+      var harness = harnessFactory();
+
+      // Get the client so it is awaiting a handshake response
+      harness.client.connect();
+      harness.transport.state.and.returnValue("connecting");
+      harness.transport.emit("connecting");
+      harness.transport.state.and.returnValue("connected");
+      harness.transport.emit("connect"); // Transport will send Handshake message
+
+      // Reset transport spies
+      harness.transport.spyClear();
+
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(1);
+      expect(harness.transport.disconnect.calls.argsFor(0).length).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+
+    it("should work correctly if called while while client is connected", function() {
+      // Create a connected client and two feeds
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset transport spies
+      harness.transport.spyClear();
+
+      // Call disconnect and have the transport emit disconnect
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(1);
+      expect(harness.transport.disconnect.calls.argsFor(0).length).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+  });
+
+  // Callbacks - N/A
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The client.action() function", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  // Errors and return values
+
+  describe("throw and return", function() {
+    it("should throw on bad argument (just test one)", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+      expect(function() {
+        harness.client.action(); // no args
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid action name."));
+    });
+
+    it("should throw if not connected", function() {
+      var harness = harnessFactory();
+      expect(function() {
+        harness.client.action("SomeAction", {}, function() {});
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+    });
+
+    it("should return void on success", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+      expect(
+        harness.client.action("SomeAction", {}, function() {})
+      ).toBeUndefined();
+    });
+  });
+
+  // Client and feed state functions - N/A
+
+  // Client and feed events - N/A
+
+  // Transport calls
+
+  describe("transport calls", function() {
+    it("should send an Action message on the transport", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset transport spies
+      harness.transport.spyClear();
+
+      // Invoke an action
+      harness.client.action("SomeAction", { Action: "Arg" }, function() {});
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(1);
+      expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+      // You can't check the whole message in one go, since callback id is created internally
+      var msg = JSON.parse(harness.transport.send.calls.argsFor(0)[0]);
+      expect(msg.MessageType).toBe("Action");
+      expect(msg.ActionName).toBe("SomeAction");
+      expect(msg.ActionArgs).toEqual({ Action: "Arg" });
+      expect(check.string(msg.CallbackId)).toBe(true);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+  });
+
+  // Callbacks
+
+  describe("callbacks", function() {
+    it("should operate correctly through a timeout cycle to final success", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      var cb = jasmine.createSpy();
+      var cbLate = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb, cbLate);
+
+      // Get the CallbackId sent with the Action message
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Run the timeout
+      jasmine.clock().tick(harness.client._options.actionTimeoutMs);
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "TIMEOUT: The server did not respond within the allocated time."
+      );
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Reset the callbacks
+      cb.calls.reset();
+      cbLate.calls.reset();
+
+      // Have the server return success
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionResponse",
+          CallbackId: serverCb,
+          Success: true,
+          ActionData: { Action: "Data" }
+        })
+      );
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(1);
+      expect(cbLate.calls.argsFor(0).length).toBe(2);
+      expect(cbLate.calls.argsFor(0)[0]).toBeUndefined();
+      expect(cbLate.calls.argsFor(0)[1]).toEqual({ Action: "Data" });
+    });
+
+    it("should operate correctly through a timeout cycle to final disconnect", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      var cb = jasmine.createSpy();
+      var cbLate = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb, cbLate);
+
+      // Get the CallbackId sent with the Action message
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Run the timeout
+      jasmine.clock().tick(harness.client._options.actionTimeoutMs);
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "TIMEOUT: The server did not respond within the allocated time."
+      );
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Reset the callbacks
+      cb.calls.reset();
+      cbLate.calls.reset();
+
+      // Have the client disconnect (requested in this case)
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(1);
+      expect(cbLate.calls.argsFor(0).length).toBe(1);
+      expect(cbLate.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cbLate.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
+    });
+
+    it("should operate correctly through a timeout cycle to final reject", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      var cb = jasmine.createSpy();
+      var cbLate = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb, cbLate);
+
+      // Get the CallbackId sent with the Action message
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Run the timeout
+      jasmine.clock().tick(harness.client._options.actionTimeoutMs);
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "TIMEOUT: The server did not respond within the allocated time."
+      );
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Reset the callbacks
+      cb.calls.reset();
+      cbLate.calls.reset();
+
+      // Have the server reject the action
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionResponse",
+          CallbackId: serverCb,
+          Success: false,
+          ErrorCode: "SERVER_ERROR_CODE",
+          ErrorData: { Server: "Data" }
+        })
+      );
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(1);
+      expect(cbLate.calls.argsFor(0).length).toBe(1);
+      expect(cbLate.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cbLate.calls.argsFor(0)[0].message).toBe(
+        "REJECTED: Server rejected the action request."
+      );
+      expect(cbLate.calls.argsFor(0)[0].serverErrorCode).toBe(
+        "SERVER_ERROR_CODE"
+      );
+      expect(cbLate.calls.argsFor(0)[0].serverErrorData).toEqual({
+        Server: "Data"
+      });
+    });
+
+    it("should operate correctly on success", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      var cb = jasmine.createSpy();
+      var cbLate = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb, cbLate);
+
+      // Get the CallbackId sent with the Action message
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Have the server return success
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionResponse",
+          CallbackId: serverCb,
+          Success: true,
+          ActionData: { Action: "Data" }
+        })
+      );
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(2);
+      expect(cb.calls.argsFor(0)[0]).toBeUndefined();
+      expect(cb.calls.argsFor(0)[1]).toEqual({ Action: "Data" });
+      expect(cbLate.calls.count()).toBe(0);
+    });
+
+    it("should operate correctly on disconnect", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      var cb = jasmine.createSpy();
+      var cbLate = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb, cbLate);
+
+      // Get the CallbackId sent with the Action message
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Have the client disconnect (requested in this case)
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
+      expect(cbLate.calls.count()).toBe(0);
+    });
+
+    it("should operate correctly on reject", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      var cb = jasmine.createSpy();
+      var cbLate = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb, cbLate);
+
+      // Get the CallbackId sent with the Action message
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+      expect(cbLate.calls.count()).toBe(0);
+
+      // Have the server reject the action
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionResponse",
+          CallbackId: serverCb,
+          Success: false,
+          ErrorCode: "SERVER_ERROR_CODE",
+          ErrorData: { Server: "Data" }
+        })
+      );
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "REJECTED: Server rejected the action request."
+      );
+      expect(cb.calls.argsFor(0)[0].serverErrorCode).toBe("SERVER_ERROR_CODE");
+      expect(cb.calls.argsFor(0)[0].serverErrorData).toEqual({
+        Server: "Data"
+      });
+      expect(cbLate.calls.count()).toBe(0);
+    });
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The client.feed() function", function() {
+  // Errors and return values
+
+  describe("throw and return", function() {
+    it("should throw on bad argument (check one)", function() {
+      var harness = harnessFactory();
+      expect(function() {
+        harness.client.feed(); // No args
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid feed name."));
+    });
+
+    it("should return an object on success", function() {
+      var harness = harnessFactory();
+      expect(harness.client.feed("SomeFeed", { Feed: "Arg" })).toEqual(
+        jasmine.any(Object)
+      );
+    });
+  });
+
+  // Client and feed state functions - N/A
+
+  // Client and feed events - N/A
+
+  // Transport calls - N/A
+
+  // Callbacks - N/A
+});
+
+/*
+
+The feed.desireOpen() and feed.desireClosed() functions are tested using
+a somewhat different approach than other functions. Instead of branching
+into state functions, events, and transport calls at the root, the root
+is used to branch into the various possible cases of (1) whether any other
+feeds are desired open, and (2) the current state of the server feed. State
+functions, events, and transport calls are then tested internally for each.
+
+*/
+
+describe("The feed.desireOpen() function", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  describe("throw and return", function() {
+    it("should throw if already desired open", function() {
+      var harness = harnessFactory();
+      var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feed.desireOpen();
+      expect(function() {
+        feed.desireOpen();
+      }).toThrow(
+        new Error("INVALID_FEED_STATE: The feed is already desired open.")
+      );
+    });
+
+    it("should throw if destroyed", function() {
+      var harness = harnessFactory();
+      var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      feed.destroy();
+      expect(function() {
+        feed.desireOpen();
+      }).toThrow(new Error("DESTROYED: The feed object has been destroyed."));
+    });
+
+    it("should return void on success", function() {
+      var harness = harnessFactory();
+      var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      expect(feed.desireOpen()).toBeUndefined();
+    });
+  });
+
+  describe("if disconnected", function() {
+    var harness;
+    beforeEach(function() {
+      harness = harnessFactory();
+    });
+
+    it("state functions", function() {
+      var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Check state functions
+      expect(feed.desiredState()).toBe("closed");
+      expect(feed.state()).toBe("closed");
+      expect(function() {
+        feed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+
+      // Desire open
+      feed.desireOpen();
+
+      // Check state functions
+      expect(feed.desiredState()).toBe("open");
+      expect(feed.state()).toBe("closed");
+      expect(function() {
+        feed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+    });
+
+    it("events", function() {
+      var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      var feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+      var feedWantedClosedListener = harness.createFeedListener(
+        feedWantedClosed
+      );
+
+      feedWantedOpen.desireOpen();
+
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+      expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+      expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+        jasmine.any(Error)
+      );
+      expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The client is not connected."
+      );
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+    });
+
+    it("transport calls", function() {
+      var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      harness.transport.spyClear();
+
+      feed.desireOpen();
+
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+  });
+
+  describe("if connected and no other feed objects are desired open", function() {
+    describe("if the server feed is closed", function() {
+      var harness;
+      beforeEach(function() {
+        harness = harnessFactory();
+        harness.connectClient();
+      });
+
+      describe("if the server responds to FeedOpen with success", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("open");
+          expect(feed.data()).toEqual({ Feed: "Data" });
+        });
+
+        it("events", function() {
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the server responds to FeedOpen with failure", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("closed");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "REJECTED: Server rejected the feed open request."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the client disconnects before the server responds to FeedOpen", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("closed");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+    });
+
+    describe("if the server feed is opening", function() {
+      var harness;
+      beforeEach(function() {
+        harness = harnessFactory();
+        harness.connectClient();
+
+        // Get the server feed into the opening state
+        var earlierFeed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        earlierFeed.desireOpen();
+      });
+
+      describe("if the server responds to earlier FeedOpen with success", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("open");
+          expect(feed.data()).toEqual({ Feed: "Data" });
+        });
+
+        it("events", function() {
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the server responds to earlier FeedOpen with failure", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("closed");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "REJECTED: Server rejected the feed open request."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the client disconnects before the server responds to earlier FeedOpen", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("closed");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+    });
+
+    describe("if the server feed is open", function() {
+      // Can't happen - server feed would be closing if no other feeds objects desired open
+    });
+
+    describe("if the server feed is closing", function() {
+      var harness;
+      beforeEach(function() {
+        // Get the server feed into the closing state
+        harness = harnessFactory();
+        harness.connectClient();
+
+        var earlierFeed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        earlierFeed.desireOpen();
+
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "FeedOpenResponse",
+            Success: true,
+            FeedName: "SomeFeed",
+            FeedArgs: { Feed: "Arg" },
+            FeedData: { Feed: "Data" }
+          })
+        );
+
+        earlierFeed.desireClosed();
+      });
+
+      describe("if the server responds to earlier FeedClose with success and subsequent FeedOpen with success", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("open");
+          expect(feed.data()).toEqual({ Feed: "Data" });
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the server responds to earlier FeedClose with success and subsequent FeedOpen with failure", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("closed");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "REJECTED: Server rejected the feed open request."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if client disconnects before the server responds to the ealier FeedClose", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feed.desireOpen();
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("opening");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the transport disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check state functions
+          expect(feed.desiredState()).toBe("open");
+          expect(feed.state()).toBe("closed");
+          expect(function() {
+            feed.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the transport disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check events
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the transport disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+    });
+  });
+
+  describe("if connected and another feed object is desired open", function() {
+    describe("if the server feed is closed", function() {
+      var harness;
+      var feedAlreadyWantedOpen;
+      beforeEach(function() {
+        // Set up a connected client with a feed desired open but actually closed
+        harness = harnessFactory();
+        harness.connectClient();
+        feedAlreadyWantedOpen = harness.client.feed("SomeFeed", {
+          Feed: "Arg"
+        });
+        feedAlreadyWantedOpen.desireOpen();
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "FeedOpenResponse",
+            Success: false,
+            FeedName: "SomeFeed",
+            FeedArgs: { Feed: "Arg" },
+            ErrorCode: "SOME_ERROR_CODE",
+            ErrorData: { Error: "Data" }
+          })
+        );
+      });
+
+      describe("if the server responds to FeedOpen with success", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to FeedOpen
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("open");
+          expect(feedAlreadyWantedOpen.data()).toEqual({ Feed: "Data" });
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("open");
+          expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.opening.calls.argsFor(0).length
+          ).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to FeedOpen
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.open.calls.argsFor(0).length
+          ).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to FeedOpen
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the server responds to FeedOpen with failure", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return failure to FeedOpen
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.opening.calls.argsFor(0).length
+          ).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return failure to FeedOpen
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0).length
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0]
+          ).toEqual(jasmine.any(Error));
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0].message
+          ).toBe("REJECTED: Server rejected the feed open request.");
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "REJECTED: Server rejected the feed open request."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return failure to FeedOpen
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the client disconnects before the server responds to FeedOpen", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the client disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.opening.calls.argsFor(0).length
+          ).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the client disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0).length
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0]
+          ).toEqual(jasmine.any(Error));
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0].message
+          ).toBe("DISCONNECTED: The transport disconnected.");
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the client disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+    });
+
+    describe("if the server feed is opening", function() {
+      var harness;
+      var feedAlreadyWantedOpen;
+      beforeEach(function() {
+        // Set up a connected client with a feed desired open and server feed opening
+        harness = harnessFactory();
+        harness.connectClient();
+        feedAlreadyWantedOpen = harness.client.feed("SomeFeed", {
+          Feed: "Arg"
+        });
+        feedAlreadyWantedOpen.desireOpen();
+      });
+
+      describe("if the server responds to earlier FeedOpen with success", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("open");
+          expect(feedAlreadyWantedOpen.data()).toEqual({ Feed: "Data" });
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("open");
+          expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire the feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.open.calls.argsFor(0).length
+          ).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(0);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the server responds to earlier FeedOpen with failure", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0).length
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0]
+          ).toEqual(jasmine.any(Error));
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0].message
+          ).toBe("REJECTED: Server rejected the feed open request.");
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "REJECTED: Server rejected the feed open request."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return failure
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the client disconnects before the server responds to earlier FeedOpen", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0).length
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0]
+          ).toEqual(jasmine.any(Error));
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0].message
+          ).toBe("DISCONNECTED: The transport disconnected.");
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the transport disconnect from the server
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+    });
+
+    describe("if the server feed is open", function() {
+      var harness;
+      var feedAlreadyWantedOpen;
+      beforeEach(function() {
+        // Set up a connected client with a feed desired open and server feed open
+        harness = harnessFactory();
+        harness.connectClient();
+        feedAlreadyWantedOpen = harness.client.feed("SomeFeed", {
+          Feed: "Arg"
+        });
+        feedAlreadyWantedOpen.desireOpen();
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "FeedOpenResponse",
+            Success: true,
+            FeedName: "SomeFeed",
+            FeedArgs: { Feed: "Arg" },
+            FeedData: { Feed: "Data" }
+          })
+        );
+      });
+
+      it("state functions", function() {
+        // Desire feed open
+        var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        feedWantedOpen.desireOpen();
+
+        // Check state functions
+        expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+        expect(feedAlreadyWantedOpen.state()).toBe("open");
+        expect(feedAlreadyWantedOpen.data()).toEqual({ Feed: "Data" });
+        expect(feedWantedOpen.desiredState()).toBe("open");
+        expect(feedWantedOpen.state()).toBe("open");
+        expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
+      });
+
+      it("events", function() {
+        // Create feed listeners
+        var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        var feedWantedClosed = harness.client.feed("SomeFeed", {
+          Feed: "Arg"
+        });
+        var feedAlreadyWantedOpenListener = harness.createFeedListener(
+          feedAlreadyWantedOpen
+        );
+        var feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+        var feedWantedClosedListener = harness.createFeedListener(
+          feedWantedClosed
+        );
+
+        // Desire the feed open
+        feedWantedOpen.desireOpen();
+
+        // Check events
+        expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+        expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+        expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+        expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+        expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(0);
+        expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+        expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+        expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+        expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+        expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+      });
+
+      it("transport calls", function() {
+        var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Desire feed open
+        feed.desireOpen();
+
+        // Check transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.argsFor(0).length).toBe(0);
+      });
+    });
+
+    describe("if the server feed is closing", function() {
+      var harness;
+      var feedAlreadyWantedOpen;
+      beforeEach(function() {
+        // Get the server feed into the closing state with a feed desired open
+        harness = harnessFactory();
+        harness.connectClient();
+
+        feedAlreadyWantedOpen = harness.client.feed("SomeFeed", {
+          Feed: "Arg"
+        });
+        feedAlreadyWantedOpen.desireOpen();
+
+        harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "FeedOpenResponse",
+            Success: true,
+            FeedName: "SomeFeed",
+            FeedArgs: { Feed: "Arg" },
+            FeedData: { Feed: "Data" }
+          })
+        );
+
+        feedAlreadyWantedOpen.desireClosed();
+        feedAlreadyWantedOpen.desireOpen();
+      });
+
+      describe("if the server responds to earlier FeedClose with success and subsequent FeedOpen with success", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("open");
+          expect(feedAlreadyWantedOpen.data()).toEqual({ Feed: "Data" });
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("open");
+          expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.open.calls.argsFor(0).length
+          ).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: true,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              FeedData: { Feed: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if the server responds to earlier FeedClose with success and subsequent FeedOpen with failure", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0).length
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0]
+          ).toEqual(jasmine.any(Error));
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0].message
+          ).toBe("REJECTED: Server rejected the feed open request.");
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "REJECTED: Server rejected the feed open request."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server respond to the FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedOpenResponse",
+              Success: false,
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" },
+              ErrorCode: "SOME_ERROR_CODE",
+              ErrorData: { Error: "Data" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+
+      describe("if client disconnects before the server responds to the ealier FeedClose", function() {
+        it("state functions", function() {
+          // Desire feed open
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          feedWantedOpen.desireOpen();
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("opening");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+
+          // Have the transport disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check state functions
+          expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
+          expect(feedAlreadyWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedAlreadyWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+          expect(feedWantedOpen.desiredState()).toBe("open");
+          expect(feedWantedOpen.state()).toBe("closed");
+          expect(function() {
+            feedWantedOpen.data();
+          }).toThrow(
+            new Error("INVALID_FEED_STATE: The feed object is not open.")
+          );
+        });
+
+        it("events", function() {
+          // Create feed listeners
+          var feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+          var feedWantedClosed = harness.client.feed("SomeFeed", {
+            Feed: "Arg"
+          });
+          var feedAlreadyWantedOpenListener = harness.createFeedListener(
+            feedAlreadyWantedOpen
+          );
+          var feedWantedOpenListener = harness.createFeedListener(
+            feedWantedOpen
+          );
+          var feedWantedClosedListener = harness.createFeedListener(
+            feedWantedClosed
+          );
+
+          // Desire feed open
+          feedWantedOpen.desireOpen();
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(
+            0
+          );
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Reset listeners
+          feedAlreadyWantedOpenListener.spyClear();
+          feedWantedOpenListener.spyClear();
+          feedWantedClosedListener.spyClear();
+
+          // Have the transport disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check events
+          expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0).length
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0]
+          ).toEqual(jasmine.any(Error));
+          expect(
+            feedAlreadyWantedOpenListener.close.calls.argsFor(0)[0].message
+          ).toBe("DISCONNECTED: The transport disconnected.");
+          expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+          expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+            jasmine.any(Error)
+          );
+          expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+          expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+          expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+        });
+
+        it("transport calls", function() {
+          var feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Desire feed open
+          feed.desireOpen();
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the server return success to the earlier FeedClose
+          // Client will send FeedOpen message
+          harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "FeedCloseResponse",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count()).toBe(0);
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+          expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+            JSON.stringify({
+              MessageType: "FeedOpen",
+              FeedName: "SomeFeed",
+              FeedArgs: { Feed: "Arg" }
+            })
+          );
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+          // Reset transport spies
+          harness.transport.spyClear();
+
+          // Have the transport disconnect
+          harness.transport.state.and.returnValue("disconnected");
+          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+
+          // Check transport calls
+          expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
+          expect(harness.transport.disconnect.calls.count()).toBe(0);
+          expect(harness.transport.send.calls.count()).toBe(0);
+          expect(harness.transport.state.calls.count() >= 0).toBe(true);
+        });
+      });
+    });
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The feed.desireClosed() function", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The feed.destroy() function", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  // Errors and return values
+
+  describe("throw and return", function() {});
+
+  // Client and feed state functions
+
+  describe("client and feed state function effects", function() {});
+
+  // Client and feed events
+
+  describe("client and feed event effects", function() {});
+
+  // Transport calls
+
+  describe("transport calls", function() {});
+
+  // Callbacks - N/A
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+describe("The feed.client() function", function() {
+  beforeEach(function() {
+    jasmine.clock().install();
+  });
+
+  // Errors and return values
+
+  describe("throw and return", function() {});
+
+  // Client and feed state functions
+
+  describe("client and feed state function effects", function() {});
+
+  // Client and feed events
+
+  describe("client and feed event effects", function() {});
+
+  // Transport calls
+
+  describe("transport calls", function() {});
+
+  // Callbacks - N/A
+
+  afterEach(function() {
+    jasmine.clock().uninstall();
+  });
+});
+
+/*
+
+State functions - check throw destroyed and any other error
+
+*/
+
+/*
+
+Transport-initiated operations.
+Tested only under the default configuration.
+
+Transport operations that are the direct result of an app-initiated
+operation are tested above.
+
+Transport-initiated operations tested here include:
+ 
+  - Violation of the transport requirements (transportError)
+  - Transport disconnect event generated internally (disconnect)
+  - Transport message event that violates the spec (client badServerMessage)
+  - Transport message event with ViolationResponse (client badClientMessage)
+  - Transport message event with ActionRevelation (feed action)
+  - Transport message event with FeedTermination (feed close)
+
+For each result path, test:
+
+  - Client and feed state function return values (listed above)
+  - Client and feed events
+  - Transport calls
+  - Callbacks
+
+*/

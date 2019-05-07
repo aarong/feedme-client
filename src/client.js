@@ -551,7 +551,7 @@ proto.connect = function connect() {
 proto.disconnect = function disconnect() {
   dbg("Disconnect requested");
 
-  this._session.disconnect();
+  this._session.disconnect(); // No error - requested
 };
 
 /**
@@ -599,16 +599,23 @@ proto.action = function action(name, args, callback, callbackLate = () => {}) {
       if (timer) {
         clearTimeout(timer); // Not present if actionTimeoutMs === 0
       }
-      callback(err, actionData);
-    } else if (!err || !_startsWith(err.message, "DISCONNECTED")) {
-      // Call back late unless there is a post-timeout disconnect
+      if (err) {
+        callback(err);
+      } else {
+        callback(err, actionData);
+      }
+    } else if (err) {
+      callbackLate(err);
+    } else {
       callbackLate(err, actionData);
     }
   });
 
   // Set the timeout, if so configured
   if (this._options.actionTimeoutMs > 0) {
+    dbg("Action timout timer created");
     timer = setTimeout(() => {
+      dbg("Action timeout timer fired");
       timer = null; // Mark fired
       callback(
         new Error(
@@ -728,7 +735,12 @@ proto._processDisconnect = function _processDisconnect(err) {
 
   // You were connecting or connected, so no connect retry attempts are scheduled
 
-  this.emit("disconnect", err);
+  // Emit with correct number of args
+  if (err) {
+    this.emit("disconnect", err);
+  } else {
+    this.emit("disconnect");
+  }
 
   // Reset feed reopen counts/timers
   // Other timers are reset on action/feedOpen callbacks
@@ -754,7 +766,9 @@ proto._processDisconnect = function _processDisconnect(err) {
           this._options.connectRetryMaxMs
         );
         this._connectRetryCount += 1;
+        dbg("Connection retry timer created");
         this._connectRetryTimer = setTimeout(() => {
+          dbg("Connect retry timer fired");
           this._connectRetryTimer = null;
           this._connect(); // Not .connect(), as that resets the retry counts
         }, retryMs);
@@ -865,7 +879,9 @@ proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
         this._reopenCounts[feedSerial] = reopenCount + 1;
         // Decrement after trailingMs (track reopens forever if trailingMs is 0)
         if (this._options.reopenTrailingMs > 0) {
+          dbg("Feed re-open counter timer created");
           const timer = setTimeout(() => {
+            dbg("Feed re-open counter timer fired");
             // Decrement the reopen counter and stop tracking the timer
             this._reopenCounts[feedSerial] -= 1;
             _pull(this._reopenTimers, timer);
@@ -1315,6 +1331,7 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
       feedName,
       feedArgs,
       () => {
+        dbg("Feed open request timed out");
         const err = new Error(
           "TIMEOUT: The server did not respond to feed open request within the allocated time."
         );
@@ -1323,9 +1340,11 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
       err => {
         // Response callback - server feed is actionable
         if (err) {
+          dbg("Feed open request returned error");
           this._informServerFeedClosed(feedName, feedArgs, err);
           // The error is either DISCONNECTED or REJECTED - don't _consider in either case
         } else {
+          dbg("Feed open request returned success");
           this._informServerFeedOpen(feedName, feedArgs);
           this._considerFeedState(feedName, feedArgs); // Desired state may have changed
         }
@@ -1381,7 +1400,9 @@ proto._feedOpenTimeout = function _feedOpenTimeout(
 
   // Create a timer
   if (this._options.feedTimeoutMs > 0) {
+    dbg("Feed open timeout timer created");
     timer = setTimeout(() => {
+      dbg("Feed open timeout timer fired");
       timer = null; // Mark fired
       callbackTimeout();
     }, this._options.feedTimeoutMs);
@@ -1418,7 +1439,9 @@ proto._connect = function _connect() {
   // Set a timeout for the connection attempt?
   if (this._options.connectTimeoutMs > 0) {
     // The timeout is cleared on session connect/disconnect event
+    dbg("Connection timeout timer created");
     this._connectTimeoutTimer = setTimeout(() => {
+      dbg("Connection timeout timer fired");
       this._session.disconnect(
         new Error("TIMEOUT: The connection attempt timed out.")
       );
