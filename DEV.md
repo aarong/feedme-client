@@ -226,7 +226,9 @@ between the client and the server. A transport object is injected into each
 client at initialization.
 
 Transport objects must implement the following interface and behavior in order
-to function correctly with the client.
+to function correctly with the client. The client object interacts with
+transports through a wrapper that aims to detect invalid behavior and emits a
+client `transportError` event if the transport does something unexpected.
 
 ### Fundamentals
 
@@ -288,7 +290,7 @@ Transport objects must implement the following methods:
   Allows the client to tell the transport to try to connect to the server.
 
   The transport state must become `connecting` and the `connecting` event must
-  be emitted.
+  be emitted synchronously.
 
   The transport must subsequently emit either `connected` or `disconnected` as
   appropriate.
@@ -308,7 +310,7 @@ Transport objects must implement the following methods:
   Allows the client to tell the transport to disconnect from the server.
 
   The transport state must become `disconnected` and the `disconnect` event must
-  be emitted.
+  be emitted synchronously.
 
   If an `err` argument is present, then the `disconnect` event must be emitted
   with `err` as an argument. If an `err` argument is not present, then the
@@ -345,7 +347,8 @@ has been received from the server.
 
   If the disconnect resulted from an explicit outside call to `disconnect()`
   with no error argument then the transport must not pass an error object the
-  listeners.
+  listeners. The transport must not pass `null`, `undefined`, `false`, or any
+  other value in place of the error object.
 
   If the event resulted from a client call to `disconnect(err)` including an
   `Error` argument, then the error argument must be passed to the listeners.
