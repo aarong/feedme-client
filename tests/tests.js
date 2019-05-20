@@ -1,6 +1,3 @@
-var emitter = require("component-emitter");
-var check = require("check-types");
-
 /*
 
 Build integration/functional tests run on Node and in the browser.
@@ -14,6 +11,9 @@ send via the transport abide by the Feedme spec.
 2. Do app-initiated operations work as documented?
 3. Do transport-initiated operations work as documented?
 
+There is no access to external modules (also runs in the browser), so
+basic event emitter functionality for the transport is included inline.
+
 */
 var epsilon = 1;
 
@@ -23,9 +23,33 @@ var harnessFactory = function(options) {
   options = options || {};
   var harness = Object.create(harnessProto);
 
-  // Create the transport
+  // Create the transport basics
   var t = {};
-  emitter(t);
+  harness.transport = t;
+  options.transport = t;
+
+  // Transport event emitter fuctionality
+  t._listeners = {}; // properties are arrays
+  t.on = function(event, listener) {
+    if (!t._listeners[event]) {
+      t._listeners[event] = [];
+    }
+    t._listeners[event].push(listener);
+  };
+  t.emit = function(event, arg) {
+    // max one arg
+    if (t._listeners[event]) {
+      for (var i = 0; i < t._listeners[event].length; i++) {
+        if (arg !== undefined) {
+          t._listeners[event][i](arg);
+        } else {
+          t._listeners[event][i]();
+        }
+      }
+    }
+  };
+
+  // Transport spies
   t.connect = jasmine.createSpy();
   t.send = jasmine.createSpy();
   t.disconnect = jasmine.createSpy();
@@ -37,10 +61,8 @@ var harnessFactory = function(options) {
     t.disconnect.calls.reset();
     t.state.calls.reset();
   };
-  harness.transport = t;
 
   // Create the client
-  options.transport = t;
   harness.client = feedmeClient(options);
 
   return harness;
@@ -2406,7 +2428,9 @@ describe("The client.action() function", function() {
       expect(msg.MessageType).toBe("Action");
       expect(msg.ActionName).toBe("SomeAction");
       expect(msg.ActionArgs).toEqual({ Action: "Arg" });
-      expect(check.string(msg.CallbackId)).toBe(true);
+      expect(
+        typeof msg.CallbackId === "string" || msg.CallbackId instanceof String
+      ).toBe(true);
       expect(harness.transport.state.calls.count() >= 0).toBe(true);
     });
   });
