@@ -198,8 +198,17 @@ async.series(
         var platformName = sauceResults[i].platform.join(":");
         var platformResult = sauceResults[i].result; // The window.global_test_results object
 
+        // Note platformResult is null if tests are manually stopped
+        // Note platformResult.total/passed/failed === 0 if there is a Javascript error (weird)
+
+        // Did the platform pass?
+        // Make sure tests are actually running (ie don't just check that none failed)
+        var platformPassed =
+          platformResult &&
+          platformResult.failed === 0 &&
+          platformResult.passed > 100;
+
         // Display the platform name and result
-        var platformPassed = platformResult.failed === 0;
         if (platformPassed) {
           console.log("       " + platformName + " passed all tests");
         } else {
@@ -207,19 +216,21 @@ async.series(
             "FAILED " +
               platformName +
               " passed " +
-              platformResult.passed +
+              (platformResult ? platformResult.passed : "???") +
               "/" +
-              platformResult.total +
+              (platformResult ? platformResult.total : "???") +
               " tests"
           );
           console.log("       " + platformUrl);
 
           // Print failed tests
-          for (var j = 0; j < platformResult.tests.length; j++) {
-            var test = platformResult.tests[j];
-            if (!test.result) {
-              console.log("         Failing test: " + test.name);
-              console.log("         Message: " + test.message);
+          if (platformResult && platformResult.tests) {
+            for (var j = 0; j < platformResult.tests.length; j++) {
+              var test = platformResult.tests[j];
+              if (!test.result) {
+                console.log("         Failing test: " + test.name);
+                console.log("         Message: " + test.message);
+              }
             }
           }
         }
