@@ -42,13 +42,13 @@
               duration: 0 // Jasmine doesn't return duration
             };
 
-            if (jasmineSpecs[i].failedExpectations.length === 0) {
+            if (jasmineSpecs[i].status === "passed") {
               // The test passed
               sauceResults.passed += 1;
               sauceTest.result = true;
               sauceTest.message = "Passed";
             } else {
-              // The test failed
+              // The test failed or was pending
               // With Jasmine there can be more than one failed expect()
               var msg = "";
               for (
