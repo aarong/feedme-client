@@ -27,8 +27,13 @@ saucePlatforms = [
   // configurator), or one of their testing frameworks:
   // https://github.com/saucelabs-sample-test-frameworks
 
+  // Firefox 66 (latest) on Mac and Windows (but not Linux) was running the tests successfully
+  // and printing the results to console, but the tests would never return, as
+  // though Sauce never knew that the browser was "finished". Same problem on
+  // Firefox 60, worked on 50, problem on 55, worked on 52, worked on 53, worked on 54 (hardcoded).
+
   ["Windows 10", "Firefox", "4"],
-  ["Windows 10", "Firefox", "latest"],
+  ["Windows 10", "Firefox", "54"], // Was latest (66)
   ["Windows 10", "Chrome", "26"],
   ["Windows 10", "Chrome", "latest"],
   ["Windows 10", "MicrosoftEdge", "13"],
@@ -44,7 +49,7 @@ saucePlatforms = [
   // ["macOS 10.14", "Firefox", "latest"],
   // ["macOS 10.14", "Chrome", "latest"],
 
-  ["macOS 10.13", "Firefox", "latest"],
+  ["macOS 10.13", "Firefox", "54"], // Was latest (66)
   ["macOS 10.13", "Chrome", "latest"],
 
   // Safari tests hang - Jasmine results show in the browser and there are
