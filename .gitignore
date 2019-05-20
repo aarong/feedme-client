@@ -1,4 +1,6 @@
 build
+coverage
+docs
 node_modules
 
 # Sauce Connect creates a log in the package root
