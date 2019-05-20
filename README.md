@@ -586,6 +586,10 @@ reveals actions on the feed.
 
   Errors thrown:
 
+  - `err.message === "INVALID_FEED_STATE: ..."`
+
+    Only feed objects desired closed can be destroyed.
+
   - `err.message === "DESTROYED: ..."`
 
     The feed object has already been destroyed.

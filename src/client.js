@@ -750,6 +750,24 @@ proto._processDisconnect = function _processDisconnect(err) {
   });
   this._reopenTimers = [];
 
+  // Client.action() callbacks are sent an error via session.action() callback
+  // For feeds desired open, feed object close events are...
+  //  - If server feed is opening, fired via session.feedOpen() callback
+  //  - If server feed is open, fired via session unexpectedFeedClosing/Close events
+  //  - If server feed is closing, fired via session.feedClose() callback
+  //  - If server feed is closed (previous REJECTED) the session has no way to inform
+  //    And the client has no way to determine which feeds those are
+  //    So all feeds are informed here, and duplicate events are already filtered
+  //    out by the feed objects.
+  _each(this._appFeeds, (arr, ser) => {
+    const { feedName, feedArgs } = feedSerializer.unserialize(ser);
+    this._informServerFeedClosed(
+      feedName,
+      feedArgs,
+      Error("DISCONNECTED: The transport disconnected.")
+    );
+  });
+
   // Failure on connecting - retries
   if (this._lastSessionState === "connecting") {
     // Schedule a connection retry on TIMEOUT or DISCONNECT but not HANDSHAKE_REJECTED
@@ -1151,6 +1169,8 @@ proto._informServerFeedClosed = function _informServerFeedClosed(
   feedArgs,
   err
 ) {
+  dbg(`Informing server feed closed`);
+
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
@@ -1175,6 +1195,8 @@ proto._informServerFeedOpening = function _informServerFeedOpening(
   feedName,
   feedArgs
 ) {
+  dbg("Informing server feed opening");
+
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
@@ -1199,6 +1221,8 @@ proto._informServerFeedOpen = function _informServerFeedOpen(
   feedName,
   feedArgs
 ) {
+  dbg("Informing server feed open");
+
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
@@ -1226,6 +1250,8 @@ proto._informServerFeedClosing = function _informServerFeedClosing(
   feedArgs,
   err
 ) {
+  dbg("Informing server feed closing");
+
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
@@ -1258,6 +1284,8 @@ proto._informServerActionRevelation = function _informServerActionRevelation(
   newFeedData,
   oldFeedData
 ) {
+  dbg("Informing server action revelation");
+
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
@@ -1356,9 +1384,22 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
   if (actualState === "open" && desiredState === "closed") {
     this._informServerFeedClosing(feedName, feedArgs);
     this._session.feedClose(feedName, feedArgs, () => {
+      // The session returns success on successful server response AND disconnect
+      // If server returned success, then inform feeds with no error
+      // If client disconnected, then inform feeds with error
+      if (this.state() === "connected") {
+        dbg("Server feed closed due to disconnect");
+        this._informServerFeedClosed(feedName, feedArgs);
+      } else {
+        dbg("Server feed closed due to CloseResponse");
+        this._informServerFeedClosed(
+          feedName,
+          feedArgs,
+          new Error("DISCONNECTED: The transport disconnected.")
+        );
+      }
+
       // Server feed is now potentially actionable
-      // Could be disconnected (that's ok)
-      this._informServerFeedClosed(feedName, feedArgs); // Intended, no error
       this._considerFeedState(feedName, feedArgs); // Desired state may have changed
     });
   }

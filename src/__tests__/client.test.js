@@ -2267,6 +2267,8 @@ describe("The client._processDisconnect() function", () => {
     // Set connect retry timer - no, desired
     // Leave connect retry count as-is (reset on call to .connect())
     // Update last session state
+    const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
+    newState._appFeedStates[feedSerial][0]._lastEmission = "close";
     newState._lastSessionState = "disconnected";
     harness.session.emit("disconnect");
     expect(harness.client).toHaveState(newState);
@@ -2307,6 +2309,8 @@ describe("The client._processDisconnect() function", () => {
     // No connect retry timer -- reconnecting immediately
     // Leave connect retry count as-is (reset on call to .connect())
     // Update last session state
+    const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
+    newState._appFeedStates[feedSerial][0]._lastEmission = "close";
     newState._lastSessionState = "disconnected";
     harness.session.emit("disconnect", new Error("DISCONNECTED: ."));
     expect(harness.client).toHaveState(newState);

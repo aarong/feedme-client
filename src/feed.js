@@ -1,4 +1,7 @@
 import emitter from "component-emitter";
+import debug from "debug";
+
+const dbg = debug("feedme-client:feed");
 
 const proto = {};
 emitter(proto);
@@ -12,6 +15,8 @@ emitter(proto);
  * @description
  */
 export default function feedFactory(client, name, args) {
+  dbg("Initializing feed");
+
   /**
    * Feed object returned by client.feed().
    *
@@ -174,6 +179,8 @@ export default function feedFactory(client, name, args) {
  * @throws {Error} Error("DESTROYED: ...")
  */
 proto.desireOpen = function desireOpen() {
+  dbg("Desire open requested");
+
   this._checkDestroyed();
   this._client._appFeedDesireOpen(this);
 };
@@ -185,6 +192,8 @@ proto.desireOpen = function desireOpen() {
  * @throws {Error} Error("DESTROYED: ...")
  */
 proto.desireClosed = function desireClosed() {
+  dbg("Desire closed requested");
+
   this._checkDestroyed();
   this._client._appFeedDesireClosed(this);
 };
@@ -197,6 +206,8 @@ proto.desireClosed = function desireClosed() {
  * @throws {Error} Error("DESTROYED: ...")
  */
 proto.desiredState = function desiredState() {
+  dbg("Desired state requested");
+
   this._checkDestroyed();
   return this._client._appFeedDesiredState(this);
 };
@@ -209,6 +220,8 @@ proto.desiredState = function desiredState() {
  * @throws {Error} Error("DESTROYED: ...")
  */
 proto.state = function state() {
+  dbg("Actual state requested");
+
   this._checkDestroyed();
   return this._client._appFeedState(this);
 };
@@ -221,6 +234,7 @@ proto.state = function state() {
  * @throws {Error} Error("DESTROYED: ...")
  */
 proto.data = function data() {
+  dbg("Feed data requested");
   this._checkDestroyed();
   return this._client._appFeedData(this);
 };
@@ -233,6 +247,8 @@ proto.data = function data() {
  * @throws {Error} Error("DESTROYED: ...")
  */
 proto.client = function client() {
+  dbg("Client requested");
+
   this._checkDestroyed();
   return this._client;
 };
@@ -244,6 +260,8 @@ proto.client = function client() {
  * @throws {Error} Error("ALREADY_DESTROYED: ...")
  */
 proto.destroy = function destroy() {
+  dbg("Destroy requested");
+
   this._checkDestroyed();
   this._client._appFeedDestroy(this);
   delete this._client;
@@ -266,6 +284,8 @@ proto.destroy = function destroy() {
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
 proto._serverFeedClosed = function _serverFeedClosed(err) {
+  dbg("Observed server feed closed");
+
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
     return;
@@ -298,6 +318,8 @@ proto._serverFeedClosed = function _serverFeedClosed(err) {
  * @private
  */
 proto._serverFeedOpening = function _serverFeedOpening() {
+  dbg("Observed server feed opening");
+
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
     return;
@@ -320,6 +342,8 @@ proto._serverFeedOpening = function _serverFeedOpening() {
  * @private
  */
 proto._serverFeedOpen = function _serverFeedOpen() {
+  dbg("Observed server feed open");
+
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
     return;
@@ -352,6 +376,8 @@ proto._serverFeedOpen = function _serverFeedOpen() {
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
 proto._serverFeedClosing = function _serverFeedClosing(err) {
+  dbg("Observed server feed closing");
+
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
     return;
@@ -385,6 +411,8 @@ proto._serverActionRevelation = function _serverActionRevelation(
   newFeedData,
   oldFeedData
 ) {
+  dbg("Observed server action revelation");
+
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
     return;
@@ -411,6 +439,8 @@ proto._serverActionRevelation = function _serverActionRevelation(
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
 proto._emitClose = function _emitClose(err) {
+  dbg("Emitting close");
+
   this._lastEmission = "close";
   this._lastCloseError = err || null;
   if (err) {
@@ -427,6 +457,8 @@ proto._emitClose = function _emitClose(err) {
  * @private
  */
 proto._emitOpening = function _emitOpening() {
+  dbg("Emitting opening");
+
   this._lastEmission = "opening";
   this._lastCloseError = null;
   this.emit("opening");
@@ -440,6 +472,8 @@ proto._emitOpening = function _emitOpening() {
  * @param {object} feedData
  */
 proto._emitOpen = function _emitOpen() {
+  dbg("Emitting open");
+
   this._lastEmission = "open";
   this._lastCloseError = null;
   this.emit("open");
