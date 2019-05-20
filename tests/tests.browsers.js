@@ -198,8 +198,8 @@ async.series(
         var platformName = sauceResults[i].platform.join(":");
         var platformResult = sauceResults[i].result; // The window.global_test_results object
 
-        // Note platformResult is null if tests are manually stopped
-        // Note platformResult.total/passed/failed === 0 if there is a Javascript error (weird)
+        // Note platformResult is null if custom data exceeds 64k
+        // Note platformResult.total/passed/failed === 0 if there is a Javascript error (change this)
 
         // Did the platform pass?
         // Make sure tests are actually running (ie don't just check that none failed)
@@ -239,6 +239,8 @@ async.series(
         if (!platformPassed) {
           allPassed = false;
         }
+
+        console.log("");
       }
 
       // Return success/failure

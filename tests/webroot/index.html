@@ -34,6 +34,7 @@
             duration: 0, // Jasmine doesn't return duration
             tests: []
           };
+          // Custom data may be a maximum of 64k - if limit exceeded, Sauce sets it to null
           for (var i = 0; i < jasmineSpecs.length; i++) {
             sauceResults.total += 1;
             var sauceTest = {
@@ -65,11 +66,15 @@
               sauceTest.result = false;
               sauceTest.message = msg;
             }
-            sauceResults.tests.push(sauceTest);
+            if (!sauceTest.result) {
+              // Only return failed test specifics to save space and avoid null custom data
+              sauceResults.tests.push(sauceTest);
+            }
           }
 
           window.global_test_results = sauceResults;
           console.log(window.global_test_results);
+          console.log(JSON.stringify(window.global_test_results).length);
         }
       });
     </script>
