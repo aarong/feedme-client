@@ -52,9 +52,9 @@ The client expects the application to provide a transport, through which it will
 communicate with the server.
 
 ```shell
-npm install feedme-client-transport-websocket
+npm install feedme-transport-websocket
 # or
-npm install feedme-client-transport-socketio
+npm install feedme-transport-socketio
 ```
 
 To initialize a client using the WebSocket transport:
