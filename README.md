@@ -14,7 +14,7 @@ unexpected developments appropriately. Well documented and thoroughly tested.
 [WebSocket](https://github.com/aarong/feedme-transport-websocket) and
 [Socket.io](https://github.com/aarong/feedme-transport-socketio) transports are
 maintained as a core part of the project. Both are supported by the
-[Feedme Node Server](https://github.com/aarong/feedme-server).
+[Feedme Node.js Server](https://github.com/aarong/feedme-server).
 
 Library contributors and transport developers should see the
 [developer documentation](DEV.md).
