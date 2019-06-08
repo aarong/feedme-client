@@ -179,7 +179,9 @@ dependency-related version constraints.
 
 - `npm run docs` Generate source code documentation in `docs`.
 
-- `npm run lint` Check for linting errors in `src` and `tests`.
+- `npm run lint-src` Check for linting errors in `src`.
+
+- `npm run lint-build-tests` Check for linting errors in `tests`.
 
 - `npm run coverage` Display Jest unit test coverage.
 
