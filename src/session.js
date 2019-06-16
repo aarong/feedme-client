@@ -10,12 +10,25 @@ import messageParser from "./messageparser";
 
 const dbg = debug("feedme-client:session");
 
+/**
+ * API for a Feedme conversation with the server.
+ *
+ * - Assures a spec-compliant sequence of messages to the server
+ * - Keeps track of the server feed states
+ * - Transparently handles the handshake
+ * - Applies feed deltas and performs hash verification
+ * - Extremely patient - no timeouts
+ *
+ * @typedef {Object} Session
+ * @extends emitter
+ */
+
 const proto = {};
 emitter(proto);
 
 /**
  * Hard-coded configuration.
- * @memberof session
+ * @memberof Session
  * @static
  */
 const config = {
@@ -24,37 +37,26 @@ const config = {
 
 /**
  * Factory function.
- * @param {object} transportWrapper
- * @returns {session}
+ * @param {TransportWrapper} transportWrapper
+ * @returns {Session}
  */
 export default function sessionFactory(transportWrapper) {
-  /**
-   * API for a Feedme conversation with the server.
-   *
-   * - Assures a spec-compliant sequence of messages to the server
-   * - Keeps track of the server feed states
-   * - Transparently handles the handshake
-   * - Applies feed deltas and performs hash verification
-   * - Extremely patient - no timeouts
-   *
-   * @extends emitter
-   */
   const session = Object.create(proto);
 
   dbg("Initializing session object");
 
   /**
    * Transport used to communicate with the server.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
-   * @type {object}
+   * @type {TransportWrapper}
    */
   session._transportWrapper = transportWrapper;
 
   /**
    * Server-assigned client id. Null until after a handshake.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
    * @type {?string}
@@ -68,10 +70,10 @@ export default function sessionFactory(transportWrapper) {
    *    'open'        Open          _feedData exists
    *    'closing'     Closing       _feedCloseCallbacks exists
    *    'terminated'  Terminated    _feedCloseCallbacks exists
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   session._feedStates = {};
 
@@ -79,16 +81,16 @@ export default function sessionFactory(transportWrapper) {
    * Callbacks for .action() calls awaiting a response from the server.
    * Indexed by internally-generated callback id, which is round-tripped to
    * the server.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   session._actionCallbacks = {};
 
   /**
    * The next action callback id to use. Incremented on action.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
    * @type {number}
@@ -98,30 +100,30 @@ export default function sessionFactory(transportWrapper) {
   /**
    * Callbacks for .feedOpen() calls awaiting a response from the server.
    * Indexed by feed serial.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   session._feedOpenCallbacks = {};
 
   /**
    * Feed data for open feeds.
    * Indexed by feed serial.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   session._feedData = {};
 
   /**
    * Callbacks for .feedClose() calls awaiting a response from the server.
    * Indexed by feed serial.
-   * @memberof session
+   * @memberof Session
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   session._feedCloseCallbacks = {};
 
@@ -150,7 +152,7 @@ export default function sessionFactory(transportWrapper) {
 /**
  * Pass-through for transport event.
  * @event connecting
- * @memberof session
+ * @memberof Session
  * @instance
  */
 
@@ -158,7 +160,7 @@ export default function sessionFactory(transportWrapper) {
  * Emitted after a transport connection has been established and a handshake
  * has been completed successfully.
  * @event connect
- * @memberof session
+ * @memberof Session
  * @instance
  */
 
@@ -173,7 +175,7 @@ export default function sessionFactory(transportWrapper) {
  * - actionCallbacks and feedOpenCallbacks are called with error DISCONNECTED
  * - feedCloseCallbacks are called with no error
  * @event disconnect
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {?Error} err If not present then the event resulted from an
  *                     explicit session.disconnect()
@@ -191,14 +193,14 @@ export default function sessionFactory(transportWrapper) {
  * Emitted when a compliant ActionRevelation message is received.
  * If a feed referenced by an ActionRevelation is closing then there is no emission.
  * @event actionRevelation
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {string} actionName
- * @param {object} actionData
- * @param {object} newFeedData Frozen
- * @param {object} oldFeedData Frozen
+ * @param {Object} actionData
+ * @param {Object} newFeedData Frozen
+ * @param {Object} oldFeedData Frozen
  */
 
 /**
@@ -224,10 +226,10 @@ export default function sessionFactory(transportWrapper) {
  *   unexpectedFeedClosed is fired immediately as well.
  *
  * @event unexpectedFeedClosing
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {Error} err Error("TERMINATED: ...")
  *
  *                      err.serverErrorCode (string)
@@ -246,10 +248,10 @@ export default function sessionFactory(transportWrapper) {
  * various situations that give rise to these events are documented there.
  *
  * @event unexpectedFeedClosed
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {Error} err Error("TERMINATED: ...")
  *
  *                      err.serverErrorCode (string)
@@ -265,7 +267,7 @@ export default function sessionFactory(transportWrapper) {
  * Non-compliant messages from the server are discarded - they do not affect
  * the state of the conversation.
  * @event badServerMessage
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {Error} err Error('INVALID_MESSAGE: ...')
  *
@@ -315,7 +317,7 @@ export default function sessionFactory(transportWrapper) {
  * operating as intended, these events should only arise due to problems on
  * the server.
  * @event badClientMessage
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {Object} diagnostics Server-reported debugging information
  */
@@ -324,7 +326,7 @@ export default function sessionFactory(transportWrapper) {
  * Relayed from the transportWrapper when the transport violates
  * the prescribed behavior.
  * @event transportError
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {Error} err Passed from wrapper
  */
@@ -333,7 +335,7 @@ export default function sessionFactory(transportWrapper) {
 
 /**
  * @callback actionCallback
- * @memberof session
+ * @memberof Session
  * @param {?Error} err If not present then the action was invoked successfully.
  *
  *                     Error('DISCONNNECTED: ...')
@@ -348,7 +350,7 @@ export default function sessionFactory(transportWrapper) {
 
 /**
  * @callback feedOpenCallback
- * @memberof session
+ * @memberof Session
  * @param {?Error} err If not present then the feed was opened successfully.
  *
  *                     Error('DISCONNNECTED: ...')
@@ -364,7 +366,7 @@ export default function sessionFactory(transportWrapper) {
 /**
  * Always invoked without arguments.
  * @callback feedCloseCallback
- * @memberof session
+ * @memberof Session
  */
 
 // Public functions
@@ -372,7 +374,7 @@ export default function sessionFactory(transportWrapper) {
 /**
  * Returns the session state, which is the same as the transport state except
  * connecting through the handshake.
- * @memberof session
+ * @memberof Session
  * @instance
  * @returns {string} 'disconnected', 'connecting', or 'connected'
  */
@@ -391,9 +393,9 @@ proto.state = function state() {
  *
  * When the transport has connected, a handshake will be attempted internally
  * before a session "connected" event is emitted.
- * @memberof session
+ * @memberof Session
  * @instance
- * @throws {Error} 'INVALID_STATE: ...'
+ * @throws {Error} "INVALID_STATE: ..."
  */
 proto.connect = function connect() {
   dbg("Connect requested");
@@ -411,9 +413,9 @@ proto.connect = function connect() {
  *
  * If called with an error, then that error is passed to the transport
  * and emitted with its disconnect event.
- * @memberof session
+ * @memberof Session
  * @instance
- * @throws {Error} 'INVALID_STATE: ...'
+ * @throws {Error} "INVALID_STATE: ..."
  */
 proto.disconnect = function disconnect(err) {
   dbg("Disconnect requested");
@@ -434,10 +436,10 @@ proto.disconnect = function disconnect(err) {
 
 /**
  * Returns the client id assigned by the server.
- * @memberof session
+ * @memberof Session
  * @instance
  * @returns {string}
- * @throws {Error} 'INVALID_STATE: ...'
+ * @throws {Error} "INVALID_STATE: ..."
  */
 proto.id = function id() {
   dbg("Client id requested");
@@ -454,13 +456,13 @@ proto.id = function id() {
  * Performs an action on the server.
  *
  * A callback is guaranteed - on disconnect at the latest.
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} name
- * @param {object} args
+ * @param {Object} args
  * @param {actionCallback} cb
- * @throws {Error} 'INVALID_ARGUMENT: ...'
- * @throws {Error} 'INVALID_STATE: ...'
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "INVALID_STATE: ..."
  */
 
 proto.action = function action(name, args, cb) {
@@ -513,14 +515,14 @@ proto.action = function action(name, args, cb) {
  * from an explicit call to feedClose(), will result in a a sequence of
  * unexpectedFeedClosing/Closed events being emitted. This occurs on feed
  * termination, bad action revelation, and disconnect.
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {feedOpenCallback} cb
- * @throws {Error} 'INVALID_ARGUMENT: ...'
- * @throws {Error} 'INVALID_STATE: ...'
- * @throws {Error} 'INVALID_FEED_STATE: ...'
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "INVALID_STATE: ..."
+ * @throws {Error} "INVALID_FEED_STATE: ..."
  */
 proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
   dbg("Feed open requested");
@@ -567,14 +569,14 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
  * FeedCloseResponse is awaited and the callback is fired upon receipt. In that
  * case, no unexpectedFeedClosing/Closed is emitted and the feed state
  * becomes "terminated".
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {feedCloseCallback} cb
- * @throws {Error} 'INVALID_ARGUMENT: ...'
- * @throws {Error} 'INVALID_STATE: ...'
- * @throws {Error} 'INVALID_FEED_STATE: ...'
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "INVALID_STATE: ..."
+ * @throws {Error} "INVALID_FEED_STATE: ..."
  */
 proto.feedClose = function feedClose(feedName, feedArgs, cb) {
   dbg("Feed close requested");
@@ -627,14 +629,14 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
  *
  * Because of the above mapping, this must not be used to retrieve state
  * internally. Use ._feedState() instead.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @returns {string} 'opening', 'open', 'closing', or 'closed'
- * @throws {Error} 'INVALID_ARGUMENT: ...'
- * @throws {Error} 'INVALID_STATE: ...'
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "INVALID_STATE: ..."
  */
 proto.feedState = function feedState(feedName, feedArgs) {
   dbg("Feed state requested");
@@ -661,15 +663,15 @@ proto.feedState = function feedState(feedName, feedArgs) {
  *
  * An INVALID_STATE error is thrown if the feed is closing. It may be closing
  * due to a bad action revelation, in which case the feed data is unknown.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
- * @returns {object} Frozen
- * @throws {Error} 'INVALID_ARGUMENT: ...'
- * @throws {Error} 'INVALID_STATE: ...'
- * @throws {Error} 'INVALID_FEED_STATE: ...'
+ * @param {Object} feedArgs
+ * @returns {Object} Frozen
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "INVALID_STATE: ..."
+ * @throws {Error} "INVALID_FEED_STATE: ..."
  */
 proto.feedData = function feedData(feedName, feedArgs) {
   dbg("Feed data requested");
@@ -696,7 +698,7 @@ proto.feedData = function feedData(feedName, feedArgs) {
 
 /**
  * Pass-through from transport connecting event.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  */
@@ -708,7 +710,7 @@ proto._processTransportConnecting = function _processTransportConnecting() {
 
 /**
  * Processes a transport connect event. Initiates handshake and emits nothing.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  */
@@ -751,7 +753,7 @@ proto._processTransportConnect = function _processTransportConnect() {
  *      - Outstanding .action() and .feedOpen() callbacks receive a DISCONNECTED error
  *      - For each open feed, an unexpectedFeedClosing/Close sequence is emitted
  *
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  * @param {?Error} err Error passed by the transport
@@ -808,7 +810,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
 
 /**
  * Processes a transport transportError event - relay to outside.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  * @param {Error} err
@@ -821,7 +823,7 @@ proto._processTransportError = function _processTransportError(err) {
 
 /**
  * Processes a transport message event.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  * @param {string} msg
@@ -849,10 +851,10 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
 
 /**
  * Processes a ViolationResponse from the server.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processViolationResponse = function _processViolationResponse(msg) {
   dbg("Received ViolationResponse message");
@@ -862,10 +864,10 @@ proto._processViolationResponse = function _processViolationResponse(msg) {
 
 /**
  * Processes a HandshakeResponse from the server.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
   dbg("Received HandshakeResponse message");
@@ -892,10 +894,10 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
 /**
  * Processes an ActionResponse from the server.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processActionResponse = function _processActionResponse(msg) {
   dbg("Received ActionResponse message");
@@ -926,10 +928,10 @@ proto._processActionResponse = function _processActionResponse(msg) {
 
 /**
  * Processes a FeedOpenResponse from the server.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
   dbg("Received FeedOpenResponse message");
@@ -969,10 +971,10 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
  * was received since transmitting the FeedClose. In that case the spec-defined
  * feed state is currently "terminated". The feed state becomes "closed", as
  * in the normal case where no intervening FeedTermination is received.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
   dbg("Received FeedCloseResponse message");
@@ -1003,10 +1005,10 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
  * If the feed state is closing then the server has not violated the
  * spec, but you need to discard the message because you may not have the
  * feed data (in the case of previous bad delta/hash).
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processActionRevelation = function _processActionRevelation(msg) {
   dbg("Received ActionRevelation message");
@@ -1134,10 +1136,10 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
  *   has already issued a call to feedClose() and will be receive a callback
  *   when FeedCloseResponse is received. The client never finds out about the
  *   termination.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
- * @param {object} msg Schema-valid message object.
+ * @param {Object} msg Schema-valid message object.
  */
 proto._processFeedTermination = function _processFeedTermination(msg) {
   dbg("Received FeedTermination message");
@@ -1171,11 +1173,11 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
 
 /**
  * Validates feed arguments.
- * @memberof session
+ * @memberof Session
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
- * @throws {Error} 'INVALID_ARGUMENT: ...'
+ * @param {Object} feedArgs
+ * @throws {Error} "INVALID_ARGUMENT: ..."
  */
 proto._feedValidate = function _feedValidate(feedName, feedArgs) {
   // Check name
@@ -1203,11 +1205,11 @@ proto._feedValidate = function _feedValidate(feedName, feedArgs) {
 /**
  * Returns the spec-defined state of a feed. Differs from .feedState()
  * in that the latter maps "terminated" to "closed" for outside code.
- * @memberof session
+ * @memberof Session
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @returns 'closed', 'opening', 'open', 'closing', or 'terminated
  */
 proto._feedState = function _feedState(name, args) {

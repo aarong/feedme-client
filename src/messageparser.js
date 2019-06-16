@@ -888,8 +888,8 @@ messageParser._deltaValidators = {
  * Ensures that delta operations are structurally valid, but can't
  * guarantee valid given the current state of the outside feed data.
  * @param {string} message An inbound message string.
- * @returns {object} A structurally valid message object.
- * @throws {Error} e.name = "INVALID_MESSAGE"
+ * @returns {Object} A structurally valid message object.
+ * @throws {Error} "INVALID_MESSAGE: ..."
  */
 messageParser.parse = function parse(message) {
   // Valid JSON?

@@ -2,14 +2,33 @@ import check from "check-types";
 import emitter from "component-emitter";
 import _ from "lodash";
 
+/**
+ * Pass-through to the outside-provided transport object that verifies that
+ * the transport is acting as required (outside code).
+ *
+ * - The transport API is verified on intialization.
+ *
+ * - Transport function return values and errors are verified.
+ *
+ * - Transport event are verified.
+ *
+ * - Inbound function arguments are not checked (internal).
+ *
+ * After initialization, any problems with the transport are reported using
+ * the `transportError` event.
+ *
+ * @typedef {Object} TransportWrapper
+ * @extends emitter
+ */
+
 const proto = {};
 emitter(proto);
 
 /**
  * Factory function.
- * @param {object} transport
- * @throws {Error} 'INVALID_ARGUMENT: ...'
- * @returns {transportWrapper}
+ * @param {Object} transport
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @returns {TransportWrapper}
  */
 export default function transportWrapperFactory(transport) {
   // Check that the transport is an object
@@ -40,37 +59,19 @@ export default function transportWrapperFactory(transport) {
   }
 
   // Success
-
-  /**
-   * Pass-through to the outside-provided transport object that verifies that
-   * the transport is acting as required (outside code).
-   *
-   * - The transport API is verified on intialization.
-   *
-   * - Transport function return values and errors are verified.
-   *
-   * - Transport event are verified.
-   *
-   * - Inbound function arguments are not checked (internal).
-   *
-   * After initialization, any problems with the transport are reported using
-   * the `transportError` event.
-   *
-   * @extends emitter
-   */
   const transportWrapper = Object.create(proto);
 
   /**
    * Transport being wrapped.
-   * @memberof transportWrapper
+   * @memberof TransportWrapper
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   transportWrapper._transport = transport;
 
   /** Last transport state emission.
-   * @memberof transportWrapper
+   * @memberof TransportWrapper
    * @instance
    * @private
    * @type {string} disconnected, connecting, or connected
@@ -99,21 +100,21 @@ export default function transportWrapperFactory(transport) {
 /**
  * Emitted on valid transport connecting event.
  * @event connecting
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  */
 
 /**
  * Emitted on valid transport connect event.
  * @event connect
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  */
 
 /**
  * Emitted on valid transport message event.
  * @event message
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @param {string} message
  */
@@ -121,7 +122,7 @@ export default function transportWrapperFactory(transport) {
 /**
  * Emitted on valid transport disconnect event.
  * @event disconnect
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @param {?Error} err Passed by the transport.
  */
@@ -129,7 +130,7 @@ export default function transportWrapperFactory(transport) {
 /**
  * Emitted when the transport violates the prescribed behavior.
  * @event transportError
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @param {Error} err 'INVALID_RESULT: ...' Transport function returned unexpected return value or error.
  *                    'UNEXPECTED_EVENT: ...' Event not valid for current transport state.
@@ -139,9 +140,9 @@ export default function transportWrapperFactory(transport) {
 // Public functions
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
- * @throws Transport errors and 'TRANSPORT_ERROR: ...'
+ * @throws {Error} Transport errors and "TRANSPORT_ERROR: ...""
  */
 proto.state = function state() {
   // Try to get the state
@@ -189,9 +190,9 @@ proto.state = function state() {
 };
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
- * @throws Transport errors and 'TRANSPORT_ERROR: ...'
+ * @throws {Error} Transport errors and "TRANSPORT_ERROR: ..."
  */
 proto.connect = function connect() {
   // Try to connect
@@ -246,9 +247,9 @@ proto.connect = function connect() {
 };
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
- * @throws Transport errors and 'TRANSPORT_ERROR: ...'
+ * @throws {Error} Transport errors and "TRANSPORT_ERROR: ..."
  */
 proto.send = function send(msg) {
   // Try to send the message
@@ -301,9 +302,9 @@ proto.send = function send(msg) {
 };
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
- * @throws Transport errors and 'TRANSPORT_ERROR: ...'
+ * @throws {Error} Transport errors and "TRANSPORT_ERROR: ..."
  */
 proto.disconnect = function disconnect(err) {
   // Try to disconnect
@@ -362,7 +363,7 @@ proto.disconnect = function disconnect(err) {
 // Transport event processors
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @private
  * @param {?Error} args
@@ -400,7 +401,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
 };
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @private
  * @param {?Error} args
@@ -434,7 +435,7 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
 };
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @private
  * @param {?Error} args
@@ -480,7 +481,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
 };
 
 /**
- * @memberof transportWrapper
+ * @memberof TransportWrapper
  * @instance
  * @private
  * @param {?Error} args

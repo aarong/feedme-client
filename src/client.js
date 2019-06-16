@@ -11,12 +11,31 @@ import feed from "./feed";
 
 const dbg = debug("feedme-client");
 
+/**
+ * App-facing client object. Exposes the session API (lots of pass-through)
+ * while enhancing it with:
+ *
+ * - A feed object API
+ * - Connection timeouts and retries
+ * - Message timeouts and late receipt handling
+ * - Feed re-opens on feed data errors
+ *
+ * Feed objects:
+ *
+ * - The client maintains references to all feed objects until destroyed
+ * - All feed object methods pass through to client functionality until destroyed
+ * - State is stored within the feed objects and is accessed and modified by the client
+ *
+ * @typedef {Object} Client
+ * @extends emitter
+ */
+
 const proto = {};
 emitter(proto);
 
 /**
  * Client factory function.
- * @param {object}      options
+ * @param {Object}      options
  *
  *                      Aside from the session, options configure the
  *                      following functionality:
@@ -31,7 +50,7 @@ emitter(proto);
  *
  *                        - Feed reopening (how to handle bad action revelations) - 2 options
  *
- * @param {object}      options.session
+ * @param {Session}      options.session
  *
  * @param {number}      options.connectTimeoutMs
  *
@@ -145,29 +164,10 @@ emitter(proto);
  *                      If set to 0 then feed failures are counted over the entire
  *                      duration of the connection.
  *
- * @throws {Error}      Error('INVALID_ARGUMENT: ...')
- * @returns {client}
+ * @throws {Error}      "INVALID_ARGUMENT: ..."
+ * @returns {Client}
  */
 export default function clientFactory(options) {
-  /**
-   * App-facing client object. Exposes the session API (lots of pass-through)
-   * while enhancing it with:
-   *
-   * - A feed object API
-   * - Connection timeouts and retries
-   * - Message timeouts and late receipt handling
-   * - Feed re-opens on feed data errors
-   *
-   * Feed objects:
-   *
-   * - The client maintains references to all feed objects until destroyed
-   * - All feed object methods pass through to client functionality until destroyed
-   * - State is stored within the feed objects and is accessed and modified by the client
-   *
-   * @extends emitter
-   */
-  const client = Object.create(proto);
-
   dbg("Initializing client");
 
   // Check options
@@ -278,13 +278,14 @@ export default function clientFactory(options) {
   }
 
   // Success
+  const client = Object.create(proto);
 
   /**
    * Configuration options excluding the session.
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   client._options = _clone(config.defaults);
   _each(client._options, (val, key) => {
@@ -295,10 +296,10 @@ export default function clientFactory(options) {
 
   /**
    * Session object driving the Feedme conversation.
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
-   * @type {object}
+   * @type {Session}
    */
   client._session = options.session;
 
@@ -307,7 +308,7 @@ export default function clientFactory(options) {
    *
    * When the session disconnects, the client needs to know whether it had
    * been open (reconnect) or opening (connect retry).
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
    * @type {string}
@@ -324,16 +325,16 @@ export default function clientFactory(options) {
    *    ...
    * ]
    *
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
-   * @member {object}
+   * @member {Object}
    */
   client._appFeeds = {};
 
   /**
    * Timer to time out connection attempts. Null if not connecting.
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
    * @type {number}
@@ -342,7 +343,7 @@ export default function clientFactory(options) {
 
   /**
    * Timer to retry after a failed connection attempt. Null if not scheduled.
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
    * @type {number}
@@ -352,7 +353,7 @@ export default function clientFactory(options) {
   /**
    * The number of connection attempts that have been undertaken. Reset when
    * the session connects successfully and on valid calls to client.connect().
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
    * @type {number}
@@ -362,10 +363,10 @@ export default function clientFactory(options) {
   /**
    * Number of reopen attempts on each feed during the past
    * options.reopenTrailingMs. Indexed by feed serial. Missing means 0.
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
-   * @type {object}
+   * @type {Object}
    */
   client._reopenCounts = {};
 
@@ -375,7 +376,7 @@ export default function clientFactory(options) {
    * more than one for a given feed. Reopen timers are not created if
    * reopenTrailingMs is 0, as failures are counted over the duration of the
    * connection.
-   * @memberof client
+   * @memberof Client
    * @instance
    * @private
    * @type {array}
@@ -431,21 +432,21 @@ export default function clientFactory(options) {
 /**
  * Pass-through for session event.
  * @event connecting
- * @memberof client
+ * @memberof Client
  * @instance
  */
 
 /**
  * Pass-through for session event.
  * @event connect
- * @memberof client
+ * @memberof Client
  * @instance
  */
 
 /**
  * Largely pass-through for session event.
  * @event disconnect
- * @memberof client
+ * @memberof Client
  * @instance
  * @param {?Error} err Session errors plus...
  *
@@ -455,7 +456,7 @@ export default function clientFactory(options) {
 /**
  * Pass-through for session event.
  * @event badServerMessage
- * @memberof client
+ * @memberof Client
  * @instance
  * @param {Error} err
  */
@@ -463,7 +464,7 @@ export default function clientFactory(options) {
 /**
  * Pass-through for session event.
  * @event badClientMessage
- * @memberof client
+ * @memberof Client
  * @instance
  * @param {Error} err
  */
@@ -471,7 +472,7 @@ export default function clientFactory(options) {
 /**
  * Pass-through for session event.
  * @event transportError
- * @memberof client
+ * @memberof Client
  * @instance
  * @param {Error} err
  */
@@ -482,7 +483,7 @@ export default function clientFactory(options) {
  * Callback for client.action()
  * Same as session callback, but it may timeout.
  * @callback actionCallback
- * @memberof client
+ * @memberof Client
  * @param {?Error} err Session error or Error('TIMEOUT: ...')
  * @param {?object} actionData
  */
@@ -491,7 +492,7 @@ export default function clientFactory(options) {
  * Callback for client._feedOpenTimeout()
  * No arguments.
  * @callback feedOpenTimeoutCallback
- * @memberof client
+ * @memberof Client
  */
 
 /**
@@ -499,7 +500,7 @@ export default function clientFactory(options) {
  * Invoked on server response irrespective of whether feedOpenTimeoutCallback
  * was called.
  * @callback feedOpenResponseCallback
- * @memberof client
+ * @memberof Client
  * @param {?err}      err       Only present on error
  * @param {?object}   feedData  Only present on success
  */
@@ -508,7 +509,7 @@ export default function clientFactory(options) {
 
 /**
  * Pass-through to session.state()
- * @memberof client
+ * @memberof Client
  * @instance
  * @returns {string} Passed through from session.state()
  */
@@ -521,7 +522,7 @@ proto.state = function state() {
 /**
  * Largely pass-through to session.connect()
  * Session events trigger client events.
- * @memberof client
+ * @memberof Client
  * @instance
  * @throws {Error} Passed through from session
  */
@@ -544,7 +545,7 @@ proto.connect = function connect() {
 /**
  * Pass-through to session.disconnect()
  * Session events trigger client events.
- * @memberof client
+ * @memberof Client
  * @instance
  * @throws {Error} Passed through from session
  */
@@ -556,7 +557,7 @@ proto.disconnect = function disconnect() {
 
 /**
  * Pass-through to session.id()
- * @memberof client
+ * @memberof Client
  * @instance
  * @returns {string}
  * @throws {Error} Passed through from session
@@ -577,10 +578,10 @@ proto.id = function id() {
  * If the client disconnects before a response is received, then callbackLate()
  * is called with a DISCONNECTED error, if present.
  *
- * @memberof client
+ * @memberof Client
  * @instance
  * @param {string}          name
- * @param {object}          args
+ * @param {Object}          args
  * @param {actionCallback}  callback
  * @param {?actionCallback} callbackLate Optional
  * @throws {Error} Passed through from session
@@ -628,12 +629,12 @@ proto.action = function action(name, args, callback, callbackLate = () => {}) {
 
 /**
  * Create a feed object. Valid irrespective of client/session state.
- * @memberof client
+ * @memberof Client
  * @instance
  * @param {string} feedName
- * @param {object} feedArgs
- * @returns {feed}
- * @throws {Error} Error('INVALID_ARGUMENT: ...')
+ * @param {Object} feedArgs
+ * @returns {Feed}
+ * @throws {Error} "INVALID_ARGUMENT: ..."
  */
 proto.feed = function feedF(feedName, feedArgs) {
   dbg("Feed interaction object requested");
@@ -673,7 +674,7 @@ proto.feed = function feedF(feedName, feedArgs) {
 
 /**
  * Pass-through from session connecting event.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  */
@@ -686,7 +687,7 @@ proto._processConnecting = function _processConnecting() {
 
 /**
  * Kargely pass-through from session connect event, but also opens desired feeds.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  */
@@ -722,7 +723,7 @@ proto._processConnect = function _processConnect() {
  *  - The session will emit unexpectedFeedClosing/Closed for open feeds on disconnect
  *    User feed objects notified there
  *
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {Error?} err Present if not requested by .disconnect()
@@ -811,15 +812,15 @@ proto._processDisconnect = function _processDisconnect(err) {
 
 /**
  * Processes a session actionRevelation event.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {string} actionName
- * @param {object} actionData
- * @param {object} newFeedData
- * @param {object} oldFeedData
+ * @param {Object} actionData
+ * @param {Object} newFeedData
+ * @param {Object} oldFeedData
  */
 proto._processActionRevelation = function _processActionRevelation(
   feedName,
@@ -843,11 +844,11 @@ proto._processActionRevelation = function _processActionRevelation(
 
 /**
  * Processes a session unexpectedFeedClosing event.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {Error} err Passed through from session
  */
 proto._processUnexpectedFeedClosing = function _processUnexpectedFeedClosing(
@@ -862,11 +863,11 @@ proto._processUnexpectedFeedClosing = function _processUnexpectedFeedClosing(
 
 /**
  * Processes a session unexpectedFeedClosed event.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  * @param {Error} err Passed through from session
  */
 proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
@@ -927,7 +928,7 @@ proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
 
 /**
  * Processes a session badServerMessage event. Pass-through.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {Error} err
@@ -940,10 +941,10 @@ proto._processBadServerMessage = function _processBadServerMessage(err) {
 
 /**
  * Processes a session badClientMessage event. Pass-through.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} diagnostics
+ * @param {Object} diagnostics
  */
 proto._processBadClientMessage = function _processBadClientMessage(
   diagnostics
@@ -955,7 +956,7 @@ proto._processBadClientMessage = function _processBadClientMessage(
 
 /**
  * Processes a session transportError event. Pass-through.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {Error} err
@@ -971,11 +972,11 @@ proto._processTransportError = function _processTransportError(err) {
 /**
  * Passed through from feed.desireOpen(). Responsible for emitting as appropriate
  * on the calling.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} appFeed
- * @throws {Error} Error("INVALID_FEED_STATE: ...")
+ * @param {Feed} appFeed
+ * @throws {Error} "INVALID_FEED_STATE: ..."
 
  */
 proto._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
@@ -1019,11 +1020,11 @@ proto._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
 /**
  * Passed through from feed.desireClosed(). Responsible for emitting as appropriate
  * on the calling feed.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} appFeed
- * @throws {Error} Error("INVALID_FEED_STATE: ...")
+ * @param {Feed} appFeed
+ * @throws {Error} "INVALID_FEED_STATE: ..."
  */
 proto._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
   dbg("Feed desire-closed requested");
@@ -1059,10 +1060,10 @@ proto._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
 
 /**
  * Passed through from feed.desiredState()
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} appFeed
+ * @param {Feed} appFeed
  * @returns {string} "open" or "closed"
  */
 proto._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
@@ -1072,10 +1073,10 @@ proto._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
 
 /**
  * Passed through from feed.state()
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} appFeed
+ * @param {Feed} appFeed
  * @returns {string} "open", "opening", or "closed"
  */
 proto._appFeedState = function _appFeedState(appFeed) {
@@ -1090,10 +1091,10 @@ proto._appFeedState = function _appFeedState(appFeed) {
 /**
  * Passed through from feed.destroy(). Will only be called if the
  * feed has not already been destroyed.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} appFeed Interaction object, plus Error("INVALID_FEED_STATE: ...")
+ * @param {Feed} appFeed Interaction object, plus Error("INVALID_FEED_STATE: ...")
  */
 proto._appFeedDestroy = function _appFeedDestroy(appFeed) {
   dbg("Feed destroy requested");
@@ -1121,12 +1122,12 @@ proto._appFeedDestroy = function _appFeedDestroy(appFeed) {
 
 /**
  * Passed through from feed.data()
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
- * @param {object} appFeed Interaction object
- * @returns {object} Feed data
- * @throws {Error} Error("INVALID_FEED_STATE: ...")
+ * @param {Feed} appFeed Interaction object
+ * @returns {Object} Feed data
+ * @throws {Error} "INVALID_FEED_STATE: ..."
  */
 proto._appFeedData = function _appFeedData(appFeed) {
   dbg("Feed data requested");
@@ -1151,11 +1152,11 @@ proto._appFeedData = function _appFeedData(appFeed) {
  * - Failure to open a feed (timeout, rejected)
  * - Bad action revelation
  *
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string}  feedName
- * @param {object}  feedArgs
+ * @param {Object}  feedArgs
  * @param {?Error}  err Not present if requested by client
  *
  *                      Error("TIMEOUT: ...")
@@ -1185,11 +1186,11 @@ proto._informServerFeedClosed = function _informServerFeedClosed(
 
 /**
  * Informs non-destroyed feed objects that the server feed is now opening.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string}  feedName
- * @param {object}  feedArgs
+ * @param {Object}  feedArgs
  */
 proto._informServerFeedOpening = function _informServerFeedOpening(
   feedName,
@@ -1211,11 +1212,11 @@ proto._informServerFeedOpening = function _informServerFeedOpening(
 
 /**
  * Informs non-destroyed feed objects that the server feed is now open.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string}  feedName
- * @param {object}  feedArgs
+ * @param {Object}  feedArgs
  */
 proto._informServerFeedOpen = function _informServerFeedOpen(
   feedName,
@@ -1238,11 +1239,11 @@ proto._informServerFeedOpen = function _informServerFeedOpen(
 /**
  * Informs non-destroyed feed objects that the server feed is now closing.
  * Called on session unexpectedFeedClosing and intentional closure.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string}  feedName
- * @param {object}  feedArgs
+ * @param {Object}  feedArgs
  * @param {?Error}  err
  */
 proto._informServerFeedClosing = function _informServerFeedClosing(
@@ -1266,15 +1267,15 @@ proto._informServerFeedClosing = function _informServerFeedClosing(
 
 /**
  * Inform non-destroyed feed objects about an action revelation.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string}  feedName
- * @param {object}  feedArgs
+ * @param {Object}  feedArgs
  * @param {string}  actionName
- * @param {object}  actionData
- * @param {object}  newFeedData
- * @param {object}  oldFeedData
+ * @param {Object}  actionData
+ * @param {Object}  newFeedData
+ * @param {Object}  oldFeedData
  */
 proto._informServerActionRevelation = function _informServerActionRevelation(
   feedName,
@@ -1324,11 +1325,11 @@ proto._informServerActionRevelation = function _informServerActionRevelation(
  *
  * There is no timeout for closing feeds because they are presented as
  * closed immediately to the application.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string} feedName
- * @param {object} feedArgs
+ * @param {Object} feedArgs
  */
 proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
   dbg("Considering feed state");
@@ -1415,11 +1416,11 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
  *
  * The session is assumed to be connected and session feed state is
  * assumed to be closed.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  * @param {string}                    feedName
- * @param {object}                    feedArgs
+ * @param {Object}                    feedArgs
  * @param {feedOpenTimeoutCallback}   callbackTimeout
  * @param {feedOpenResponseCallback}  callbackResponse
  */
@@ -1452,7 +1453,7 @@ proto._feedOpenTimeout = function _feedOpenTimeout(
 
 /**
  * Cancel any connect timeout.
- * @memberof client
+ * @memberof Client
  * @instance
  * @private
  */
@@ -1466,7 +1467,7 @@ proto._connectTimeoutCancel = function _connectTimeoutCancel() {
 /**
  * Internal function that tries to connect the session with timeout, and
  * that does not reset connection retry count (i.e. on TIMEOUT you call this).
- * @memberof client
+ * @memberof Client
  * @instance
  * @throws {Error} Passed through from session.connect()
  */

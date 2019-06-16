@@ -11,6 +11,9 @@ import transportWrapper from "./transportwrapper";
  *
  * The options parameter is identical to that taken by client, but a transport
  * property is required rather than a session.
+ *
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @returns {Client}
  */
 export default function feedmeClient(options) {
   // Check options

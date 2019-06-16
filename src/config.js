@@ -1,7 +1,6 @@
 /**
  * Hard-coded configuration.
- * @memberof client
- * @static
+ * @type {Object}
  */
 export default {
   defaults: {
