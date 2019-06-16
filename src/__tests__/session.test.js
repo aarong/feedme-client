@@ -263,9 +263,7 @@ expect.extend({
       return {
         pass: false,
         message() {
-          return `expected to have ._clientId = "${
-            expectedState._clientId
-          }" but got "${receivedSession._clientId}"`;
+          return `expected to have ._clientId = "${expectedState._clientId}" but got "${receivedSession._clientId}"`; // prettier-ignore
         }
       };
     }
@@ -303,9 +301,7 @@ expect.extend({
       return {
         pass: false,
         message() {
-          return `expected to have ._nextCallbackId = ${
-            expectedState._nextActionCallbackId
-          } but got ${receivedSession._nextActionCallbackId}`;
+          return `expected to have ._nextCallbackId = ${expectedState._nextActionCallbackId} but got ${receivedSession._nextActionCallbackId}`; // prettier-ignore
         }
       };
     }

@@ -175,9 +175,7 @@ proto.state = function state() {
     this.emit(
       "transportError",
       new Error(
-        `INVALID_RESULT: Transport unexpectedly returned '${st}' on a call to state() when previous emission was '${
-          this._lastEmission
-        }'.`
+        `INVALID_RESULT: Transport unexpectedly returned '${st}' on a call to state() when previous emission was '${this._lastEmission}'.` // prettier-ignore
       )
     );
     throw new Error(
@@ -208,9 +206,7 @@ proto.connect = function connect() {
     if (transportErr) {
       // Unexpected behavior
       const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an error on a call to connect() when previous emission was '${
-          this._lastEmission
-        }'.`
+        `INVALID_RESULT: Transport threw an error on a call to connect() when previous emission was '${this._lastEmission}'.` // prettier-ignore
       );
       emitErr.transportError = transportErr;
       this.emit("transportError", emitErr);
@@ -376,9 +372,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
     this.emit(
       "transportError",
       new Error(
-        `UNEXPECTED_EVENT: Transport emitted a  'connecting' event following a '${
-          this._lastEmission
-        }' emission.`
+        `UNEXPECTED_EVENT: Transport emitted a  'connecting' event following a '${this._lastEmission}' emission.` // prettier-ignore
       )
     );
     return; // Stop
@@ -446,9 +440,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
     this.emit(
       "transportError",
       new Error(
-        `UNEXPECTED_EVENT: Transport emitted a 'message' event when the previous emission was '${
-          this._lastEmission
-        }'.`
+        `UNEXPECTED_EVENT: Transport emitted a 'message' event when the previous emission was '${this._lastEmission}'.` // prettier-ignore
       )
     );
     return; // Stop
@@ -494,9 +486,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
     this.emit(
       "transportError",
       new Error(
-        `UNEXPECTED_EVENT: Transport emitted a  'disconnect' event when the previous emission was '${
-          this._lastEmission
-        }'.`
+        `UNEXPECTED_EVENT: Transport emitted a  'disconnect' event when the previous emission was '${this._lastEmission}'.` // prettier-ignore
       )
     );
     return; // Stop
