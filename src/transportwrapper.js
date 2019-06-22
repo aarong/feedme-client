@@ -19,6 +19,12 @@ import _ from "lodash";
  *
  * @typedef {Object} TransportWrapper
  * @extends emitter
+ *
+ * @todo Take the transport wrapper approach used on feedme-server-core, where
+ * the server is expected to make valid calls and you don't worry about the
+ * transport rejecting them. Essentially the transport wrapper provides a
+ * two-way guarantee. Here, you are making invalid calls and expecting the
+ * transport to reject them -- the wrapper should do that.
  */
 
 const proto = {};
