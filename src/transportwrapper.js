@@ -368,7 +368,6 @@ proto.disconnect = function disconnect(err) {
  * @memberof TransportWrapper
  * @instance
  * @private
- * @param {?Error} args
  */
 proto._processTransportConnecting = function _processTransportConnecting(
   ...args
@@ -404,7 +403,6 @@ proto._processTransportConnecting = function _processTransportConnecting(
  * @memberof TransportWrapper
  * @instance
  * @private
- * @param {?Error} args
  */
 proto._processTransportConnect = function _processTransportConnect(...args) {
   // The transport messed up if the previous state was not connecting
@@ -438,7 +436,6 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
  * @memberof TransportWrapper
  * @instance
  * @private
- * @param {?Error} args
  */
 proto._processTransportMessage = function _processTransportMessage(...args) {
   // The transport messed up if the state is not connected
@@ -482,7 +479,6 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
  * @memberof TransportWrapper
  * @instance
  * @private
- * @param {?Error} args
  */
 proto._processTransportDisconnect = function _processTransportDisconnect(
   ...args
