@@ -35,12 +35,12 @@ Library contributors and transport developers should see the
       - [client.action(...)](#clientaction)
       - [client.feed(...)](#clientfeed)
     - [Client Events](#client-events)
-      - [`connecting`](#connecting)
-      - [`connect`](#connect)
-      - [`disconnect`](#disconnect)
-      - [`badServerMessage`](#badservermessage)
-      - [`badClientMessage`](#badclientmessage)
-      - [`transportError`](#transporterror)
+      - [connecting](#connecting)
+      - [connect](#connect)
+      - [disconnect](#disconnect)
+      - [badServerMessage](#badservermessage)
+      - [badClientMessage](#badclientmessage)
+      - [transportError](#transporterror)
   - [Feed API](#feed-api)
     - [Feed Objects vs Server Feeds](#feed-objects-vs-server-feeds)
     - [Desired vs Actual State](#desired-vs-actual-state)
@@ -53,11 +53,11 @@ Library contributors and transport developers should see the
       - [feed.client()](#feedclient)
       - [feed.destroy()](#feeddestroy)
     - [Feed Object Events](#feed-object-events)
-      - [`opening`](#opening)
-      - [`open`](#open)
-      - [`close`](#close)
-      - [`action`](#action)
-      - [`action:<name>`](#actionname)
+      - [opening](#opening)
+      - [open](#open)
+      - [close](#close)
+      - [action](#action)
+      - [action:<name>](#actionname)
 - [Sample Code](#sample-code)
 
 <!-- /TOC -->
@@ -406,19 +406,19 @@ Errors thrown:
 
 #### Client Events
 
-##### `connecting`
+##### connecting
 
 Emitted when the client state changes from `disconnected` to `connecting`.
 
 Listeners are invoked with no arguments.
 
-##### `connect`
+##### connect
 
 Emitted when the client state changes from `connecting` to `connected`.
 
 Listeners are invoked with no arguments.
 
-##### `disconnect`
+##### disconnect
 
 Emitted when the client state changes from `connecting` or `connected` to
 `disconnected`, and when the client state is `disconnected` but the reason for
@@ -440,7 +440,7 @@ If the disconnect resulted from an error condition then listeners are passed an
 
 - `err.message === "DISCONNECTED: ..."` - The transport connection failed.
 
-##### `badServerMessage`
+##### badServerMessage
 
 Emitted when the server has violated the Feedme specification.
 
@@ -472,7 +472,7 @@ possible:
 
   - `err.serverMessage` (object) contains the server message.
 
-##### `badClientMessage`
+##### badClientMessage
 
 Emitted when the server indicates that the client has violated the Feedme
 specification. This can indicate a problem on the client or the server.
@@ -480,7 +480,7 @@ specification. This can indicate a problem on the client or the server.
 Listeners are passed a `diagnostics` object containing any server-specified
 diagnositic information.
 
-##### `transportError`
+##### transportError
 
 Emitted when the transport demonstrates behavior that violates the requirements
 laid out in the developer documentation.
@@ -625,19 +625,19 @@ Errors thrown:
 
 #### Feed Object Events
 
-##### `opening`
+##### opening
 
 Emitted when the actual feed object state changes from `closed` to `opening`.
 
 No arguments are passed to the listeners.
 
-##### `open`
+##### open
 
 Emitted when the actual feed object state changes from `opening` to `open`.
 
 No arguments are passed to the listeners.
 
-##### `close`
+##### close
 
 Emitted when the actual state of the feed object changes from `opening` or
 `open` to `closed`, and when the error condition has changed since an earlier
@@ -689,7 +689,7 @@ an `Error` object (`err`) as an argument. The following errors are possible:
 
   The client will attempt to reopen the feed as configured.
 
-##### `action`
+##### action
 
 Emitted when the server reveals an action on the feed, provided that the feed
 object is desired `open`.
@@ -712,7 +712,7 @@ Arguments passed to the listeners:
 
    The feed data before applying any updates associated with the action.
 
-##### `action:<name>`
+##### action:<name>
 
 Emitted when the server reveals an action on the feed, provided that the feed is
 desired `open`. Allows the application to listen for specific types of actions.
