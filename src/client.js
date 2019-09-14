@@ -181,7 +181,7 @@ export default function clientFactory(options) {
   }
 
   // Check options.connectTimeoutMs (if specified)
-  if (check.assigned(options.connectTimeoutMs)) {
+  if ("connectTimeoutMs" in options) {
     if (
       !check.integer(options.connectTimeoutMs) ||
       check.negative(options.connectTimeoutMs)
@@ -191,14 +191,14 @@ export default function clientFactory(options) {
   }
 
   // Check options.connectRetryMs (if specified)
-  if (check.assigned(options.connectRetryMs)) {
+  if ("connectRetryMs" in options) {
     if (!check.integer(options.connectRetryMs)) {
       throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryMs.");
     }
   }
 
   // Check options.connectRetryBackoffMs (if specified)
-  if (check.assigned(options.connectRetryBackoffMs)) {
+  if ("connectRetryBackoffMs" in options) {
     if (
       !check.integer(options.connectRetryBackoffMs) ||
       check.negative(options.connectRetryBackoffMs)
@@ -210,7 +210,7 @@ export default function clientFactory(options) {
   }
 
   // Check options.connectRetryMaxMs (if specified)
-  if (check.assigned(options.connectRetryMaxMs)) {
+  if ("connectRetryMaxMs" in options) {
     if (
       !check.integer(options.connectRetryMaxMs) ||
       check.negative(options.connectRetryMaxMs) ||
@@ -222,7 +222,7 @@ export default function clientFactory(options) {
   }
 
   // Check options.connectRetryMaxAttempts (if specified)
-  if (check.assigned(options.connectRetryMaxAttempts)) {
+  if ("connectRetryMaxAttempts" in options) {
     if (
       !check.integer(options.connectRetryMaxAttempts) ||
       check.negative(options.connectRetryMaxAttempts)
@@ -234,7 +234,7 @@ export default function clientFactory(options) {
   }
 
   // Check options.actionTimeoutMs (if specified)
-  if (check.assigned(options.actionTimeoutMs)) {
+  if ("actionTimeoutMs" in options) {
     if (
       !check.integer(options.actionTimeoutMs) ||
       check.negative(options.actionTimeoutMs)
@@ -244,7 +244,7 @@ export default function clientFactory(options) {
   }
 
   // Check options.feedTimeoutMs (if specified)
-  if (check.assigned(options.feedTimeoutMs)) {
+  if ("feedTimeoutMs" in options) {
     if (
       !check.integer(options.feedTimeoutMs) ||
       check.negative(options.feedTimeoutMs)
@@ -254,21 +254,21 @@ export default function clientFactory(options) {
   }
 
   // Check options.reconnect (if specified)
-  if (check.assigned(options.reconnect)) {
+  if ("reconnect" in options) {
     if (!check.boolean(options.reconnect)) {
       throw new Error("INVALID_ARGUMENT: Invalid options.reconnect.");
     }
   }
 
   // Check options.reopenMaxAttempts (if specified)
-  if (check.assigned(options.reopenMaxAttempts)) {
+  if ("reopenMaxAttempts" in options) {
     if (!check.integer(options.reopenMaxAttempts)) {
       throw new Error("INVALID_ARGUMENT: Invalid options.reopenMaxAttempts.");
     }
   }
 
   // Check options.reopenTrailingMs (if specified)
-  if (check.assigned(options.reopenTrailingMs)) {
+  if ("reopenTrailingMs" in options) {
     if (
       !check.integer(options.reopenTrailingMs) ||
       check.negative(options.reopenTrailingMs)
@@ -289,7 +289,7 @@ export default function clientFactory(options) {
    */
   client._options = _clone(config.defaults);
   _each(client._options, (val, key) => {
-    if (check.assigned(options[key])) {
+    if (key in options) {
       client._options[key] = options[key];
     }
   });
