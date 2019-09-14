@@ -3,6 +3,7 @@ import emitter from "component-emitter";
 import _each from "lodash/each";
 import _cloneDeep from "lodash/cloneDeep";
 import debug from "debug";
+import jsonExpressible from "json-expressible";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
 import feedSerializer from "feedme-util/feedserializer";
@@ -476,6 +477,11 @@ proto.action = function action(name, args, cb) {
   // Check args
   if (!check.object(args)) {
     throw new Error("INVALID_ARGUMENT: Invalid action arguments object.");
+  }
+  if (!jsonExpressible(args)) {
+    throw new Error(
+      "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
+    );
   }
 
   // Check cb

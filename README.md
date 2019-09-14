@@ -297,6 +297,7 @@ The `options` argument is an object with the following properties:
   - `actionName` - Required string. The name of the action being invoked.
 
   - `actionArgs` - Required object. The action arguments to pass to the server.
+    Must be JSON-expressible.
 
   - `callback` - Required function. Invoked when the server responds to the
     action request before it times out, or when the action request times out.

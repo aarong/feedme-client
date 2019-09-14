@@ -544,6 +544,14 @@ describe("The .action() function", () => {
     }).toThrow(new Error("INVALID_ARGUMENT: Invalid action arguments object."));
   });
 
+  it("should throw an error for non-JSON-expressible action args", () => {
+    expect(() => {
+      harness.session.action("myAction", { arg: undefined }, () => {});
+    }).toThrow(
+      new Error("INVALID_ARGUMENT: Action arguments must be JSON-expressible.")
+    );
+  });
+
   it("should throw an error for invalid callbacks", () => {
     expect(() => {
       harness.session.action("myAction", {}, []);
