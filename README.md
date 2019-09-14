@@ -28,12 +28,36 @@ Library contributors and transport developers should see the
   - [Client API](#client-api)
     - [Initialization](#initialization)
     - [Client Methods](#client-methods)
+      - [client.state()](#clientstate)
+      - [client.connect()](#clientconnect)
+      - [client.disconnect()](#clientdisconnect)
+      - [client.id()](#clientid)
+      - [client.action(...)](#clientaction)
+      - [client.feed(...)](#clientfeed)
     - [Client Events](#client-events)
+      - [`connecting`](#connecting)
+      - [`connect`](#connect)
+      - [`disconnect`](#disconnect)
+      - [`badServerMessage`](#badservermessage)
+      - [`badClientMessage`](#badclientmessage)
+      - [`transportError`](#transporterror)
   - [Feed API](#feed-api)
     - [Feed Objects vs Server Feeds](#feed-objects-vs-server-feeds)
     - [Desired vs Actual State](#desired-vs-actual-state)
     - [Feed Object Methods](#feed-object-methods)
+      - [feed.desireOpen()](#feeddesireopen)
+      - [feed.desireClosed()](#feeddesireclosed)
+      - [feed.desiredState()](#feeddesiredstate)
+      - [feed.state()](#feedstate)
+      - [feed.data()](#feeddata)
+      - [feed.client()](#feedclient)
+      - [feed.destroy()](#feeddestroy)
     - [Feed Object Events](#feed-object-events)
+      - [`opening`](#opening)
+      - [`open`](#open)
+      - [`close`](#close)
+      - [`action`](#action)
+      - [`action:<name>`](#actionname)
 - [Sample Code](#sample-code)
 
 <!-- /TOC -->
@@ -238,226 +262,230 @@ The `options` argument is an object with the following properties:
 
 #### Client Methods
 
-- `client.state()` - Returns string
+##### client.state()
 
-  Returns the current client state:
+Returns the current client state:
 
-  - `"disconnected"` - The client is not connected to the server and is not
-    currently attempting to connect. A connection attempt may be scheduled,
-    depending on configuration.
+- `"disconnected"` - The client is not connected to the server and is not
+  currently attempting to connect. A connection attempt may be scheduled,
+  depending on configuration.
 
-  - `"connecting"` - The client is attempting to connect to the server and
-    perform a handshake.
+- `"connecting"` - The client is attempting to connect to the server and perform
+  a handshake.
 
-  - `"connected"` - The client is connected to the server and has performed a
-    successful handshake.
+- `"connected"` - The client is connected to the server and has performed a
+  successful handshake.
 
-  Errors thrown: None
+Errors thrown: None
 
-- `client.connect()` - Returns nothing
+##### client.connect()
 
-  Initiates an attempt to connect to the server and perform a handshake. The
-  client state must be `disconnected`.
+Initiates an attempt to connect to the server and perform a handshake. The
+client state must be `disconnected`. Returns nothing.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_STATE: ..."`
+- `err.message === "INVALID_STATE: ..."`
 
-    The client state is not `disconnected`.
+  The client state is not `disconnected`.
 
-- `client.disconnect()` - Returns nothing
+##### client.disconnect()
 
-  Disconnects from the server. The client state must be either `connecting` or
-  `connected`.
+Disconnects from the server. The client state must be either `connecting` or
+`connected`. Returns nothing.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_STATE: ..."`
+- `err.message === "INVALID_STATE: ..."`
 
-    The client state is not `connecting` or `connected`.
+  The client state is not `connecting` or `connected`.
 
-- `client.id()` - Returns string
+##### client.id()
 
-  Returns the client id assigned by the server during the handshake. The client
-  state must be `connected`.
+Returns the `string` client id assigned by the server during the handshake. The
+client state must be `connected`.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_STATE: ..."`
+- `err.message === "INVALID_STATE: ..."`
 
-    The client state is not `connected`.
+  The client state is not `connected`.
 
-- `client.action(actionName, actionArgs, callback, callbackLate)` - Returns
-  nothing
+##### client.action(...)
 
-  Invokes an an action on the server. The client state must be `connected`.
+Usage: `client.action(actionName, actionArgs, callback, callbackLate)`
 
-  Arguments:
+Invokes an an action on the server. The client state must be `connected`.
+Returns nothing.
 
-  - `actionName` - Required string. The name of the action being invoked.
+Arguments:
 
-  - `actionArgs` - Required object. The action arguments to pass to the server.
-    Must be JSON-expressible.
+- `actionName` - Required string. The name of the action being invoked.
 
-  - `callback` - Required function. Invoked when the server responds to the
-    action request before it times out, or when the action request times out.
+- `actionArgs` - Required object. The action arguments to pass to the server.
+  Must be JSON-expressible.
 
-    If the action is executed successfully, the function is invoked as follows:
+- `callback` - Required function. Invoked when the server responds to the action
+  request before it times out, or when the action request times out.
 
-    ```javascript
-    callback(undefined, actionData);
-    ```
+  If the action is executed successfully, the function is invoked as follows:
 
-    ... where `actionData` is the action description returned by the server.
+  ```javascript
+  callback(undefined, actionData);
+  ```
 
-    If the action fails or times out, the function is invoked as follows:
+  ... where `actionData` is the action description returned by the server.
 
-    ```javascript
-    callback(err);
-    ```
+  If the action fails or times out, the function is invoked as follows:
 
-    ... where `err` is an `Error` object.
+  ```javascript
+  callback(err);
+  ```
 
-  - `callbackLate` - Optional function. Invoked when the server responds to an
-    action request after it has timed out and when the client disconnects from
-    the server after the action request has timed out.
+  ... where `err` is an `Error` object.
 
-    The function is invoked in the same manner as `callback` with the exception
-    that it will never receive a `TIMEOUT` error.
+- `callbackLate` - Optional function. Invoked when the server responds to an
+  action request after it has timed out and when the client disconnects from the
+  server after the action request has timed out.
 
-  Errors thrown:
+  The function is invoked in the same manner as `callback` with the exception
+  that it will never receive a `TIMEOUT` error.
 
-  - `err.message === "INVALID_ARGUMENT: ..."`
+Errors thrown:
 
-    There was a problem with one or more of the supplied arguments.
+- `err.message === "INVALID_ARGUMENT: ..."`
 
-  - `err.message === "INVALID_STATE: ..."`
+  There was a problem with one or more of the supplied arguments.
 
-    The client state is not `connected`.
+- `err.message === "INVALID_STATE: ..."`
 
-  Errors called back:
+  The client state is not `connected`.
 
-  - `err.message === "TIMEOUT: ..."`
+Errors called back:
 
-    The server did not respond within the amount of time specified by
-    `options.actionTimeoutMs`.
+- `err.message === "TIMEOUT: ..."`
 
-  - `err.message === "DISCONNECTED: ..."`
+  The server did not respond within the amount of time specified by
+  `options.actionTimeoutMs`.
 
-    The client disconnected from the server before it received a response. The
-    disconnect may have resulted from a call to `client.disconnect()` or due to
-    a transport problem.
+- `err.message === "DISCONNECTED: ..."`
 
-  - `err.message === "REJECTED: ..."`
+  The client disconnected from the server before it received a response. The
+  disconnect may have resulted from a call to `client.disconnect()` or due to a
+  transport problem.
 
-    The server rejected the action request.The error details returned by the
-    server are available in `err.serverErrorCode` (string) and
-    `err.serverErrorData` (object).
+- `err.message === "REJECTED: ..."`
 
-- `client.feed(feedName, feedArgs)` - Returns object
+  The server rejected the action request.The error details returned by the
+  server are available in `err.serverErrorCode` (string) and
+  `err.serverErrorData` (object).
 
-  Returns a feed object that can be used to interact with feeds on the server.
-  See the [Feed API](#feed-api) section for usage.
+##### client.feed(...)
 
-  The client need not be `connected` to create feed objects.
+Usage: `client.feed(feedName, feedArgs)`
 
-  Feed objects are initialized with their desired state set to `closed`.
+Returns a `Feed` object that can be used to interact with feeds on the server.
+See the [Feed API](#feed-api) section for usage.
 
-  Arguments:
+The client need not be `connected` to create feed objects.
 
-  - `feedName` - Required string. The name of the feed to open.
+Feed objects are initialized with their desired state set to `closed`.
 
-  - `feedArgs` - Required object. The arguments of the feed to open. Must
-    contain zero or more string properties.
+Arguments:
 
-  Errors thrown:
+- `feedName` - Required string. The name of the feed to open.
 
-  - `err.message === "INVALID_ARGUMENT: ..."`
+- `feedArgs` - Required object. The arguments of the feed to open. Must contain
+  zero or more string properties.
 
-    There was a problem with one or more of the supplied arguments.
+Errors thrown:
+
+- `err.message === "INVALID_ARGUMENT: ..."`
+
+  There was a problem with one or more of the supplied arguments.
 
 #### Client Events
 
-- `connecting`
+##### `connecting`
 
-  Emitted when the client state changes from `disconnected` to `connecting`.
+Emitted when the client state changes from `disconnected` to `connecting`.
 
-  Listeners are invoked with no arguments.
+Listeners are invoked with no arguments.
 
-- `connect`
+##### `connect`
 
-  Emitted when the client state changes from `connecting` to `connected`.
+Emitted when the client state changes from `connecting` to `connected`.
 
-  Listeners are invoked with no arguments.
+Listeners are invoked with no arguments.
 
-- `disconnect`
+##### `disconnect`
 
-  Emitted when the client state changes from `connecting` or `connected` to
-  `disconnected`, and when the client state is `disconnected` but the reason for
-  being disconnected has changed.
+Emitted when the client state changes from `connecting` or `connected` to
+`disconnected`, and when the client state is `disconnected` but the reason for
+being disconnected has changed.
 
-  If the disconnect resulted from a call to `client.disconnect()` then listeners
-  are invoked with no arguments.
+If the disconnect resulted from a call to `client.disconnect()` then listeners
+are invoked with no arguments.
 
-  If the disconnect resulted from an error condition then listeners are passed
-  an `Error` object (`err`). The following errors are possible:
+If the disconnect resulted from an error condition then listeners are passed an
+`Error` object (`err`). The following errors are possible:
 
-  - `err.message === "TIMEOUT: ..."` - The transport failed to connect to the
-    server within `options.connectTimeoutMs`. Another connection attempt may be
-    scheduled, depending on configuration.
+- `err.message === "TIMEOUT: ..."` - The transport failed to connect to the
+  server within `options.connectTimeoutMs`. Another connection attempt may be
+  scheduled, depending on configuration.
 
-  - `err.message === "HANDSHAKE_REJECTED: ..."` - The transport connected to the
-    server but the handshake failed. The client will not reattempt the
-    connection automatically.
+- `err.message === "HANDSHAKE_REJECTED: ..."` - The transport connected to the
+  server but the handshake failed. The client will not reattempt the connection
+  automatically.
 
-  - `err.message === "DISCONNECTED: ..."` - The transport connection failed.
+- `err.message === "DISCONNECTED: ..."` - The transport connection failed.
 
-- `badServerMessage`
+##### `badServerMessage`
 
-  Emitted when the server has violated the Feedme specification.
+Emitted when the server has violated the Feedme specification.
 
-  Listeners are passed an `Error` object (`err`). The following errors are
-  possible:
+Listeners are passed an `Error` object (`err`). The following errors are
+possible:
 
-  - `err.message === "INVALID_MESSAGE: ..."` - The server transmitted a message
-    that was not valid JSON or that violated one of the JSON schemas laid out in
-    the specification.
+- `err.message === "INVALID_MESSAGE: ..."` - The server transmitted a message
+  that was not valid JSON or that violated one of the JSON schemas laid out in
+  the specification.
 
-    - `err.serverMessage` (string) contains the server message.
+  - `err.serverMessage` (string) contains the server message.
 
-    - `err.parseError` (object) contains the message parsing error.
+  - `err.parseError` (object) contains the message parsing error.
 
-  - `err.message === "UNEXPECTED_MESSAGE: ..."` - The server transmitted a
-    message that was invalid given the state of the conversation.
+- `err.message === "UNEXPECTED_MESSAGE: ..."` - The server transmitted a message
+  that was invalid given the state of the conversation.
 
-    - `err.serverMessage` (object) contains the server message.
+  - `err.serverMessage` (object) contains the server message.
 
-  - `err.message === "INVALID_DELTA: ..."` - The server transmitted a feed delta
-    that was invalid given the state of the feed data.
+- `err.message === "INVALID_DELTA: ..."` - The server transmitted a feed delta
+  that was invalid given the state of the feed data.
 
-    - `err.serverMessage` (object) contains the server message.
+  - `err.serverMessage` (object) contains the server message.
 
-    - `err.deltaError` (object) contains the error generated by the delta.
+  - `err.deltaError` (object) contains the error generated by the delta.
 
-  - `err.message === "INVALID_HASH: ..."` - The feed data hash transmitted by
-    the server did not match the hash of the post-delta feed data.
+- `err.message === "INVALID_HASH: ..."` - The feed data hash transmitted by the
+  server did not match the hash of the post-delta feed data.
 
-    - `err.serverMessage` (object) contains the server message.
+  - `err.serverMessage` (object) contains the server message.
 
-- `badClientMessage`
+##### `badClientMessage`
 
-  Emitted when the server indicates that the client has violated the Feedme
-  specification. This can indicate a problem on the client or the server.
+Emitted when the server indicates that the client has violated the Feedme
+specification. This can indicate a problem on the client or the server.
 
-  Listeners are passed a `diagnostics` object containing any server-specified
-  diagnositic information.
+Listeners are passed a `diagnostics` object containing any server-specified
+diagnositic information.
 
-- `transportError`
+##### `transportError`
 
-  Emitted when the transport demonstrates behavior that violates the
-  requirements laid out in the developer documentation.
+Emitted when the transport demonstrates behavior that violates the requirements
+laid out in the developer documentation.
 
-  Listeners are passed an `Error` object indicating the nature of the violation.
+Listeners are passed an `Error` object indicating the nature of the violation.
 
 ### Feed API
 
@@ -502,209 +530,206 @@ reveals actions on the feed.
 
 #### Feed Object Methods
 
-- `feed.desireOpen()` - Returns nothing
+##### feed.desireOpen()
 
-  Sets the feed object's desired state to `open`.
+Sets the feed object's desired state to `open`.
 
-  A feed object's desired state persists through the connection cycle. If a feed
-  is desired `open` and the client disconnects and reconnects, the library will
-  attempt to reopen the server feed.
+A feed object's desired state persists through the connection cycle. If a feed
+is desired `open` and the client disconnects and reconnects, the library will
+attempt to reopen the server feed. Returns nothing.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_FEED_STATE: ..."`
+- `err.message === "INVALID_FEED_STATE: ..."`
 
-    The feed object's desired state is already `open`.
+  The feed object's desired state is already `open`.
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has been destroyed.
+  The feed object has been destroyed.
 
-- `feed.desireClosed()` - Returns nothing
+##### feed.desireClosed()
 
-  Sets the feed object's desired state to `closed`.
+Sets the feed object's desired state to `closed`. Returns nothing.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_FEED_STATE: ..."`
+- `err.message === "INVALID_FEED_STATE: ..."`
 
-    The feed object's desired state is already `closed`.
+  The feed object's desired state is already `closed`.
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has been destroyed.
+  The feed object has been destroyed.
 
-- `feed.desiredState()` - Returns string
+##### feed.desiredState()
 
-  Returns the desired state of the feed object, either `"closed"` or `"open"`.
+Returns the desired state of the feed object, either `"closed"` or `"open"`.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has been destroyed.
+  The feed object has been destroyed.
 
-- `feed.state()` - Returns string
+##### feed.state()
 
-  Returns the actual state of the feed object, either `"closed"`, `"opening"`,
-  or `"open"`. If a feed object is desired `closed` then the actual state will
-  always be `closed`.
+Returns the actual state of the feed object, either `"closed"`, `"opening"`, or
+`"open"`. If a feed object is desired `closed` then the actual state will always
+be `closed`.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has been destroyed.
+  The feed object has been destroyed.
 
-- `feed.data()` - Returns object
+##### feed.data()
 
-  Returns an object containing the current feed data. The structure of the
-  object is determined by the server.
+Returns an object containing the current feed data. The structure of the object
+is determined by the server.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_FEED_STATE: ..."`
+- `err.message === "INVALID_FEED_STATE: ..."`
 
-    The feed object's actual state is not `open`.
+  The feed object's actual state is not `open`.
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has been destroyed.
+  The feed object has been destroyed.
 
-- `feed.client()` - Returns object
+##### feed.client()
 
-  Returns a reference to the client instance that created the feed object.
+Returns a reference to the client instance that created the feed object.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has been destroyed.
+  The feed object has been destroyed.
 
-- `feed.destroy()` - Returns nothing
+##### feed.destroy()
 
-  Destroys the feed object so that it may be safely disposed of.
+Destroys the feed object so that it may be safely disposed of. Returns nothing.
 
-  Errors thrown:
+Errors thrown:
 
-  - `err.message === "INVALID_FEED_STATE: ..."`
+- `err.message === "INVALID_FEED_STATE: ..."`
 
-    Only feed objects desired closed can be destroyed.
+  Only feed objects desired closed can be destroyed.
 
-  - `err.message === "DESTROYED: ..."`
+- `err.message === "DESTROYED: ..."`
 
-    The feed object has already been destroyed.
+  The feed object has already been destroyed.
 
 #### Feed Object Events
 
-- `opening`
+##### `opening`
 
-  Emitted when the actual feed object state changes from `closed` to `opening`.
+Emitted when the actual feed object state changes from `closed` to `opening`.
 
-  No arguments are passed to the listeners.
+No arguments are passed to the listeners.
 
-- `open`
+##### `open`
 
-  Emitted when the actual feed object state changes from `opening` to `open`.
+Emitted when the actual feed object state changes from `opening` to `open`.
 
-  No arguments are passed to the listeners.
+No arguments are passed to the listeners.
 
-- `close`
+##### `close`
 
-  Emitted when the actual state of the feed object changes from `opening` or
-  `open` to `closed`, and when the error condition has changed since an earlier
-  `close` event was emitted (for example, when feed access is denied by the
-  server and then the client disconnects from the server, or when the feed is
-  desired closed and then desired open but the client is not connected to the
-  server).
+Emitted when the actual state of the feed object changes from `opening` or
+`open` to `closed`, and when the error condition has changed since an earlier
+`close` event was emitted (for example, when feed access is denied by the server
+and then the client disconnects from the server, or when the feed is desired
+closed and then desired open but the client is not connected to the server).
 
-  If the event was triggered by a call to `feed.desireClosed()` then no
-  arguments are passed to the listeners.
+If the event was triggered by a call to `feed.desireClosed()` then no arguments
+are passed to the listeners.
 
-  If the event was triggered by an error condition, then the listeners are
-  passed an `Error` object (`err`) as an argument. The following errors are
-  possible:
+If the event was triggered by an error condition, then the listeners are passed
+an `Error` object (`err`) as an argument. The following errors are possible:
 
-  - `err.message === "TIMEOUT: ..."`
+- `err.message === "TIMEOUT: ..."`
 
-    The attempt to open the feed on the server timed out. If the client receives
-    a post-timeout result from the server, then the feed object will emit as
-    appropriate.
+  The attempt to open the feed on the server timed out. If the client receives a
+  post-timeout result from the server, then the feed object will emit as
+  appropriate.
 
-  - `err.message === "REJECTED: ..."`
+- `err.message === "REJECTED: ..."`
 
-    The server rejected the client's request to open the feed. The error details
-    returned by the server are available in `err.serverErrorCode` (string) and
-    `err.serverErrorData` (object).
+  The server rejected the client's request to open the feed. The error details
+  returned by the server are available in `err.serverErrorCode` (string) and
+  `err.serverErrorData` (object).
 
-    The client will reattempt to open the server feed if it
-    disconnects/reconnects, or if a feed object associated with the feed
-    receives a valid call to `feed.desireOpen()`.
+  The client will reattempt to open the server feed if it
+  disconnects/reconnects, or if a feed object associated with the feed receives
+  a valid call to `feed.desireOpen()`.
 
-  - `err.message === "DISCONNECTED: ..."`
+- `err.message === "DISCONNECTED: ..."`
 
-    The client is not connected to the server. If a connection is later
-    established, the feed object will emit as appropriate.
+  The client is not connected to the server. If a connection is later
+  established, the feed object will emit as appropriate.
 
-  - `err.message === "TERMINATED: ..."`
+- `err.message === "TERMINATED: ..."`
 
-    The server terminated the client's access to the feed. The error details
-    returned by the server are available in `err.serverErrorCode` (string) and
-    `err.serverErrorData` (object).
+  The server terminated the client's access to the feed. The error details
+  returned by the server are available in `err.serverErrorCode` (string) and
+  `err.serverErrorData` (object).
 
-    The client will attempt to reopen the feed if it disconnects/reconnects, or
-    if a feed object associated with the feed receives a valid call to
-    `feed.desireOpen()`.
+  The client will attempt to reopen the feed if it disconnects/reconnects, or if
+  a feed object associated with the feed receives a valid call to
+  `feed.desireOpen()`.
 
-  - `err.message === "BAD_ACTION_REVELATION: ..."`
+- `err.message === "BAD_ACTION_REVELATION: ..."`
 
-    The server transmitted an action revelation with an invalid delta operation
-    or a non-matching feed data hash.
+  The server transmitted an action revelation with an invalid delta operation or
+  a non-matching feed data hash.
 
-    The client will attempt to reopen the feed as configured.
+  The client will attempt to reopen the feed as configured.
 
-- `action`
+##### `action`
 
-  Emitted when the server reveals an action on the feed, provided that the feed
-  object is desired `open`.
+Emitted when the server reveals an action on the feed, provided that the feed
+object is desired `open`.
 
-  Arguments passed to the listeners:
+Arguments passed to the listeners:
 
-  1. `actionName` (string)
+1. `actionName` (string)
 
-     The name of the action.
+   The name of the action.
 
-  2. `actionData` (object)
+2. `actionData` (object)
 
-     The data transmitted by the server describing the action.
+   The data transmitted by the server describing the action.
 
-  3. `newFeedData` (object)
+3. `newFeedData` (object)
 
-     The feed data after applying any updates associated with the action.
+   The feed data after applying any updates associated with the action.
 
-  4. `oldFeedData` (object)
+4. `oldFeedData` (object)
 
-     The feed data before applying any updates associated with the action.
+   The feed data before applying any updates associated with the action.
 
-- `action:<name>`
+##### `action:<name>`
 
-  Emitted when the server reveals an action on the feed, provided that the feed
-  is desired `open`. Allows the application to listen for specific types of
-  actions.
+Emitted when the server reveals an action on the feed, provided that the feed is
+desired `open`. Allows the application to listen for specific types of actions.
 
-  Arguments passed to the listeners:
+Arguments passed to the listeners:
 
-  1. `actionData` (object)
+1. `actionData` (object)
 
-     The data returned by the server describing the action.
+   The data returned by the server describing the action.
 
-  2. `newFeedData` (object)
+2. `newFeedData` (object)
 
-     The feed data after applying any updates associated with the action.
+   The feed data after applying any updates associated with the action.
 
-  3. `oldFeedData` (object)
+3. `oldFeedData` (object)
 
-     The feed data before applying any updates associated with the action.
+   The feed data before applying any updates associated with the action.
 
 ## Sample Code
 
