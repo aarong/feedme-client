@@ -4,10 +4,17 @@ import _each from "lodash/each";
 import _cloneDeep from "lodash/cloneDeep";
 import debug from "debug";
 import jsonExpressible from "json-expressible";
+import validateServerMessage from "feedme-util/validateservermessage";
+import validateViolationResponse from "feedme-util/validateviolationresponse";
+import validateHandshakeResponse from "feedme-util/validatehandshakeresponse";
+import validateActionResponse from "feedme-util/validateactionresponse";
+import validateFeedOpenResponse from "feedme-util/validatefeedopenresponse";
+import validateFeedCloseResponse from "feedme-util/validatefeedcloseresponse";
+import validateActionRevelation from "feedme-util/validateactionrevelation";
+import validateFeedTermination from "feedme-util/validatefeedtermination";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
 import feedSerializer from "feedme-util/feedserializer";
-import messageParser from "./messageparser";
 
 const dbg = debug("feedme-client:session");
 
@@ -837,10 +844,27 @@ proto._processTransportError = function _processTransportError(err) {
 proto._processTransportMessage = function _processTransportMessage(msg) {
   dbg("Observed transport message event");
 
-  // Try to parse the message
-  let obj;
+  // Try to parse JSON and validate message structure
+  // No need to check JSON-expressibility (coming from JSON)
+  let val;
   try {
-    obj = messageParser.parse(msg);
+    val = JSON.parse(msg);
+    validateServerMessage.check(val);
+    if (val.MessageType === "ViolationResponse") {
+      validateViolationResponse.check(val, false);
+    } else if (val.MessageType === "HandshakeResponse") {
+      validateHandshakeResponse.check(val, false);
+    } else if (val.MessageType === "ActionResponse") {
+      validateActionResponse.check(val, false);
+    } else if (val.MessageType === "FeedOpenResponse") {
+      validateFeedOpenResponse.check(val, false);
+    } else if (val.MessageType === "FeedCloseResponse") {
+      validateFeedCloseResponse.check(val, false);
+    } else if (val.MessageType === "ActionRevelation") {
+      validateActionRevelation.check(val, false);
+    } else if (val.MessageType === "FeedTermination") {
+      validateFeedTermination.check(val, false);
+    }
   } catch (e) {
     const err = new Error("INVALID_MESSAGE: Invalid JSON or schema violation.");
     err.serverMessage = msg; // string
@@ -850,7 +874,7 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
   }
 
   // Route to the appropriate message handler
-  this[`_process${obj.MessageType}`](obj);
+  this[`_process${val.MessageType}`](val);
 };
 
 // Feedme message handlers
