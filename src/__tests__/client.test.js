@@ -45,7 +45,6 @@ verifying no change.
 
 2. Test state-getting functionality. Outside-facing and internal.
     No need to worry about events, state, session calls, or callbacks.
-    Test by setting state directly by manipulating client/feed members.
     App function calls on the client/feed (only app-initiated)
       Test all errors thrown directly, plus one cascade if applicable
       For each possible success path (by branch)

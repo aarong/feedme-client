@@ -31,7 +31,6 @@ verifying no change (errors, events, state, transport calls, return values).
 
 2. Test state-getting functionality. Outside-facing and internal.
     No need to worry about events, state change, transport calls, or callbacks.
-    Test by setting state directly by manipulating transport and members.
     Test that each "type" of state results in the correct error being thrown or
     return value being returned. This means that a given code path may
     have multiple tests - for example, session.id should throw when disconnected or
