@@ -75,7 +75,6 @@ State: Session members
         .feedState()
         .feedData()
     Internal helper functions:
-        ._feedValidate()
         ._feedState()
 
 */
