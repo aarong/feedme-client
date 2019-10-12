@@ -2456,38 +2456,6 @@ describe("the feedData() function", () => {
 
 // Testing: internal helper functions
 
-describe("the _feedValidate() helper function", () => {
-  // Mock a session
-  let harness;
-  beforeEach(() => {
-    harness = harnessFactory();
-  });
-
-  it("should throw an error for invalid feed names", () => {
-    expect(() => {
-      harness.session._feedValidate(undefined, {});
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid feed name."));
-  });
-
-  it("should throw an error for non-object feed arg", () => {
-    expect(() => {
-      harness.session._feedValidate("myFeed", "junk");
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid feed arguments object."));
-  });
-
-  it("should throw an error for invalid feed arg object", () => {
-    expect(() => {
-      harness.session._feedValidate("myFeed", { bad: 1 });
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid feed arguments object."));
-  });
-
-  it("should return successfully for valid feed name/args", () => {
-    expect(
-      harness.session._feedValidate("myFeed", { some: "val" })
-    ).toBeUndefined();
-  });
-});
-
 describe("the _feedState() helper function", () => {
   // Trivial
 });

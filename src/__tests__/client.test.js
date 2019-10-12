@@ -636,7 +636,7 @@ describe("The client() factory function", () => {
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks) - N/A
+    // Inbound callbacks - N/A
 
     // Return value
     it("should return an object", () => {
@@ -722,7 +722,7 @@ describe("The client.connect() function", () => {
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks)
+    // Inbound callbacks
 
     describe("on timeout", () => {
       it("should emit disconnect", () => {
@@ -854,7 +854,7 @@ describe("The client.disconnect() function", () => {
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks) - N/A
+    // Inbound callbacks - N/A
 
     // Return value
 
@@ -926,7 +926,7 @@ describe("The client.action() function", () => {
 
     // Outbound callbacks - N/A (not called directly, via inbound callbacks only)
 
-    // Inbound callbacks (events, state, session, outer callbacks)
+    // Inbound callbacks
 
     describe("a callback from session.action(), success or failure", () => {
       it("should emit no events", () => {
@@ -1176,7 +1176,7 @@ describe("The client.feed() function", () => {
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks) - N/A
+    // Inbound callbacks - N/A
 
     // Return value
     it("should return an object", () => {
@@ -1484,7 +1484,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks) - N/A
+    // Inbound callbacks - N/A
 
     // Return value
 
@@ -1842,7 +1842,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks) - N/A
+    // Inbound callbacks - N/A
 
     // Return value
 
@@ -1947,7 +1947,7 @@ describe("The feed.destroy() and client._appFeedDestroy() functions", () => {
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks (events, state, session, outer callbacks) - N/A
+    // Inbound callbacks - N/A
 
     // Return value
 
@@ -2009,7 +2009,7 @@ describe("The client._processConnecting() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 describe("The client._processConnect() function", () => {
@@ -2113,7 +2113,7 @@ describe("The client._processConnect() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 describe("The client._processDisconnect() function", () => {
@@ -2392,7 +2392,7 @@ describe("The client._processDisconnect() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks)
+  // Inbound callbacks
 
   describe("when the connection retry timer fires", () => {
     it("should fire no events directly and connecting after session relays", () => {
@@ -2556,7 +2556,7 @@ describe("The client._processActionRevelation() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 describe("The client._processUnexpectedFeedClosing() function", () => {
@@ -2666,7 +2666,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 describe("The client._processUnexpectedFeedClosed() function", () => {
@@ -3107,7 +3107,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks)
+  // Inbound callbacks
 
   describe("the reopen count decrement timeout", () => {
     describe("should emit appropriate events", () => {
@@ -3565,7 +3565,7 @@ describe("The client._processBadServerMessage() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 describe("The client._processBadClientMessage() function", () => {
@@ -3618,7 +3618,7 @@ describe("The client._processBadClientMessage() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 describe("The client._processTransportError() function", () => {
@@ -3674,7 +3674,7 @@ describe("The client._processTransportError() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 });
 
 // Testing: internal helper functions - largely tested in the above (don't worry about checking feeds desired closed )
@@ -4157,7 +4157,7 @@ describe("The client._considerFeedState() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks)
+  // Inbound callbacks
 
   describe("the feed open timeout callback, when fired", () => {
     it("should emit feed close event", () => {
@@ -4923,7 +4923,7 @@ describe("The client._feedOpenTimeout() function", () => {
     expect(cbResponse.mock.calls[0][1]).toEqual({ feed: "data" });
   });
 
-  // Inbound callbacks (events, state, session, outer callbacks)
+  // Inbound callbacks
 
   describe("the timeout timer, when fired", () => {
     it("should emit no events", () => {
@@ -5224,7 +5224,7 @@ describe("The client._informServerFeedClosed() and feed._serverFeedClosed() func
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 
   // Return value
 
@@ -5328,7 +5328,7 @@ describe("The client._informServerFeedOpening() and feed._serverFeedOpening() fu
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 
   // Return value
 
@@ -5432,7 +5432,7 @@ describe("The client._informServerFeedOpen() and feed._serverFeedOpen() function
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 
   // Return value
 
@@ -5524,7 +5524,7 @@ describe("The client._informServerFeedClosing() and feed._serverFeedClosing() fu
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 
   // Return value
 
@@ -5659,7 +5659,7 @@ describe("The client._informServerActionRevelation() and feed._serverActionRevel
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks (events, state, session, outer callbacks) - N/A
+  // Inbound callbacks - N/A
 
   // Return value
 

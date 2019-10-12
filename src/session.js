@@ -12,6 +12,7 @@ import validateFeedOpenResponse from "feedme-util/validatefeedopenresponse";
 import validateFeedCloseResponse from "feedme-util/validatefeedcloseresponse";
 import validateActionRevelation from "feedme-util/validateactionrevelation";
 import validateFeedTermination from "feedme-util/validatefeedtermination";
+import feedValidator from "feedme-util/feedvalidator";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
 import feedSerializer from "feedme-util/feedserializer";
@@ -541,7 +542,7 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
   dbg("Feed open requested");
 
   // Check arguments and relay errors
-  this._feedValidate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs);
 
   // Check cb
   if (!check.function(cb)) {
@@ -595,7 +596,7 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
   dbg("Feed close requested");
 
   // Check arguments and relay errors
-  this._feedValidate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs);
 
   // Check cb
   if (!check.function(cb)) {
@@ -655,7 +656,7 @@ proto.feedState = function feedState(feedName, feedArgs) {
   dbg("Feed state requested");
 
   // Check arguments and relay errors
-  this._feedValidate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs);
 
   // Transport connected and handshake complete?
   if (this.state() !== "connected") {
@@ -690,7 +691,7 @@ proto.feedData = function feedData(feedName, feedArgs) {
   dbg("Feed data requested");
 
   // Check arguments and relay errors
-  this._feedValidate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs);
 
   // Transport connected and handshake complete?
   if (this.state() !== "connected") {
@@ -1200,37 +1201,6 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
 };
 
 // Internal helper functions
-
-/**
- * Validates feed arguments.
- * @memberof Session
- * @instance
- * @param {string} feedName
- * @param {Object} feedArgs
- * @throws {Error} "INVALID_ARGUMENT: ..."
- */
-proto._feedValidate = function _feedValidate(feedName, feedArgs) {
-  // Check name
-  if (!check.nonEmptyString(feedName)) {
-    throw new Error("INVALID_ARGUMENT: Invalid feed name.");
-  }
-
-  // Check args
-  if (!check.object(feedArgs)) {
-    throw new Error("INVALID_ARGUMENT: Invalid feed arguments object.");
-  }
-
-  // Check args properties
-  let valid = true;
-  _each(feedArgs, val => {
-    if (!check.string(val)) {
-      valid = false;
-    }
-  });
-  if (!valid) {
-    throw new Error("INVALID_ARGUMENT: Invalid feed arguments object.");
-  }
-};
 
 /**
  * Returns the spec-defined state of a feed. Differs from .feedState()
