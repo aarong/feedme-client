@@ -7,7 +7,7 @@
   "keywords": [
     "feedme"
   ],
-  "main": "build/node.js",
+  "main": "index.js",
   "jsdelivr": "bundle.js",
   "scripts": {
     "docs": "documentation build src/main.js -f html -o docs --access public --access private --access undefined --sort-order alpha",
