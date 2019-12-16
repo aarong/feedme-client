@@ -84,10 +84,10 @@ npm install feedme-transport-socketio
 To initialize a client using the WebSocket transport:
 
 ```javascript
-var feedmeClient = require("feedme-client");
-var wsTransport = require("feedme-transport-websocket/client");
+const feedmeClient = require("feedme-client");
+const wsTransport = require("feedme-transport-websocket/client");
 
-var client = feedmeClient({
+const client = feedmeClient({
   transport: wsTransport({ url: "https://some.url/api/websocket" })
 });
 ```
@@ -95,10 +95,10 @@ var client = feedmeClient({
 To initialize a client using the Socket.io transport:
 
 ```javascript
-var feedmeClient = require("feedme-client");
-var ioTransport = require("feedme-transport-socketio/client");
+const feedmeClient = require("feedme-client");
+const ioTransport = require("feedme-transport-socketio/client");
 
-var client = feedmeClient({
+const client = feedmeClient({
   transport: ioTransport({ url: "https://some.url/api/socketio" })
 });
 ```
@@ -131,7 +131,7 @@ WebSocket and Socket.io transport bundles can be included similarly.
 To initialize a client:
 
 ```javascript
-var client = feedmeClient(options);
+const client = feedmeClient(options);
 ```
 
 The client is initialized `disconnected` and will remain `disconnected` until
@@ -737,38 +737,38 @@ The following code initializes a client with the WebSocket transport, creates a
 feed object, connects to the server, reporting results to the console.
 
 ```javascript
-var feedmeClient = require("feedme-client");
-var wsTransport = require("feedme-transport-websocket/client");
+const feedmeClient = require("feedme-client");
+const wsTransport = require("feedme-transport-websocket/client");
 
 // Initialize the client
-var client = feedmeClient({
+const client = feedmeClient({
   transport: wsTransport({ url: "https://some.url/api/websocket" })
 });
 
 // Create a feed object
-var feed = client.feed(
+const feed = client.feed(
   "SomeFeed",
   { SomeArgument: "SomeValue" }
 );
-feed.on("opening", function () {
+feed.on("opening", () => {
   console.log("Opening feed...");
 });
-feed.on("open", function () {
+feed.on("open", () => {
   console.log("Feed is now open. The feed data is:", feed.data());
 });
-feed.on("action", function (actionName, actionData, newFeedData, oldFeedData) {
+feed.on("action", (actionName, actionData, newFeedData, oldFeedData) => {
   console.log("Observed an action on the feed:", actionName);
 });
-feed.on("close", function (err) {
+feed.on("close", (err) => {
   console.log("Feed closed with error", err);
 });
 feed.desireOpen();
 
 // Listen for client events
-client.on("connecting", function () {
+client.on("connecting", () => {
   console.log("Connecting to the server...");
 });
-client.on("connect", function () {
+client.on("connect", () => {
 
   console.log("Connected.");
 
@@ -776,7 +776,7 @@ client.on("connect", function () {
   client.action(
     "SomeAction",
     { SomeArgument: "SomeValue" },
-    function (err, actionData) {
+    (err, actionData) => {
       if (err) {
         console.log("The action failed with error:", err);
       } else {
@@ -786,7 +786,7 @@ client.on("connect", function () {
   });
 
 });
-client.on("disconnect", function (err) {
+client.on("disconnect", (err) => {
   console.log("Disconnected from the server with error:", err);
 });
 
