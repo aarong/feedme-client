@@ -9,6 +9,13 @@ var sauceConnectProcess;
 var sauceTests;
 var sauceResults;
 
+// Are Sauce credentials present?
+if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
+  throw new Error(
+    "NO_CREDENTIALS: The SAUCE_USERNAME or SAUCE_ACCESS_KEY environmental variable is missing."
+  );
+}
+
 // Config
 var port = 3000;
 var sauceTunnelId = process.env.TRAVIS_JOB_NUMBER || "feedme-client-tunnel"; // Travis sets tunnel id to job number
