@@ -101,8 +101,7 @@ describe("The factory function", () => {
 });
 
 describe("the state() function", () => {
-  it(`if the transport throws an error,
-  it should throw TRANSPORT_ERROR and emit transportError`, () => {
+  it("if the transport throws an error, it should throw TRANSPORT_ERROR and emit transportError", () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -133,8 +132,7 @@ describe("the state() function", () => {
     );
   });
 
-  it(`if the transport returns an invalid state given the emission sequence,
-  it should throw TRANSPORT_ERROR and emit transportError`, () => {
+  it("if the transport returns an invalid state given the emission sequence, it should throw TRANSPORT_ERROR and emit transportError", () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -159,8 +157,7 @@ describe("the state() function", () => {
     );
   });
 
-  it(`if the transport returns a valid state given the emission sequence,
-  it should emit nothing and return the state`, () => {
+  it("if the transport returns a valid state given the emission sequence, it should emit nothing and return the state", () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -177,8 +174,28 @@ describe("the state() function", () => {
 });
 
 describe("the connect() function", () => {
-  it(`if the state was disconnected and the transport threw an error,
-  it should throw a TRANSPORT_ERROR and emit transportError`, () => {
+  it("if the library made an invalid call", () => {
+    const transport = emitter({
+      _state: "disconnected",
+      state: () => transport._state,
+      connect: () => {
+        transport.emit("connecting");
+      },
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+    wrapper.connect();
+    expect(() => {
+      wrapper.connect();
+    }).toThrow(
+      new Error(
+        "INVALID_CALL: Library called connect() when transport state was not 'disconnected'."
+      )
+    );
+  });
+
+  it("if the state was disconnected and the transport threw an error, it should throw TRANSPORT_ERROR and emit transportError", () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -208,8 +225,7 @@ describe("the connect() function", () => {
     );
   });
 
-  it(`if the state was disconnected and the transport returned success,
-  it should relay success (expected)`, () => {
+  it("if the state was disconnected and the transport returned success, it should return successfully", () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -225,92 +241,27 @@ describe("the connect() function", () => {
     expect(wrapper.connect()).toBeUndefined();
     expect(listener.mock.calls.length).toBe(0);
   });
-
-  it(`if the state was not disconnected and the transport threw a NOT_DISCONNECTED error,
-  it should relay that error (expected)`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    wrapper.connect();
-    transport.emit("connecting");
-    transport.connect = () => {
-      throw new Error("NOT_DISCONNECTED: ...");
-    };
-    expect(() => {
-      wrapper.connect();
-    }).toThrow(new Error("NOT_DISCONNECTED: ..."));
-    expect(listener.mock.calls.length).toBe(0);
-  });
-
-  it(`if the state was not disconnected and the transport threw any other error,
-  it should throw a TRANSPORT_ERROR and emit transportError`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    wrapper.connect();
-    transport.emit("connecting");
-    transport.connect = () => {
-      throw new Error("JUNK_ERROR: ...");
-    };
-    expect(() => {
-      wrapper.connect();
-    }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an unexpected error.")
-    );
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(1);
-    expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport threw an invalid error on a call to connect()."
-    );
-    expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].transportError.message).toBe(
-      "JUNK_ERROR: ..."
-    );
-  });
-
-  it(`if the state was not disconnected and the transport returned success,
-  it should trow a TRANSPORT_ERROR and emit transportError`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    wrapper.connect();
-    transport.emit("connecting");
-    expect(() => {
-      wrapper.connect();
-    }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport accepted an invalid call.")
-    );
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(1);
-    expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport accepted an invalid call to connect()."
-    );
-  });
 });
 
 describe("the send() function", () => {
-  it(`if the state was connected and the transport threw an error,
-  it should throw a TRANSPORT_ERROR and emit transportError`, () => {
+  it("if the library made an invalid call", () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+    expect(() => {
+      wrapper.send("something");
+    }).toThrow(
+      new Error(
+        "INVALID_CALL: Library called send() when transport state was not 'connected'."
+      )
+    );
+  });
+
+  it("if the state was connected and the transport threw an error, it should throw TRANSPORT_ERROR and emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -344,8 +295,7 @@ describe("the send() function", () => {
     );
   });
 
-  it(`if the state was connected and the transport returned success,
-  it should relay success (expected)`, () => {
+  it("if the state was connected and the transport returned success, it should return success", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -363,173 +313,41 @@ describe("the send() function", () => {
     expect(wrapper.send("hi")).toBeUndefined();
     expect(listener.mock.calls.length).toBe(0);
   });
-
-  it(`if the state was not connected and the transport threw a NOT_CONNECTED error,
-  it should relay that error (expected)`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {
-        throw new Error("NOT_CONNECTED: ...");
-      },
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    expect(() => {
-      wrapper.send("hi");
-    }).toThrow(new Error("NOT_CONNECTED: ..."));
-    expect(listener.mock.calls.length).toBe(0);
-  });
-
-  it(`if the state was not connected and the transport threw any other error,
-  it should throw a TRANSPORT_ERROR and emit transportError`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {
-        throw new Error("JUNK_ERROR: ...");
-      },
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    expect(() => {
-      wrapper.send("hi");
-    }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an unexpected error.")
-    );
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(1);
-    expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport threw an invalid error on a call to send()."
-    );
-    expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].transportError.message).toBe(
-      "JUNK_ERROR: ..."
-    );
-  });
-
-  it(`if the state was not connected and the transport returned success,
-  it should throw a TRANSPORT_ERROR and emit transportError`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    expect(() => {
-      wrapper.send("hi");
-    }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport accepted an invalid call.")
-    );
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(1);
-    expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport accepted an invalid call to send()."
-    );
-  });
 });
 
 describe("the disconnect() function", () => {
-  it(`if the state was disconnected and the transport threw a DISCONNECTED error,
-  it should relay that error (expected)`, () => {
+  it("if the library made an invalid call", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {
-        throw new Error("DISCONNECTED: ...");
-      }
+      disconnect: () => {}
     });
     const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
     expect(() => {
       wrapper.disconnect();
-    }).toThrow(new Error("DISCONNECTED: ..."));
-    expect(listener.mock.calls.length).toBe(0);
+    }).toThrow(
+      new Error(
+        "INVALID_CALL: Library called disconnect() when transport state was 'disconnected'."
+      )
+    );
   });
 
-  it(`if the state was disconnected and the transport threw any other error,
-  it should trow a TRANSPORT_ERROR and emit transportError`, () => {
+  it("if the state was not disconnected and the transport threw an error, it should trow TRANSPORT_ERROR and emit transportError", () => {
     const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
+      _state: "disconnected",
+      state: () => transport._state,
+      connect: () => {
+        transport._state = "connecting";
+        transport.emit("connecting");
+      },
       send: () => {},
       disconnect: () => {
         throw new Error("JUNK_ERROR: ...");
       }
     });
     const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    expect(() => {
-      wrapper.disconnect();
-    }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an unexpected error.")
-    );
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(1);
-    expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport threw an invalid error on a call to disconnect()."
-    );
-    expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].transportError.message).toBe(
-      "JUNK_ERROR: ..."
-    );
-  });
-
-  it(`if the state was disconnected and the transport returned success,
-  it should trow a TRANSPORT_ERROR and emit transportError`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {
-        // Success
-      }
-    });
-    const wrapper = transportWrapper(transport);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-    expect(() => {
-      wrapper.disconnect();
-    }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport accepted an invalid call.")
-    );
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(1);
-    expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport accepted an invalid call to disconnect()."
-    );
-  });
-
-  it(`if the state was not disconnected and the transport threw an error,
-  it should trow a TRANSPORT_ERROR and emit transportError`, () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {
-        throw new Error("DISCONNECTED: ...");
-      }
-    });
-    const wrapper = transportWrapper(transport);
-    wrapper.connect();
-    transport.state = () => "connecting";
-    transport.emit("connecting");
-    transport.state = () => "connected";
-    transport.emit("connect");
+    transport.connect();
     const listener = jest.fn();
     wrapper.on("transportError", listener);
     expect(() => {
@@ -545,12 +363,11 @@ describe("the disconnect() function", () => {
     );
     expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].transportError.message).toBe(
-      "DISCONNECTED: ..."
+      "JUNK_ERROR: ..."
     );
   });
 
-  it(`if the state was not disconnected and the transport returned success,
-  it should relay that success (expected)`, () => {
+  it("if the state was not disconnected and the transport returned success, it should return success", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -573,7 +390,7 @@ describe("the disconnect() function", () => {
 });
 
 describe("the transport 'connecting' event", () => {
-  it(`if the state was not disconnected, it should emit transportError`, () => {
+  it("if the state was not disconnected, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -602,7 +419,7 @@ describe("the transport 'connecting' event", () => {
     expect(connectingListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was disconnected and arguments were invalid, it should emit transportError`, () => {
+  it("if the state was disconnected and arguments were invalid, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -628,7 +445,7 @@ describe("the transport 'connecting' event", () => {
     expect(connectingListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was disconnected, it should emit the event`, () => {
+  it("if the state was disconnected, it should emit the event", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -652,7 +469,7 @@ describe("the transport 'connecting' event", () => {
 });
 
 describe("the transport 'connect' event", () => {
-  it(`if the state was not connecting, it should emit transportError`, () => {
+  it("if the state was not connecting, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -676,7 +493,7 @@ describe("the transport 'connect' event", () => {
     expect(connectListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was connecting and arguments were invalid, it should emit transportError`, () => {
+  it("if the state was connecting and arguments were invalid, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -703,7 +520,7 @@ describe("the transport 'connect' event", () => {
     expect(connectListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was connecting, it should emit the event`, () => {
+  it("if the state was connecting, it should emit the event", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -728,7 +545,7 @@ describe("the transport 'connect' event", () => {
 });
 
 describe("the transport 'message' event", () => {
-  it(`if the state was not connected, it should emit transportError`, () => {
+  it("if the state was not connected, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -752,7 +569,7 @@ describe("the transport 'message' event", () => {
     expect(messageListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was connected and arguments were invalid, it should emit transportError`, () => {
+  it("if the state was connected and arguments were invalid, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -781,7 +598,7 @@ describe("the transport 'message' event", () => {
     expect(messageListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was connected, it should emit the event`, () => {
+  it("if the state was connected, it should emit the event", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -809,7 +626,7 @@ describe("the transport 'message' event", () => {
 });
 
 describe("the transport 'disconnect' event", () => {
-  it(`if the state was disconnected, it should emit transportError`, () => {
+  it("if the state was disconnected, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -833,7 +650,7 @@ describe("the transport 'disconnect' event", () => {
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was not disconnected and arguments were invalid, it should emit transportError`, () => {
+  it("if the state was not disconnected and arguments were invalid, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -860,7 +677,7 @@ describe("the transport 'disconnect' event", () => {
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was not disconnected and argument was not an error, it should emit transportError`, () => {
+  it("if the state was not disconnected and argument was not an error, it should emit transportError", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -887,7 +704,7 @@ describe("the transport 'disconnect' event", () => {
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it(`if the state was not disconnected, it should emit the event`, () => {
+  it("if the state was not disconnected, it should emit the event", () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},

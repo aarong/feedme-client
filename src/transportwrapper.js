@@ -1,30 +1,20 @@
 import check from "check-types";
 import emitter from "component-emitter";
-import _ from "lodash";
 
 /**
- * Pass-through to the outside-provided transport object that verifies that
+ * Wrapper over the app-provided transport object that verifies that
  * the transport is acting as required (outside code).
  *
- * - The transport API is verified on intialization.
- *
- * - Transport function return values and errors are verified.
- *
- * - Transport event are verified.
- *
- * - Inbound function arguments are not checked (internal).
+ * - The transport API is validated on intialization
+ * - Transport function return values and errors are validated
+ * - Transport event emissions are validated
+ * - Function invocation sequence is validated (but arguments are not)
  *
  * After initialization, any problems with the transport are reported using
  * the `transportError` event.
  *
  * @typedef {Object} TransportWrapper
  * @extends emitter
- *
- * @todo Take the transport wrapper approach used on feedme-server-core, where
- * the server is expected to make valid calls and you don't worry about the
- * transport rejecting them. Essentially the transport wrapper provides a
- * two-way guarantee. Here, you are making invalid calls and expecting the
- * transport to reject them -- the wrapper should do that.
  */
 
 const proto = {};
@@ -68,7 +58,7 @@ export default function transportWrapperFactory(transport) {
   const transportWrapper = Object.create(proto);
 
   /**
-   * Transport being wrapped.
+   * Transport object being wrapped.
    * @memberof TransportWrapper
    * @instance
    * @private
@@ -85,18 +75,22 @@ export default function transportWrapperFactory(transport) {
   transportWrapper._lastEmission = "disconnect";
 
   // Listen for transport events
-  transportWrapper._transport.on("connecting", (...args) => {
-    transportWrapper._processTransportConnecting(...args);
-  });
-  transportWrapper._transport.on("connect", (...args) => {
-    transportWrapper._processTransportConnect(...args);
-  });
-  transportWrapper._transport.on("message", (...args) => {
-    transportWrapper._processTransportMessage(...args);
-  });
-  transportWrapper._transport.on("disconnect", (...args) => {
-    transportWrapper._processTransportDisconnect(...args);
-  });
+  transportWrapper._transport.on(
+    "connecting",
+    transportWrapper._processTransportConnecting.bind(transportWrapper)
+  );
+  transportWrapper._transport.on(
+    "connect",
+    transportWrapper._processTransportConnect.bind(transportWrapper)
+  );
+  transportWrapper._transport.on(
+    "message",
+    transportWrapper._processTransportMessage.bind(transportWrapper)
+  );
+  transportWrapper._transport.on(
+    "disconnect",
+    transportWrapper._processTransportDisconnect.bind(transportWrapper)
+  );
 
   return transportWrapper;
 }
@@ -138,9 +132,9 @@ export default function transportWrapperFactory(transport) {
  * @event transportError
  * @memberof TransportWrapper
  * @instance
- * @param {Error} err 'INVALID_RESULT: ...' Transport function returned unexpected return value or error.
- *                    'UNEXPECTED_EVENT: ...' Event not valid for current transport state.
- *                    'BAD_EVENT_ARGUMENT: ...' Event emitted with invalid argument signature.
+ * @param {Error} err "INVALID_RESULT: ..."     Transport function returned unexpected return value or error
+ *                    "UNEXPECTED_EVENT: ..."   Event not valid for current transport state
+ *                    "BAD_EVENT_ARGUMENT: ..." Event emitted with invalid argument signature
  */
 
 // Public functions
@@ -148,7 +142,7 @@ export default function transportWrapperFactory(transport) {
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} Transport errors and "TRANSPORT_ERROR: ...""
+ * @throws {Error} "TRANSPORT_ERROR: ...""
  */
 proto.state = function state() {
   // Try to get the state
@@ -163,12 +157,12 @@ proto.state = function state() {
   // Did it throw an error? Never should
   if (transportErr) {
     const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on call to state().`
+      "INVALID_RESULT: Transport threw an error on call to state()."
     );
     emitErr.transportError = transportErr;
     this.emit("transportError", emitErr);
     throw new Error(
-      `TRANSPORT_ERROR: The transport unexpectedly threw an error.`
+      "TRANSPORT_ERROR: The transport unexpectedly threw an error."
     );
   }
 
@@ -185,7 +179,7 @@ proto.state = function state() {
       )
     );
     throw new Error(
-      `TRANSPORT_ERROR: The transport returned an unexpected state.`
+      "TRANSPORT_ERROR: The transport returned an unexpected state."
     );
   }
 
@@ -196,121 +190,74 @@ proto.state = function state() {
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} Transport errors and "TRANSPORT_ERROR: ..."
+ * @throws {Error} "INVALID_CALL: ..."
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.connect = function connect() {
+  // Check invocation sequence (library behavior)
+  if (this._lastEmission !== "disconnect") {
+    throw new Error(
+      "INVALID_CALL: Library called connect() when transport state was not 'disconnected'."
+    );
+  }
+
   // Try to connect
-  let transportErr;
   try {
     this._transport.connect();
   } catch (e) {
-    transportErr = e;
-  }
-
-  // Check the response
-  if (this._lastEmission === "disconnect") {
-    if (transportErr) {
-      // Unexpected behavior
-      const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an error on a call to connect() when previous emission was '${this._lastEmission}'.` // prettier-ignore
-      );
-      emitErr.transportError = transportErr;
-      this.emit("transportError", emitErr);
-      throw new Error(
-        `TRANSPORT_ERROR: Transport unexpectedly threw an error.`
-      );
-    } else {
-      // Expected behavior - relay
-      return; // eslint-disable-line
-    }
-  } else if (transportErr) {
-    // Last emission was not disconnect
-    if (_.startsWith(transportErr.message, "NOT_DISCONNECTED")) {
-      // Expected behavior - relay
-      throw transportErr;
-    } else {
-      // Unexpected behavior (bad error)
-      const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an invalid error on a call to connect().`
-      );
-      emitErr.transportError = transportErr;
-      this.emit("transportError", emitErr);
-      throw new Error(`TRANSPORT_ERROR: Transport threw an unexpected error.`);
-    }
-  } else {
-    // Last emission was not disconnect and there was no error
-    // Unexpected behavior
+    // Invalid behavior from the transport
     const emitErr = new Error(
-      `INVALID_RESULT: Transport accepted an invalid call to connect().`
+      `INVALID_RESULT: Transport threw an error on a call to connect() when previous emission was '${this._lastEmission}'.` // prettier-ignore
     );
+    emitErr.transportError = e;
     this.emit("transportError", emitErr);
-    throw new Error(`TRANSPORT_ERROR: Transport accepted an invalid call.`);
+    throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
   }
 };
 
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} Transport errors and "TRANSPORT_ERROR: ..."
+ * @throws {Error} "INVALID_CALL: ..."
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.send = function send(msg) {
+  // Check invocation sequence (library behavior)
+  if (this._lastEmission !== "connect") {
+    throw new Error(
+      "INVALID_CALL: Library called send() when transport state was not 'connected'."
+    );
+  }
+
   // Try to send the message
-  let transportErr;
   try {
     this._transport.send(msg);
   } catch (e) {
-    transportErr = e;
-  }
-
-  // Check the response
-  if (this._lastEmission === "connect") {
-    if (transportErr) {
-      // Unexpected behavior
-      const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an error on a call to send() when previous emission was 'connect'.`
-      );
-      emitErr.transportError = transportErr;
-      this.emit("transportError", emitErr);
-      throw new Error(
-        `TRANSPORT_ERROR: Transport unexpectedly threw an error.`
-      );
-    } else {
-      // Expected behavior - relay
-      return; // eslint-disable-line
-    }
-  } else if (transportErr) {
-    // Last emission was not connect
-    if (_.startsWith(transportErr.message, "NOT_CONNECTED")) {
-      // Expected behavior - relay
-      throw transportErr;
-    } else {
-      // Unexpected behavior (bad error)
-      const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an invalid error on a call to send().`
-      );
-      emitErr.transportError = transportErr;
-      this.emit("transportError", emitErr);
-      throw new Error(`TRANSPORT_ERROR: Transport threw an unexpected error.`);
-    }
-  } else {
-    // Last emission was not connect and there was no error
-    // Unexpected behavior
+    // Invalid behavior from the transport
     const emitErr = new Error(
-      `INVALID_RESULT: Transport accepted an invalid call to send().`
+      "INVALID_RESULT: Transport threw an error on a call to send() when previous emission was 'connect'."
     );
+    emitErr.transportError = e;
     this.emit("transportError", emitErr);
-    throw new Error(`TRANSPORT_ERROR: Transport accepted an invalid call.`);
+    throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
   }
 };
 
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} Transport errors and "TRANSPORT_ERROR: ..."
+ * @throws {Error} "INVALID_CALL: ..."
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.disconnect = function disconnect(err) {
+  // Check invocation sequence (library behavior)
+  if (this._lastEmission === "disconnect") {
+    throw new Error(
+      "INVALID_CALL: Library called disconnect() when transport state was 'disconnected'."
+    );
+  }
+
   // Try to disconnect
-  let transportErr;
   try {
     if (err) {
       this._transport.disconnect(err);
@@ -318,47 +265,13 @@ proto.disconnect = function disconnect(err) {
       this._transport.disconnect();
     }
   } catch (e) {
-    transportErr = e;
-  }
-
-  // Check the response
-  if (this._lastEmission !== "disconnect") {
-    if (transportErr) {
-      // Unexpected behavior
-      const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an error on a call to disconnect() when previous emission was 'connecting' or 'connect'.`
-      );
-      emitErr.transportError = transportErr;
-      this.emit("transportError", emitErr);
-      throw new Error(
-        `TRANSPORT_ERROR: Transport unexpectedly threw an error.`
-      );
-    } else {
-      // Expected behavior - relay
-      return; // eslint-disable-line
-    }
-  } else if (transportErr) {
-    // Last emission was discconnect
-    if (_.startsWith(transportErr.message, "DISCONNECTED")) {
-      // Expected behavior - relay
-      throw transportErr;
-    } else {
-      // Unexpected behavior (bad error)
-      const emitErr = new Error(
-        `INVALID_RESULT: Transport threw an invalid error on a call to disconnect().`
-      );
-      emitErr.transportError = transportErr;
-      this.emit("transportError", emitErr);
-      throw new Error(`TRANSPORT_ERROR: Transport threw an unexpected error.`);
-    }
-  } else {
-    // Last emission was not connect and there was no error
-    // Unexpected behavior
+    // Invalid behavior from the transpor
     const emitErr = new Error(
-      `INVALID_RESULT: Transport accepted an invalid call to disconnect().`
+      `INVALID_RESULT: Transport threw an error on a call to disconnect() when previous emission was 'connecting' or 'connect'.`
     );
+    emitErr.transportError = e;
     this.emit("transportError", emitErr);
-    throw new Error(`TRANSPORT_ERROR: Transport accepted an invalid call.`);
+    throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
   }
 };
 

@@ -224,7 +224,7 @@ build to NPM.
 ## Transport API
 
 Transport objects abstract away the specifics of the messaging connection
-between the client and the server. A transport object is injected into each
+between the client and the server. A transport object is injected into the
 client at initialization.
 
 Transport objects must implement the following interface and behavior in order
@@ -239,8 +239,8 @@ client-server connection. Messages must be received by the other side in the
 order that they were sent.
 
 Transport objects must be traditional Javascript event emitters. Specifically,
-they must implement `transport.on(eventName, listenerFunction)` and emit events
-to subscribed listeners as described below.
+they must implement `transport.on(eventName, eventListenerFunction)` and emit
+events to subscribed listener as described below.
 
 Connection and messaging timeout functionality is implemented at the client
 level, so transports should not implement their own (they should be patient).
@@ -260,22 +260,21 @@ Transport objects must always be in one of three states:
 
 Transport objects must only change state in the following circumstances:
 
-1. When `disconnected` and an outside call to `connect()` is received, the
-   transport state must become `connecting`.
+1. When `disconnected` and an outside call to `transport.connect()` is received,
+   the transport state must become `connecting`.
 
 2. When `connecting` and a successful connection is established, the transport
    state must become `connected`.
 
-3. When `connecting` and a connection cannot be established, the transport state
-   must become `disconnected`.
+3. When `connecting` and a connection could not be established, the transport
+   state must become `disconnected`.
 
-4. When `connecting` or `connected` and a call to `disconnect()` is received,
-   the transport state must become `disconnected`.
+4. When `connecting` or `connected` and a call to `transport.disconnect()` is
+   received, the transport state must become `disconnected`.
 
 5. When `connected` and an unexpected connection failure occurs, the transport
    state must become `disconnected`. The transport must not automatically
-   attempt to reconnect once it is `disconnected`. Reconnection behavior is
-   controlled by the client.
+   attempt to reconnect, as reconnection behavior is controlled by the client.
 
 ### Transport Methods
 
@@ -283,13 +282,14 @@ Transport objects must implement the following methods:
 
 - `transport.state()`
 
-  Allows the client to retrieve the current transport state.
+  Allows the client library to retrieve the current transport state.
 
   Returns `"disconnected"`, `"connecting"`, or `"connected"`.
 
 - `transport.connect()`
 
-  Allows the client to tell the transport to try to connect to the server.
+  Allows the client library to tell the transport to try to connect to the
+  server.
 
   The transport state must become `connecting` and the `connecting` event must
   be emitted synchronously.
@@ -297,19 +297,25 @@ Transport objects must implement the following methods:
   The transport must subsequently emit either `connected` or `disconnected` as
   appropriate.
 
-  The client will not call this method unless the transport state is
+  The library will not call this method unless the transport state is
   `disconnected`.
+
+  If a synchronous connection error occurs, the transport must emit `connecting`
+  and `disconnect(err)`. It must not throw an error.
 
 - `transport.send(msg)`
 
-  Allows the client to send a string message to the server.
+  Allows the client library to send a `string` message to the server.
 
-  The client will not call this method unless the transport state is
+  The library will not call this method unless the transport state is
   `connected`.
+
+  If a synchronous transmission error occurs, the transport must emit
+  `disconnect(err)`. It must not throw an error.
 
 - `transport.disconnect([err])`
 
-  Allows the client to tell the transport to disconnect from the server.
+  Allows the client library to tell the transport to disconnect from the server.
 
   The transport state must become `disconnected` and the `disconnect` event must
   be emitted synchronously.
@@ -318,7 +324,7 @@ Transport objects must implement the following methods:
   with `err` as an argument. If an `err` argument is not present, then the
   `disconnect` event must be emitted with no arguments.
 
-  The client will not call this method unless the transport state is
+  The library will not call this method unless the transport state is
   `connecting` or `connected`.
 
 ### Transport Events
@@ -328,32 +334,32 @@ has been received from the server.
 
 - `connecting`
 
-  Informs the client that the transport state is now `connecting`. This event
+  Informs the library that the transport state is now `connecting`. This event
   must only be emitted when the transport state was previously `disconnected`.
 
 - `connect`
 
-  Informs the client that the transport state is now `connected`. This event
+  Informs the library that the transport state is now `connected`. This event
   must only be emitted when the transport state was previously `connecting`.
 
 - `message(msg)`
 
-  Informs the client that a string message has been received from the server.
+  Informs the library that a string message has been received from the server.
   This event must only be emitted when the transport state is `connected`.
 
 - `disconnect([err])`
 
-  Informs the client that the transport state is now `disconnected`. This event
+  Informs the library that the transport state is now `disconnected`. This event
   must only be emitted when the transport state was previously `connecting` or
   `connected`.
 
-  If the disconnect resulted from an explicit outside call to `disconnect()`
+  If the disconnect resulted from a library call to `transport.disconnect()`
   with no error argument then the transport must not pass an error object the
-  listeners. The transport must not pass `null`, `undefined`, `false`, or any
-  other value in place of the error object.
+  event listeners. The transport must not pass `null`, `undefined`, `false`, or
+  any other value in place of the error object.
 
-  If the event resulted from a client call to `disconnect(err)` including an
-  `Error` argument, then the error argument must be passed to the listeners.
+  If the event resulted from a library call to `transport.disconnect(err)`
+  including an `err` argument, then `err` must be passed to the listeners.
 
   If the event resulted from a connection failure internal to the transport,
   then an error of the form
