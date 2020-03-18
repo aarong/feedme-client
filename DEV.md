@@ -234,13 +234,13 @@ client `transportError` event if the transport does something unexpected.
 
 ### Fundamentals
 
-Transport objects must be able to exchange string messages across a
+Transport objects must be able to exchange `string` messages across a
 client-server connection. Messages must be received by the other side in the
 order that they were sent.
 
 Transport objects must be traditional Javascript event emitters. Specifically,
 they must implement `transport.on(eventName, eventListenerFunction)` and emit
-events to subscribed listener as described below.
+events to subscribed listeners as described below.
 
 Connection and messaging timeout functionality is implemented at the client
 level, so transports should not implement their own (they should be patient).
@@ -344,7 +344,7 @@ has been received from the server.
 
 - `message(msg)`
 
-  Informs the library that a string message has been received from the server.
+  Informs the library that a `string` message has been received from the server.
   This event must only be emitted when the transport state is `connected`.
 
 - `disconnect([err])`
