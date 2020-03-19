@@ -59,13 +59,7 @@ const nodeTranspile = () =>
     .pipe(sourcemaps.write("."))
     .pipe(gulp.dest("build/"));
 
-const copy1 = () =>
-  gulp
-    .src("./index.build.js")
-    .pipe(rename("index.js"))
-    .pipe(gulp.dest("build/"));
-
-const copy2 = () =>
+const copy = () =>
   gulp.src("./{package.json,LICENSE,README.md}").pipe(gulp.dest("build/"));
 
 export const build = gulp.series(
@@ -74,6 +68,5 @@ export const build = gulp.series(
   browserBundleWithmaps,
   browserBundleNomaps,
   nodeTranspile,
-  copy1,
-  copy2
+  copy
 );
