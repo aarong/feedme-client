@@ -197,7 +197,7 @@ dependency-related version constraints.
 - `npm run test-build-node` Run functional tests against the Node module in the
   `build` folder. (Jasmine)
 
-- `npm run test-build-browser` Run functional tests against the browser bundle
+- `npm run test-build-browsers` Run functional tests against the browser bundle
   in the `build` folder on Sauce Labs. Requires the environmental variables
   `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY`, otherwise the Sauce Connect proxy
   will fail. (Jasmine)
