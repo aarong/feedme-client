@@ -412,6 +412,10 @@ Emitted when the client state changes from `disconnected` to `connecting`.
 
 Listeners are invoked with no arguments.
 
+The `connecting` event is emitted synchronously when there is a call to
+`client.connect()`, so the application should attach any event handlers before
+making such a call.
+
 ##### connect
 
 Emitted when the client state changes from `connecting` to `connected`.
@@ -426,6 +430,10 @@ being disconnected has changed.
 
 If the disconnect resulted from a call to `client.disconnect()` then listeners
 are invoked with no arguments.
+
+The `disconnect` event is emitted synchronously when there is a call to
+`client.disconnect()`, so the application should attach any event handlers
+before making such a call.
 
 If the disconnect resulted from an error condition then listeners are passed an
 `Error` object (`err`). The following errors are possible:
