@@ -406,15 +406,15 @@ Errors thrown:
 
 #### Client Events
 
+Library methods may cause certain events to be emitted synchronously, so the
+application should generally attach any event handlers immediately after
+initialization.
+
 ##### connecting
 
 Emitted when the client state changes from `disconnected` to `connecting`.
 
 Listeners are invoked with no arguments.
-
-The `connecting` event is emitted synchronously when there is a call to
-`client.connect()`, so the application should attach any event handlers before
-making such a call.
 
 ##### connect
 
@@ -430,10 +430,6 @@ being disconnected has changed.
 
 If the disconnect resulted from a call to `client.disconnect()` then listeners
 are invoked with no arguments.
-
-The `disconnect` event is emitted synchronously when there is a call to
-`client.disconnect()`, so the application should attach any event handlers
-before making such a call.
 
 If the disconnect resulted from an error condition then listeners are passed an
 `Error` object (`err`). The following errors are possible:
@@ -632,6 +628,10 @@ Errors thrown:
   The feed object has already been destroyed.
 
 #### Feed Object Events
+
+Library methods may cause certain events to be emitted synchronously, so the
+application should generally attach any event handlers immediately after
+initialization.
 
 ##### opening
 
