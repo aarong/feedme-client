@@ -10,18 +10,10 @@ import babel from "gulp-babel";
 import uglify from "gulp-uglify";
 import path from "path";
 
+// Works in any path. Gulp.src/dest are always relative to package root (Gulpfile).
+
 const clean = () => del(path.join(__dirname, "build"));
 
-/*
-
-Problem with es6-npm-boilerplate: Browserify was not applying the Babelify plugin
-to external dependencies, but it was rolling up the code. As a result,
-I use Gulp to pipe the output through Babel again and then Uglify it (the latter
-does not support ES6).
-
-Works in any path. Gulp.src/dest are always relative to package root (Gulpfile).
-
-*/
 const browserBundleWithmaps = () => {
   const b = browserify({
     entries: path.join(__dirname, "src/main.browser.js"),
