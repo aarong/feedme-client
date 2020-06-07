@@ -583,7 +583,7 @@ proto.id = function id() {
  * @param {string}          name
  * @param {Object}          args
  * @param {actionCallback}  callback
- * @param {?actionCallback} callbackLate Optional
+ * @param {?actionCallback} callbackLate
  * @throws {Error} Passed through from session
  */
 

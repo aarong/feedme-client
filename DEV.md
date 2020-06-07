@@ -294,7 +294,7 @@ Transport objects must implement the following methods:
   The transport state must synchronously become `connecting` and the
   `connecting` event must be emitted asynchronously.
 
-  The transport must subsequently emit either `connected` or `disconnected` as
+  The transport must subsequently emit either `connect` or `disconnect` as
   appropriate.
 
   The library will not call this method unless the transport state is
