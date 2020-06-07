@@ -867,11 +867,9 @@ describe("The client.disconnect() function", () => {
 });
 
 describe("The client.action() function", () => {
-  // Errors - N/A (cascaded)
+  // Errors
 
-  // Success
-
-  describe("can return success", () => {
+  describe("can return failure", () => {
     let harness;
     beforeEach(() => {
       // Mock connected
@@ -879,6 +877,54 @@ describe("The client.action() function", () => {
       harness.client.connect();
       harness.session.emit("connecting");
       harness.session.emit("connect");
+      harness.session.state.mockReturnValue("connected");
+    });
+
+    it("should throw on invalid action name", () => {
+      expect(() => {
+        harness.client.action(123, {}, () => {});
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid action name."));
+    });
+
+    it("should throw on invalid action args", () => {
+      expect(() => {
+        harness.client.action("some_action", "junk", () => {});
+      }).toThrow(
+        new Error("INVALID_ARGUMENT: Invalid action arguments object.")
+      );
+    });
+
+    it("should throw on invalid callback", () => {
+      expect(() => {
+        harness.client.action("some_action", {}, "junk");
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
+    });
+
+    it("should throw on invalid callbackLate", () => {
+      expect(() => {
+        harness.client.action("some_action", {}, () => {}, "junk");
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid callbackLate."));
+    });
+
+    it("should throw if not connected", () => {
+      const harnessInner = harnessFactory();
+      expect(() => {
+        harnessInner.client.action("some_action", {}, () => {});
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+    });
+  });
+
+  // Success
+
+  describe("can return success - callback style", () => {
+    let harness;
+    beforeEach(() => {
+      // Mock connected
+      harness = harnessFactory();
+      harness.client.connect();
+      harness.session.emit("connecting");
+      harness.session.emit("connect");
+      harness.session.state.mockReturnValue("connected");
     });
 
     // Events
@@ -920,7 +966,7 @@ describe("The client.action() function", () => {
       expect(harness.session.feedOpen.mock.calls.length).toBe(0);
       expect(harness.session.feedData.mock.calls.length).toBe(0);
       expect(harness.session.feedClose.mock.calls.length).toBe(0);
-      expect(harness.session.state.mock.calls.length).toBe(0);
+      expect(harness.session.state.mock.calls.length > 0).toBe(true);
       expect(harness.session.feedState.mock.calls.length).toBe(0);
     });
 
@@ -1058,7 +1104,7 @@ describe("The client.action() function", () => {
         expect(harness.session.feedState.mock.calls.length).toBe(0);
       });
 
-      it("should call callback(TIMEOUT) and not callbackLate() if configured", () => {
+      it("should call callback(TIMEOUT) and callbackLate() if so configured", () => {
         const cb = jest.fn();
         const cbl = jest.fn();
         harness.client.action("myAction", { arg: "val" }, cb, cbl);
@@ -1072,8 +1118,14 @@ describe("The client.action() function", () => {
         expect(cbl.mock.calls.length).toBe(0); // No late response
       });
 
-      it("should call not callback(TIMEOUT) and not callbackLate() if not configured", () => {
+      it("should call callback(TIMEOUT) and not callbackLate() if so configured", () => {
+        // Mock connected
         harness = harnessFactory({ actionTimeoutMs: 0 });
+        harness.client.connect();
+        harness.session.emit("connecting");
+        harness.session.emit("connect");
+        harness.session.state.mockReturnValue("connected");
+
         const cb = jest.fn();
         const cbl = jest.fn();
         harness.client.action("myAction", { arg: "val" }, cb, cbl);
@@ -1089,6 +1141,230 @@ describe("The client.action() function", () => {
       expect(
         harness.client.action("myAction", { arg: "val" }, () => {})
       ).toBeUndefined();
+    });
+  });
+
+  describe("can return success - promise style", () => {
+    let harness;
+    beforeEach(() => {
+      // Mock connected
+      harness = harnessFactory();
+      harness.client.connect();
+      harness.session.emit("connecting");
+      harness.session.emit("connect");
+      harness.session.state.mockReturnValue("connected");
+    });
+
+    // Events
+
+    it("should emit nothing", () => {
+      const clientListener = harness.createClientListener();
+      harness.client.action("myAction", {}).catch(() => {
+        // Promise will eventually time out - avoid unhandled rejection warning
+      });
+      expect(clientListener.connecting.mock.calls.length).toBe(0);
+      expect(clientListener.connect.mock.calls.length).toBe(0);
+      expect(clientListener.disconnect.mock.calls.length).toBe(0);
+      expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(clientListener.transportError.mock.calls.length).toBe(0);
+    });
+
+    // State
+
+    it("should not change the state", () => {
+      const newState = harness.getClientState();
+      harness.client.action("myAction", {}).catch(() => {
+        // Promise will eventually time out - avoid unhandled rejection warning
+      });
+      expect(harness.client).toHaveState(newState);
+    });
+
+    // Session
+
+    it("should call session.action()", () => {
+      harness.session.mockClear();
+      harness.client.action("myAction", { arg: "val" }).catch(() => {
+        // Promise will eventually time out - avoid unhandled rejection warning
+      });
+      expect(harness.session.connect.mock.calls.length).toBe(0);
+      expect(harness.session.disconnect.mock.calls.length).toBe(0);
+      expect(harness.session.id.mock.calls.length).toBe(0);
+      expect(harness.session.action.mock.calls.length).toBe(1);
+      expect(harness.session.action.mock.calls[0].length).toBe(3);
+      expect(harness.session.action.mock.calls[0][0]).toBe("myAction");
+      expect(harness.session.action.mock.calls[0][1]).toEqual({ arg: "val" });
+      expect(check.function(harness.session.action.mock.calls[0][2])).toBe(
+        true
+      );
+      expect(harness.session.feedOpen.mock.calls.length).toBe(0);
+      expect(harness.session.feedData.mock.calls.length).toBe(0);
+      expect(harness.session.feedClose.mock.calls.length).toBe(0);
+      expect(harness.session.state.mock.calls.length > 0).toBe(true);
+      expect(harness.session.feedState.mock.calls.length).toBe(0);
+    });
+
+    // Outbound callbacks - N/A (not called directly, via inbound callbacks only)
+
+    // Inbound callbacks
+
+    describe("a callback from session.action(), success or failure", () => {
+      it("should emit no events", () => {
+        const clientListener = harness.createClientListener();
+        harness.session.action = jest.fn((an, aa, cb) => {
+          setTimeout(() => {
+            // Async
+            cb(null, { action: "data" });
+          }, 0);
+        });
+        harness.client.action("myAction", {}).catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+        jest.runAllTimers(); // Trigger async callback
+        expect(clientListener.connecting.mock.calls.length).toBe(0);
+        expect(clientListener.connect.mock.calls.length).toBe(0);
+        expect(clientListener.disconnect.mock.calls.length).toBe(0);
+        expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+        expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+        expect(clientListener.transportError.mock.calls.length).toBe(0);
+      });
+
+      it("should not change the state", () => {
+        harness.session.action = jest.fn((an, aa, cb) => {
+          setTimeout(() => {
+            // Async
+            cb(null, { action: "data" });
+          }, 0);
+        });
+        const newState = harness.getClientState();
+        harness.client.action("myAction", {}).catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+        jest.runAllTimers(); // Trigger async callback
+        expect(harness.client).toHaveState(newState);
+      });
+
+      it("should call nothing on session", () => {
+        harness.session.action = jest.fn((an, aa, cb) => {
+          harness.session.mockClear();
+          setTimeout(() => {
+            // Async
+            cb(undefined, { action: "data" });
+          }, 0);
+        });
+        harness.client.action("myAction", { arg: "val" }).catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+        jest.runAllTimers(); // Trigger async callback
+        expect(harness.session.connect.mock.calls.length).toBe(0);
+        expect(harness.session.disconnect.mock.calls.length).toBe(0);
+        expect(harness.session.id.mock.calls.length).toBe(0);
+        expect(harness.session.action.mock.calls.length).toBe(0);
+        expect(harness.session.feedOpen.mock.calls.length).toBe(0);
+        expect(harness.session.feedData.mock.calls.length).toBe(0);
+        expect(harness.session.feedClose.mock.calls.length).toBe(0);
+        expect(harness.session.state.mock.calls.length).toBe(0);
+        expect(harness.session.feedState.mock.calls.length).toBe(0);
+      });
+
+      it("if not timed out and action successful, should resolve the promise", done => {
+        harness.session.action = jest.fn((an, aa, cbi) => {
+          setTimeout(() => {
+            // Async
+            cbi(undefined, { action: "data" });
+          }, 0);
+        });
+        harness.client.action("myAction", { arg: "val" }).then(actionData => {
+          expect(actionData).toEqual({ action: "data" });
+          done();
+        });
+        jest.runAllTimers(); // Trigger async callback (which clears timeout)
+      });
+
+      it("if not timed out and action failed, should reject the promise", done => {
+        harness.session.action = jest.fn((an, aa, cbi) => {
+          setTimeout(() => {
+            // Async
+            cbi(new Error("DISCONNECTED: ..."));
+          }, 0);
+        });
+        harness.client.action("myAction", { arg: "val" }).catch(err => {
+          expect(err).toBeInstanceOf(Error);
+          expect(err.message).toBe("DISCONNECTED: ...");
+          done();
+        });
+        jest.runAllTimers(); // Trigger async callback (which clears timeout)
+      });
+
+      it("if timed out, should reject the promise", done => {
+        harness.session.action = jest.fn((an, aa, cbi) => {
+          setTimeout(() => {
+            // Async
+            cbi(undefined, { action: "data" });
+          }, config.defaults.actionTimeoutMs + 1);
+        });
+        harness.client.action("myAction", { arg: "val" }).catch(err => {
+          expect(err).toBeInstanceOf(Error);
+          expect(err.message).toBe(
+            "TIMEOUT: The server did not respond within the allocated time."
+          );
+          done();
+        });
+        jest.runAllTimers(); // Trigger async callback (which clears timeout)
+      });
+    });
+
+    describe("the callback from the timeout", () => {
+      it("should emit no events", () => {
+        const clientListener = harness.createClientListener();
+        harness.client.action("myAction", {}).catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+        jest.runAllTimers();
+        expect(clientListener.connecting.mock.calls.length).toBe(0);
+        expect(clientListener.connect.mock.calls.length).toBe(0);
+        expect(clientListener.disconnect.mock.calls.length).toBe(0);
+        expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+        expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+        expect(clientListener.transportError.mock.calls.length).toBe(0);
+      });
+
+      it("should not change the state", () => {
+        const newState = harness.getClientState();
+        harness.client.action("myAction", {}).catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+        jest.runAllTimers();
+        expect(harness.client).toHaveState(newState);
+      });
+
+      it("should call nothing on session", () => {
+        harness.client.action("myAction", { arg: "val" }).catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+        harness.session.mockClear();
+        jest.runAllTimers();
+        expect(harness.session.connect.mock.calls.length).toBe(0);
+        expect(harness.session.disconnect.mock.calls.length).toBe(0);
+        expect(harness.session.id.mock.calls.length).toBe(0);
+        expect(harness.session.action.mock.calls.length).toBe(0);
+        expect(harness.session.feedOpen.mock.calls.length).toBe(0);
+        expect(harness.session.feedData.mock.calls.length).toBe(0);
+        expect(harness.session.feedClose.mock.calls.length).toBe(0);
+        expect(harness.session.state.mock.calls.length).toBe(0);
+        expect(harness.session.feedState.mock.calls.length).toBe(0);
+      });
+    });
+
+    // Return value
+
+    it("should return a promise", () => {
+      const prom = harness.client
+        .action("myAction", { arg: "val" })
+        .catch(() => {
+          // Promise will eventually time out - avoid unhandled rejection warning
+        });
+      expect(prom).toBeInstanceOf(Promise);
     });
   });
 });

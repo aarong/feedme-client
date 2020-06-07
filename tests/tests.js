@@ -2376,13 +2376,13 @@ describe("The client.action() function", function() {
 
   // Errors and return values
 
-  describe("throw and return", function() {
+  describe("throw and return - callback style", function() {
     it("should throw on bad argument (just test one)", function() {
       var harness = harnessFactory();
       harness.connectClient();
       expect(function() {
-        harness.client.action(); // no args
-      }).toThrow(new Error("INVALID_ARGUMENT: Invalid action name."));
+        harness.client.action("some_action", { action: "args" }, "junk");
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
     });
 
     it("should throw if not connected", function() {
@@ -2401,13 +2401,40 @@ describe("The client.action() function", function() {
     });
   });
 
+  describe("throw and return - promise style", function() {
+    it("should throw on bad argument (just test one)", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+      expect(function() {
+        harness.client.action("some_action", 123);
+      }).toThrow(
+        new Error("INVALID_ARGUMENT: Invalid action arguments object.")
+      );
+    });
+
+    it("should throw if not connected", function() {
+      var harness = harnessFactory();
+      expect(function() {
+        harness.client.action("SomeAction", {});
+      }).toThrow(new Error("INVALID_STATE: Not connected."));
+    });
+
+    it("should return promise on success", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+      expect(harness.client.action("SomeAction", {})).toEqual(
+        jasmine.any(Promise)
+      );
+    });
+  });
+
   // Client and feed state functions - N/A
 
   // Client and feed events - N/A
 
   // Transport calls
 
-  describe("transport calls", function() {
+  describe("transport calls - callback style", function() {
     it("should send an Action message on the transport", function() {
       var harness = harnessFactory();
       harness.connectClient();
@@ -2435,9 +2462,37 @@ describe("The client.action() function", function() {
     });
   });
 
+  describe("transport calls - promise style", function() {
+    it("should send an Action message on the transport", function() {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset transport spies
+      harness.transport.spyClear();
+
+      // Invoke an action
+      harness.client.action("SomeAction", { Action: "Arg" });
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(1);
+      expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+      // You can't check the whole message in one go, since callback id is created internally
+      var msg = JSON.parse(harness.transport.send.calls.argsFor(0)[0]);
+      expect(msg.MessageType).toBe("Action");
+      expect(msg.ActionName).toBe("SomeAction");
+      expect(msg.ActionArgs).toEqual({ Action: "Arg" });
+      expect(
+        typeof msg.CallbackId === "string" || msg.CallbackId instanceof String
+      ).toBe(true);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+  });
+
   // Callbacks
 
-  describe("callbacks", function() {
+  describe("callbacks - callback style", function() {
     it("should operate correctly through a timeout cycle to final success", function() {
       var harness = harnessFactory();
       harness.connectClient();
@@ -2726,6 +2781,116 @@ describe("The client.action() function", function() {
         Server: "Data"
       });
       expect(cbLate.calls.count()).toBe(0);
+    });
+  });
+
+  describe("callbacks - promise style", function() {
+    it("should operate correctly on action success", function(done) {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      harness.client
+        .action("SomeAction", { Action: "Arg" })
+        .then(function(actionData) {
+          expect(actionData).toEqual({ Action: "Data" });
+          done();
+        });
+
+      // Get the CallbackId sent with the Action message and return success
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionResponse",
+          CallbackId: serverCb,
+          Success: true,
+          ActionData: { Action: "Data" }
+        })
+      );
+    });
+
+    it("should operate correctly on action rejection", function(done) {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      harness.client
+        .action("SomeAction", { Action: "Arg" })
+        .catch(function(err) {
+          expect(err).toEqual(jasmine.any(Error));
+          expect(err.message).toEqual(
+            "REJECTED: Server rejected the action request."
+          );
+          expect(err.serverErrorCode).toBe("SOME_ERROR");
+          expect(err.serverErrorData).toEqual({ Error: "Data" });
+          done();
+        });
+
+      // Get the CallbackId sent with the Action message and return success
+      var serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
+        .CallbackId;
+      harness.transport.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionResponse",
+          CallbackId: serverCb,
+          Success: false,
+          ErrorCode: "SOME_ERROR",
+          ErrorData: { Error: "Data" }
+        })
+      );
+    });
+
+    it("should operate correctly on timeout", function(done) {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      harness.client
+        .action("SomeAction", { Action: "Arg" })
+        .catch(function(err) {
+          expect(err).toEqual(jasmine.any(Error));
+          expect(err.message).toBe(
+            "TIMEOUT: The server did not respond within the allocated time."
+          );
+          done();
+        });
+
+      // Run the timeout
+      jasmine.clock().tick(harness.client._options.actionTimeoutMs);
+    });
+
+    it("should operate correctly on disconnect", function(done) {
+      var harness = harnessFactory();
+      harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Create callbacks and invoke an action
+      harness.client
+        .action("SomeAction", { Action: "Arg" })
+        .catch(function(err) {
+          expect(err).toEqual(jasmine.any(Error));
+          expect(err.message).toBe("DISCONNECTED: The transport disconnected.");
+          done();
+        });
+
+      // Have the client disconnect (requested in this case)
+      harness.client.disconnect();
+      harness.transport.state.and.returnValue("disconnected");
+      harness.transport.emit("disconnect");
     });
   });
 

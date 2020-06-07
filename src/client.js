@@ -6,6 +6,7 @@ import _pull from "lodash/pull";
 import _startsWith from "lodash/startsWith";
 import debug from "debug";
 import feedSerializer from "feedme-util/feedserializer";
+import jsonExpressible from "json-expressible";
 import config from "./config";
 import feed from "./feed";
 
@@ -569,8 +570,21 @@ proto.id = function id() {
 };
 
 /**
- * Pass-through to session.action() plus timeout functionality.
+ * Pass-through to session.action() plus timeout functionality and promisification.
  * Arguments are checked at the session level and errors are cascaded.
+ *
+ * If the client passes only two arguments (action name and args) then return
+ * a promise. If the client passes three or more arguments (i.e. it includes
+ * a callback or callbackLate argument) then return nothing and call back
+ * on action completion.
+ *
+ * Arguments are checked here even though they are validated by the session,
+ * because (1) in callback mode, a function is always passed to the session
+ * and callbackLast is not passed to the session, and (2) in promise mode,
+ * session errors result in the promise being rejected, not a thrown error.
+ * For the latter reason, client state is also checked here.
+ *
+ * In callback mode:
  *
  * If the server hasn't returned a response before options.actionTimeoutMs
  * then callback() receives a TIMEOUT error. In that case, if a response is
@@ -578,53 +592,136 @@ proto.id = function id() {
  * If the client disconnects before a response is received, then callbackLate()
  * is called with a DISCONNECTED error, if present.
  *
+ * In promise mode:
+ *
+ * If the server hasn't returned a response before options.actionTimeoutMs
+ * then the promise is rejected with a TIMEOUT error. There is no callbackLate
+ * functionality.
+ *
  * @memberof Client
  * @instance
  * @param {string}          name
  * @param {Object}          args
- * @param {actionCallback}  callback
+ * @param {?actionCallback} callback
  * @param {?actionCallback} callbackLate
  * @throws {Error} Passed through from session
  */
 
-proto.action = function action(name, args, callback, callbackLate = () => {}) {
+proto.action = function action(name, args, ...callbacks) {
   dbg("Action requested");
 
-  let timer;
-
-  // Invoke the action - could fail, so done before the timeout is set
-  // Session fires all action callbacks with error on disconnect
-  this._session.action(name, args, (err, actionData) => {
-    // Timer not set if actionTimeoutMs === 0
-    if (timer || this._options.actionTimeoutMs === 0) {
-      if (timer) {
-        clearTimeout(timer); // Not present if actionTimeoutMs === 0
-      }
-      if (err) {
-        callback(err);
-      } else {
-        callback(err, actionData);
-      }
-    } else if (err) {
-      callbackLate(err);
-    } else {
-      callbackLate(err, actionData);
-    }
-  });
-
-  // Set the timeout, if so configured
-  if (this._options.actionTimeoutMs > 0) {
-    dbg("Action timout timer created");
-    timer = setTimeout(() => {
-      dbg("Action timeout timer fired");
-      timer = null; // Mark fired
-      callback(
-        new Error(
-          "TIMEOUT: The server did not respond within the allocated time."
-        )
-      );
-    }, this._options.actionTimeoutMs);
+  // Check name
+  if (!check.nonEmptyString(name)) {
+    throw new Error("INVALID_ARGUMENT: Invalid action name.");
   }
+
+  // Check args
+  if (!check.object(args)) {
+    throw new Error("INVALID_ARGUMENT: Invalid action arguments object.");
+  }
+  if (!jsonExpressible(args)) {
+    throw new Error(
+      "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
+    );
+  }
+
+  // Transport connected and handshake complete?
+  if (this.state() !== "connected") {
+    throw new Error("INVALID_STATE: Not connected.");
+  }
+
+  let timer;
+  let ret;
+
+  if (callbacks.length > 0) {
+    // Callback style
+    dbg("Callback style action requested");
+    const callback = callbacks[0];
+    const callbackLate = callbacks.length > 1 ? callbacks[1] : () => {};
+
+    // Check callback
+    if (!check.function(callback)) {
+      throw new Error("INVALID_ARGUMENT: Invalid callback.");
+    }
+
+    // Check callbackLate
+    if (!check.function(callbackLate)) {
+      throw new Error("INVALID_ARGUMENT: Invalid callbackLate.");
+    }
+
+    // Invoke the action - could fail, so done before the timeout is set
+    // Session fires all action callbacks with error on disconnect
+    this._session.action(name, args, (err, actionData) => {
+      // Timer not set if actionTimeoutMs === 0
+      if (timer || this._options.actionTimeoutMs === 0) {
+        if (timer) {
+          clearTimeout(timer); // Not present if actionTimeoutMs === 0
+        }
+        if (err) {
+          callback(err);
+        } else {
+          callback(err, actionData);
+        }
+      } else if (err) {
+        callbackLate(err);
+      } else {
+        callbackLate(err, actionData);
+      }
+    });
+
+    // Set the timeout, if so configured
+    if (this._options.actionTimeoutMs > 0) {
+      dbg("Action timout timer created");
+      timer = setTimeout(() => {
+        dbg("Action timeout timer fired");
+        timer = null; // Mark fired
+        callback(
+          new Error(
+            "TIMEOUT: The server did not respond within the allocated time."
+          )
+        );
+      }, this._options.actionTimeoutMs);
+    }
+
+    ret = undefined;
+  } else {
+    // Promise style
+    dbg("Promise style action requested");
+
+    ret = new Promise((resolve, reject) => {
+      // Invoke the action - could fail, so done before the timeout is set
+      // Session fires all action callbacks with error on disconnect
+      this._session.action(name, args, (err, actionData) => {
+        // Timer not set if actionTimeoutMs === 0
+        if (timer || this._options.actionTimeoutMs === 0) {
+          if (timer) {
+            clearTimeout(timer); // Not present if actionTimeoutMs === 0
+          }
+          if (err) {
+            reject(err);
+          } else {
+            resolve(actionData);
+          }
+        }
+      });
+
+      // Set the timeout, if so configured
+      if (this._options.actionTimeoutMs > 0) {
+        dbg("Action timout timer created");
+        timer = setTimeout(() => {
+          dbg("Action timeout timer fired");
+          timer = null; // Mark fired
+          reject(
+            new Error(
+              "TIMEOUT: The server did not respond within the allocated time."
+            )
+          );
+        }, this._options.actionTimeoutMs);
+      }
+    });
+  }
+
+  return ret;
 };
 
 /**

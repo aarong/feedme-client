@@ -31,7 +31,8 @@ Library contributors and transport developers should see the
       - [client.connect()](#clientconnect)
       - [client.disconnect()](#clientdisconnect)
       - [client.id()](#clientid)
-      - [client.action(...)](#clientaction)
+      - [client.action(...) - Callback Style](#clientaction---callback-style)
+      - [client.action(...) - Promise Style](#clientaction---promise-style)
       - [client.feed(...)](#clientfeed)
     - [Client Events](#client-events)
       - [connecting](#connecting)
@@ -299,7 +300,7 @@ Errors thrown:
 
   The client state is not `connected`.
 
-##### client.action(...)
+##### client.action(...) - Callback Style
 
 Usage: `client.action(actionName, actionArgs, callback, callbackLate)`
 
@@ -350,6 +351,50 @@ Errors thrown:
   The client state is not `connected`.
 
 Errors called back:
+
+- `err.message === "TIMEOUT: ..."`
+
+  The server did not respond within the amount of time specified by
+  `options.actionTimeoutMs`.
+
+- `err.message === "DISCONNECTED: ..."`
+
+  The client disconnected from the server before it received a response. The
+  disconnect may have resulted from a call to `client.disconnect()` or due to a
+  transport problem.
+
+- `err.message === "REJECTED: ..."`
+
+  The server rejected the action request.The error details returned by the
+  server are available in `err.serverErrorCode` (string) and
+  `err.serverErrorData` (object).
+
+##### client.action(...) - Promise Style
+
+Usage: `client.action(actionName, actionArgs)`
+
+Invokes an an action on the server. The client state must be `connected`.
+Returns a promise that resolves if the action succeeds and rejects if the action
+fails.
+
+Arguments:
+
+- `actionName` - Required string. The name of the action being invoked.
+
+- `actionArgs` - Required object. The action arguments to pass to the server.
+  Must be JSON-expressible.
+
+Errors thrown:
+
+- `err.message === "INVALID_ARGUMENT: ..."`
+
+  There was a problem with one or more of the supplied arguments.
+
+- `err.message === "INVALID_STATE: ..."`
+
+  The client state is not `connected`.
+
+Errors returned via promise rejection:
 
 - `err.message === "TIMEOUT: ..."`
 
