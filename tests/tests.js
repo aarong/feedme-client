@@ -246,7 +246,7 @@ describe("The connectRetryMs option", function() {
     harness.transport.state.and.returnValue("connecting");
     harness.transport.emit("connecting");
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
     // Advance to immediately before the retry and verify that
     // transport.connect() was not called
@@ -298,7 +298,7 @@ describe("The connectRetryMs option", function() {
     // immediate call to transport.connect()
     harness.transport.spyClear();
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
     jasmine.clock().tick(0); // The retry is async
     expect(harness.transport.connect.calls.count()).toBe(1);
     expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
@@ -338,7 +338,7 @@ describe("The connectRetryMs option", function() {
     harness.transport.spyClear();
     clientListener.spyClear();
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
     jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
@@ -435,7 +435,7 @@ describe("The connectRetryBackoffMs and connectRetryMaxMs options", function() {
       harness.transport.state.and.returnValue("connecting");
       harness.transport.emit("connecting");
       harness.transport.state.and.returnValue("disconnected");
-      harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+      harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
       // Advance to immediately before the retry and verify that
       // transport.connect() was not called
@@ -485,7 +485,7 @@ describe("The connectRetryMaxAttempts option", function() {
       harness.transport.state.and.returnValue("connecting");
       harness.transport.emit("connecting");
       harness.transport.state.and.returnValue("disconnected");
-      harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+      harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
       // Advance to immediately after the retry and ensure that
       // transport.connect() was called if fewer than max retries and
@@ -521,7 +521,7 @@ describe("The connectRetryMaxAttempts option", function() {
       harness.transport.state.and.returnValue("connecting");
       harness.transport.emit("connecting");
       harness.transport.state.and.returnValue("disconnected");
-      harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+      harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
       // Advance to immediately after the retry and ensure that
       // transport.connect() was called
@@ -676,7 +676,7 @@ describe("The reconnect option", function() {
     // Disconnect the transport and ensure that transport.connect() is called
     harness.transport.spyClear();
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
     expect(harness.transport.connect.calls.count()).toBe(1);
     expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
@@ -696,7 +696,7 @@ describe("The reconnect option", function() {
     // Disconnect the transport and ensure that transport.connect() is not called
     harness.transport.spyClear();
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
     expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -1305,7 +1305,7 @@ describe("The client.connect() function", function() {
       it("if due to transport internal failure, should update appropriately", function() {
         // Have the transport disconnect
         harness.transport.state.and.returnValue("disconnected");
-        harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+        harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
         // Check all state functions
         expect(harness.client.state()).toBe("disconnected");
@@ -1578,7 +1578,7 @@ describe("The client.connect() function", function() {
 
         // Have the transport disconnect
         harness.transport.state.and.returnValue("disconnected");
-        harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+        harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
         // Check all client and feed events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -1589,7 +1589,7 @@ describe("The client.connect() function", function() {
           jasmine.any(Error)
         );
         expect(clientListener.disconnect.calls.argsFor(0)[0].message).toBe(
-          "DISCONNECTED: ..."
+          "FAILURE: ..."
         );
         expect(clientListener.badServerMessage.calls.count()).toBe(0);
         expect(clientListener.badClientMessage.calls.count()).toBe(0);
@@ -1897,7 +1897,7 @@ describe("The client.connect() function", function() {
 
         // Have the transport disconnect
         harness.transport.state.and.returnValue("disconnected");
-        harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+        harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -3180,7 +3180,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("open");
@@ -3225,7 +3225,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3273,7 +3273,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -3577,7 +3577,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("open");
@@ -3622,7 +3622,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3662,7 +3662,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -4153,7 +4153,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("open");
@@ -4225,7 +4225,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4293,7 +4293,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -4709,7 +4709,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the client disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
@@ -4774,7 +4774,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the client disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4839,7 +4839,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the client disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -5216,7 +5216,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
@@ -5278,7 +5278,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5331,7 +5331,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -6007,7 +6007,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
@@ -6099,7 +6099,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6180,7 +6180,7 @@ describe("The feed.desireOpen() function", function() {
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -6413,7 +6413,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("closed");
@@ -6442,7 +6442,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -6469,7 +6469,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -6643,7 +6643,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("closed");
@@ -6693,7 +6693,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -6749,7 +6749,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -6982,7 +6982,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("closed");
@@ -7011,7 +7011,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7046,7 +7046,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -7218,7 +7218,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feed.desiredState()).toBe("closed");
@@ -7247,7 +7247,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7274,7 +7274,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -7546,7 +7546,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -7593,7 +7593,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -7631,7 +7631,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -7865,7 +7865,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -7940,7 +7940,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -7999,7 +7999,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -8061,7 +8061,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -8109,7 +8109,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8147,7 +8147,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -8223,7 +8223,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -8271,7 +8271,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8309,7 +8309,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -8384,7 +8384,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -8456,7 +8456,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8521,7 +8521,7 @@ describe("The feed.desireClosed() function", function() {
 
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
-          harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+          harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -9277,7 +9277,7 @@ describe("if the transport unexpectedly disconnects", function() {
 
     // Have the transport disconnect
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
     // Check state functions
     expect(harness.client.state()).toBe("disconnected");
@@ -9326,7 +9326,7 @@ describe("if the transport unexpectedly disconnects", function() {
 
     // Have the transport disconnect
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
     // Check events
     expect(clientListener.connecting.calls.count()).toBe(0);
@@ -9337,7 +9337,7 @@ describe("if the transport unexpectedly disconnects", function() {
       jasmine.any(Error)
     );
     expect(clientListener.disconnect.calls.argsFor(0)[0].message).toBe(
-      "DISCONNECTED: ..."
+      "FAILURE: ..."
     );
     expect(clientListener.badServerMessage.calls.count()).toBe(0);
     expect(clientListener.badClientMessage.calls.count()).toBe(0);
@@ -9409,7 +9409,7 @@ describe("if the transport unexpectedly disconnects", function() {
 
     // Have the transport disconnect
     harness.transport.state.and.returnValue("disconnected");
-    harness.transport.emit("disconnect", new Error("DISCONNECTED: ..."));
+    harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
     expect(cb.calls.count()).toBe(1);
     expect(cb.calls.argsFor(0).length).toBe(1);

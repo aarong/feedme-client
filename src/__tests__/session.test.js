@@ -1122,7 +1122,7 @@ describe("The transport disconnect(err) event", () => {
       harness.session.feedClose("MyFeed2", { arg: "val" }, fccb);
       harness.transportWrapper.emit(
         "disconnect",
-        new Error("DISCONNECTED: Message from the transport")
+        new Error("FAILURE: Message from the transport")
       );
       expect(acb.mock.calls.length).toBe(1);
       expect(acb.mock.calls[0].length).toBe(1);

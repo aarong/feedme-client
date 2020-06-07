@@ -2273,7 +2273,7 @@ describe("The client._processDisconnect() function", () => {
     expect(harness.client).toHaveState(newState);
   });
 
-  it("if it was connected and DISCONNECTED, update state appropriately", () => {
+  it("if it was connected and there was an internal transport failure, update state appropriately", () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.session.emit("connecting");
@@ -2311,7 +2311,7 @@ describe("The client._processDisconnect() function", () => {
     const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
     newState._appFeedStates[feedSerial][0]._lastEmission = "close";
     newState._lastSessionState = "disconnected";
-    harness.session.emit("disconnect", new Error("DISCONNECTED: ."));
+    harness.session.emit("disconnect", new Error("FAILURE: ."));
     expect(harness.client).toHaveState(newState);
   });
 
@@ -2378,7 +2378,7 @@ describe("The client._processDisconnect() function", () => {
     harness.session.emit("connecting");
     harness.session.emit("connect");
     harness.session.mockClear();
-    harness.session.emit("disconnect", new Error("DISCONNECTED: ."));
+    harness.session.emit("disconnect", new Error("FAILURE: ."));
     expect(harness.session.connect.mock.calls.length).toBe(1);
     expect(harness.session.disconnect.mock.calls.length).toBe(0);
     expect(harness.session.id.mock.calls.length).toBe(0);

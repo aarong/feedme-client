@@ -195,7 +195,7 @@ export default function sessionFactory(transportWrapper) {
  *
  *                     Error('HANDSHAKE_REJECTED: ...')
  *
- *                     Error('DISCONNECTED: ...')     (from the transport)
+ *                     Error('FAILURE: ...')
  */
 
 /**
@@ -761,9 +761,9 @@ proto._processTransportConnect = function _processTransportConnect() {
  *      - There will be no outstanding action() and .feedOpen() callbacks
  *      - There will be no open feeds
  *
- * - If the transport indicates any other error, then the transport failed internally
+ * - If the transport indicates a FAILURE error, then the it failed internally
  *
- *      - A disconnect event is emitted with a DISCONNECTED error
+ *      - A disconnect event is emitted with the FAILURE error
  *      - Outstanding .action() and .feedOpen() callbacks receive a DISCONNECTED error
  *      - For each open feed, an unexpectedFeedClosing/Close sequence is emitted
  *

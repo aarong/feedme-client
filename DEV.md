@@ -291,17 +291,17 @@ Transport objects must implement the following methods:
   Allows the client library to tell the transport to try to connect to the
   server.
 
-  The transport state must become `connecting` and the `connecting` event must
-  be emitted synchronously.
+  The transport state must synchronously become `connecting` and the
+  `connecting` event must be emitted asynchronously.
 
   The transport must subsequently emit either `connected` or `disconnected` as
-  appropriate, either synchronously or asynchronously.
+  appropriate.
 
   The library will not call this method unless the transport state is
   `disconnected`.
 
-  If a synchronous connection error occurs, the transport must emit `connecting`
-  and `disconnect(err)`. It must not throw an error.
+  If a synchronous connection error occurs, the transport must asynchronously
+  emit `connecting` and `disconnect(err)`. It must not throw an error.
 
 - `transport.send(msg)`
 
@@ -310,15 +310,15 @@ Transport objects must implement the following methods:
   The library will not call this method unless the transport state is
   `connected`.
 
-  If a synchronous transmission error occurs, the transport must emit
-  `disconnect(err)`. It must not throw an error.
+  If a synchronous transmission error occurs, the transport must asynchronously
+  emit `disconnect(err)`. It must not throw an error.
 
 - `transport.disconnect([err])`
 
   Allows the client library to tell the transport to disconnect from the server.
 
-  The transport state must become `disconnected` and the `disconnect` event must
-  be emitted synchronously.
+  The transport state must synchronously become `disconnected` and the
+  `disconnect` event must be emitted asynchronously.
 
   If an `err` argument is present, then the `disconnect` event must be emitted
   with `err` as an argument. If an `err` argument is not present, then the
@@ -362,6 +362,6 @@ has been received from the server.
   including an `err` argument, then `err` must be passed to the listeners.
 
   If the event resulted from a connection failure internal to the transport,
-  then an error of the form
-  `new Error("DISCONNECTED: Descriptive error message.")` must be must be passed
-  to the listeners.
+  either during the initial connection attempt or subsequently, then an error of
+  the form `new Error("FAILURE: Descriptive error message.")` must be must be
+  passed to the listeners.

@@ -798,11 +798,7 @@ proto._processDisconnect = function _processDisconnect(err) {
   // Failure on connected - reconnects
   if (this._lastSessionState === "connected") {
     // Reconnect if this was a transport issue, not a call to disconnect()
-    if (
-      err &&
-      _startsWith(err.message, "DISCONNECTED") &&
-      this._options.reconnect
-    ) {
+    if (err && _startsWith(err.message, "FAILURE") && this._options.reconnect) {
       this.connect(); // Resets connection retry counts
     }
   }

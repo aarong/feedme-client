@@ -88,7 +88,7 @@ const feedmeClient = require("feedme-client");
 const wsTransport = require("feedme-transport-websocket/client");
 
 const client = feedmeClient({
-  transport: wsTransport({ url: "https://some.url/api/websocket" })
+  transport: wsTransport({ url: "https://some.url/api/websocket" }),
 });
 ```
 
@@ -99,7 +99,7 @@ const feedmeClient = require("feedme-client");
 const ioTransport = require("feedme-transport-socketio/client");
 
 const client = feedmeClient({
-  transport: ioTransport({ url: "https://some.url/api/socketio" })
+  transport: ioTransport({ url: "https://some.url/api/socketio" }),
 });
 ```
 
@@ -442,7 +442,7 @@ If the disconnect resulted from an error condition then listeners are passed an
   server but the handshake failed. The client will not reattempt the connection
   automatically.
 
-- `err.message === "DISCONNECTED: ..."` - The transport connection failed.
+- `err.message === "FAILURE: ..."` - The transport connection failed.
 
 ##### badServerMessage
 
