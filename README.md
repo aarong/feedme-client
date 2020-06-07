@@ -11,9 +11,8 @@ A client library created and maintained as a core part of the
 Runs in Node and the browser. Exposes a simple but powerful API and handles
 unexpected developments appropriately. Well documented and thoroughly tested.
 
-[WebSocket](https://github.com/aarong/feedme-transport-websocket) and
-[Socket.io](https://github.com/aarong/feedme-transport-socketio) transports are
-maintained as a core part of the project. Both are supported by the
+A [WebSocket](https://github.com/aarong/feedme-transport-websocket) transport is
+maintained as a core part of the project and is supported by the
 [Feedme Node.js Server](https://github.com/aarong/feedme-server).
 
 Library contributors and transport developers should see the
@@ -92,17 +91,6 @@ const client = feedmeClient({
 });
 ```
 
-To initialize a client using the Socket.io transport:
-
-```javascript
-const feedmeClient = require("feedme-client");
-const ioTransport = require("feedme-transport-socketio/client");
-
-const client = feedmeClient({
-  transport: ioTransport({ url: "https://some.url/api/socketio" }),
-});
-```
-
 Once a client has been initialized the application can listen for events and
 connect to the server.
 
@@ -120,7 +108,7 @@ The browser bundle can be included in a website as follows:
 The module is bundled in UMD format and is named `feedmeClient` in the global
 scope.
 
-WebSocket and Socket.io transport bundles can be included similarly.
+A WebSocket transport bundle can be included similarly.
 
 ## API
 
