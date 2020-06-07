@@ -56,7 +56,7 @@ Library contributors and transport developers should see the
       - [open](#open)
       - [close](#close)
       - [action](#action)
-      - [action:&lt;actionName&gt;](#actionltactionnamegt)
+      - [action:actionName](#actionactionname)
 - [Sample Code](#sample-code)
 
 <!-- /TOC -->
@@ -708,10 +708,10 @@ Arguments passed to the listeners:
 
    The feed data before applying any updates associated with the action.
 
-##### action:&lt;actionName&gt;
+##### action:actionName
 
 Emitted when the server reveals a specific type of action on the feed, specified
-by `&lt;actionName&gt;`, provided that the feed is desired `open`.
+by `actionName`, provided that the feed is desired `open`.
 
 Arguments passed to the listeners:
 
