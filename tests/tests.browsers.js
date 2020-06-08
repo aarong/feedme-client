@@ -3,14 +3,38 @@ var express = require("express");
 var sauceConnectLauncher = require("sauce-connect-launcher");
 var async = require("async");
 var request = require("request");
+var _ = require("lodash");
 
 var webserver;
 var sauceConnectProcess;
 var sauceTests;
 var sauceResults;
 
-// Are Sauce credentials present?
-if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
+// Determine mode
+// sauce-automatic: launches Sauce Connect Proxy and a suite of testing VMs on Sauce
+// sauce-live: launches Sauce Connect Proxy so that you log into Sauce and do a live test
+// local: launches only the local web server, which can be accessed from a local browser
+var mode = "sauce-automatic"; // default (for Travis)
+if (process.argv.length >= 3) {
+  if (
+    _.includes(
+      ["sauce-automatic", "sauce-live", "local"],
+      process.argv[2].toLowerCase()
+    )
+  ) {
+    mode = process.argv[2].toLowerCase();
+  } else {
+    throw new Error(
+      "INVALID_ARGUMENT: Mode must be local, sauce-live, or sauce-automatic (default)."
+    );
+  }
+}
+
+// Require Sauce credentials if you're not running locally
+if (
+  mode !== "local" &&
+  (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY)
+) {
   throw new Error(
     "NO_CREDENTIALS: The SAUCE_USERNAME or SAUCE_ACCESS_KEY environmental variable is missing."
   );
@@ -100,6 +124,12 @@ async.series(
       });
     },
     function(cb) {
+      // If you're running in local mode then stop here
+      if (mode !== "local") {
+        cb();
+      }
+    },
+    function(cb) {
       // Start Sauce Connect proxy if you aren't on Travis
       if (process.env.CI) {
         console.log("Running on Travis - no need to start Sauce Connect.");
@@ -121,6 +151,12 @@ async.series(
           }
         }
       );
+    },
+    function(cb) {
+      // If you're running in sauce-live mode then stop here
+      if (mode !== "sauce-live") {
+        cb();
+      }
     },
     function(cb) {
       // Call the Sauce REST API telling it to run the tests
