@@ -94,7 +94,12 @@
   },
   "browserslist": [
     "> 0.25%",
-    "maintained node versions",
+    "last 2 versions",
+    "ie >= 10",
+    "firefox >= 4",
+    "chrome >= 26",
+    "edge >= 13",
+    "node >= 6",
     "not dead"
   ]
 }
