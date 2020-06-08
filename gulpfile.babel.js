@@ -23,7 +23,12 @@ const browserBundleWithmaps = () => {
 
   return b
     .transform("babelify", {
-      presets: [["@babel/preset-env"]] // Uses browserslist config in package.json
+      presets: [
+        [
+          "@babel/preset-env",
+          { useBuiltIns: "usage", corejs: { version: 3, proposals: true } } // Polyfills
+        ]
+      ] // Uses browserslist config in package.json
     })
     .bundle()
     .pipe(source("bundle.withmaps.js"))
