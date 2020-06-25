@@ -13,8 +13,10 @@ jobs:
       node_js: "6"
       script:
         - nvm list
+        - nvm install lts/carbon
         - nvm use lts/carbon # 8
         - npm run build # test-src, build, test-build-node
+        - nvm install lts/boron
         - nvm use boron # 6
         - nvm run test-build-node
         - npm run test-build-browsers # Browser tests only once
