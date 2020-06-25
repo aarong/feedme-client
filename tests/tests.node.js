@@ -1,32 +1,58 @@
-var copyFileSync = require("fs-copy-file-sync"); // Not in Node 6
-var prependFile = require("prepend-file");
-var Jasmine = require("jasmine");
-var path = require("path");
-var fs = require("fs");
-var jsStringEscape = require("js-string-escape");
+/* eslint-disable import/no-extraneous-dependencies, no-console */
+import Jasmine from "jasmine";
+import jsStringEscape from "js-string-escape";
+import path from "path";
+import fs from "fs";
+import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
 
-// Copy tests/node.js to tmp/node.js
-copyFileSync(__dirname + "/tests.js", __dirname + "/node.tmp.js");
+(async () => {
+  // Load the tests
+  // No need to transpile - all syntax supported on Node 6+
+  console.log("Loading the test file...");
+  const testFileContents = await promisify(fs.readFile)(
+    `${__dirname}/tests.js`,
+    "utf-8"
+  );
 
-// Prepend the module load to the tests
-var buildPath = path.normalize(path.join(__dirname, "../build"));
-var header =
-  "var feedmeClient = require('" + jsStringEscape(buildPath) + "');\n\n";
-prependFile.sync(__dirname + "/node.tmp.js", header);
+  // Prepend the module inclusion and write tests to temporary file
+  console.log("Creating temporary test file...");
+  const buildPath = path.normalize(path.join(__dirname, "../build"));
+  const header = `var feedmeClient = require('${jsStringEscape(
+    buildPath
+  )}');\n\n`;
+  await promisify(fs.writeFile)(
+    `${__dirname}/node.tmp.js`,
+    header + testFileContents
+  );
 
-// Run the tests in Jasmine
-var jasmine = new Jasmine();
-jasmine.loadConfig({
-  spec_dir: ".",
-  spec_files: [__dirname + "/node.tmp.js"]
-});
-jasmine.onComplete(function(passed) {
+  // Run the tests in Jasmine
+  console.log("Launching tests in Jasmine...");
+  const jasmine = new Jasmine();
+  jasmine.loadConfig({
+    spec_dir: ".",
+    spec_files: [`${__dirname}/node.tmp.js`]
+  });
+  jasmine.execute();
+
+  // Await completion
+  console.log("Awaiting completion...");
+  const passed = await new Promise(resolve => {
+    jasmine.onComplete(iPassed => {
+      resolve(iPassed);
+    });
+  });
+  console.log("Tests completed.");
+
   // Delete the temp file
-  fs.unlinkSync(__dirname + "/node.tmp.js");
+  console.log("Deleting temporary test file...");
+  promisify(fs.unlink)(`${__dirname}/node.tmp.js`);
 
-  // The return code for this script must be non-zero if tests fail (Travis fail)
-  if (!passed) {
+  // Return script success/failure according to test results
+  if (passed) {
+    console.log("The tests passed.");
+    process.exit(0);
+  } else {
+    console.log("The tests failed.");
     process.exit(1);
   }
-});
-jasmine.execute();
+})();
