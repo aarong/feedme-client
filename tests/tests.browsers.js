@@ -257,13 +257,22 @@ process.on("unhandledRejection", err => {
   // Copy the latest client browser bundle and sourcemaps into the webroot
   // Note that Node 6 does not have fs.copyFile()
   console.log("Copying browser bundle and sourcemaps...");
+  const bundle = await promisify(fs.readFile)(
+    `${__dirname}/webroot/bundle.withmaps.js`
+  );
+  console.log(1);
   await promisify(fs.writeFile)(
     `${__dirname}/webroot/bundle.withmaps.js`,
-    await promisify(fs.readFile)(`${__dirname}/webroot/bundle.withmaps.js`)
+    bundle
   );
+  console.log(2);
+  const maps = await promisify(fs.readFile)(
+    `${__dirname}/../build/bundle.withmaps.js.map`
+  );
+  console.log(3);
   await promisify(fs.writeFile)(
     `${__dirname}/webroot/bundle.withmaps.js.map`,
-    await promisify(fs.readFile)(`${__dirname}/../build/bundle.withmaps.js.map`)
+    maps
   );
 
   // Start the local webserver (adapted from Jasmine-standalone)

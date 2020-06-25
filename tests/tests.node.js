@@ -5,6 +5,11 @@ import path from "path";
 import fs from "fs";
 import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
 
+// Throw on unhandled Promise rejections so that the script fails
+process.on("unhandledRejection", err => {
+  throw err;
+});
+
 (async () => {
   // Load the tests
   // No need to transpile - all syntax supported on Node 6+
