@@ -46,13 +46,8 @@ var sauceTunnelId = process.env.TRAVIS_JOB_NUMBER || "feedme-client-tunnel"; // 
 var pollInterval = 10000;
 saucePlatforms = [
   // Available Sauce platforms: https://saucelabs.com/platforms
-  // Ideally you would test everything in browserslist, but many of those
-  // platforms aren't available on Sauce -- instead, test maximally on Sauce platforms
-  // General approach is to tests earliest and latest browser versions available on all platforms
-
   // If you include a bad platform-browser combination, Sauce never returns results even when
   // the good ones are done, and does not return an error either (bad tests not listed on dashboard)
-
   // REST API only supports desktop platforms, not mobile (confirmed with support)
   // For mobile platforms you need to use Appium directly (see their platform
   // configurator), or one of their testing frameworks:
@@ -94,6 +89,203 @@ saucePlatforms = [
   ["Linux", "Firefox", "latest"],
   ["Linux", "Chrome", "latest"]
 ];
+
+var saucePlatforms = [
+  /////////////// Windows 10
+
+  // Sauce has Chrome 26+
+  // Trivial Jasmine test fails on 26-28 (no launch)
+  ["Windows 10", "Chrome", "29"],
+  ["Windows 10", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["Windows 10", "Firefox", "4"],
+  ["Windows 10", "Firefox", "55"],
+
+  // Sauce has Edge 13+
+  ["Windows 10", "MicrosoftEdge", "13"],
+  ["Windows 10", "MicrosoftEdge", "latest"],
+
+  // Sauce has IE 11
+  // Trivial Jasmine test fails (appears to pass but no return)
+
+  /////////////// Windows 8.1
+
+  // Sauce has Chrome 26+
+  // Trivial Jasmine test fails on 26-28 (no launch)
+  ["Windows 8.1", "Chrome", "29"],
+  ["Windows 8.1", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["Windows 8.1", "Firefox", "4"],
+  ["Windows 8.1", "Firefox", "55"],
+
+  // Sauce has IE 11
+  // Trivial Jasmine test fails (appears to pass but no return)
+
+  /////////////// Windows 8
+
+  // Sauce has Chrome 26+
+  // Trivial Jasmine test fails on 26-28 (no launch)
+  ["Windows 8", "Chrome", "29"],
+  ["Windows 8", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["Windows 8", "Firefox", "4"],
+  ["Windows 8", "Firefox", "55"],
+
+  // Sauce has IE 10
+  // Trivial Jasmine test fails (appears to pass but no return)
+
+  /////////////// Windows 7
+
+  // Sauce has Chrome 26+
+  // Trivial Jasmine test fails on 26-28 (no launch)
+  ["Windows 7", "Chrome", "29"],
+  ["Windows 7", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["Windows 7", "Firefox", "4"],
+  ["Windows 7", "Firefox", "55"],
+
+  // Sauce has IE 9-11
+  // Trivial Jasmine test fails on all (9 does not support Jasmine, 10-11 appear to pass but no return)
+
+  /////////////// macOS 10.14
+
+  // Sauce has Chrome 27+
+  // Trivial Jasmine test fails on 27-30 (no launch)
+  ["macOS 10.14", "Chrome", "31"],
+  ["macOS 10.14", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["macOS 10.14", "Firefox", "4"],
+  ["macOS 10.14", "Firefox", "55"],
+
+  // Sauce has Edge 79+
+  ["macOS 10.14", "MicrosoftEdge", "79"],
+  ["macOS 10.14", "MicrosoftEdge", "latest"],
+
+  // Sauce has Safari 12
+  // Trivial Jasmine test fails (appears to pass but no return)
+
+  /////////////// macOS 10.13
+
+  // Sauce has Chrome 27+
+  // Trivial Jasmine test fails on 27-30 (no launch)
+  ["macOS 10.13", "Chrome", "31"],
+  ["macOS 10.13", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["macOS 10.13", "Firefox", "4"],
+  ["macOS 10.13", "Firefox", "55"],
+
+  // Sauce has Edge 79+
+  ["macOS 10.13", "MicrosoftEdge", "79"],
+  ["macOS 10.13", "MicrosoftEdge", "latest"],
+
+  // Sauce has Safari 11-13
+  // Trivial Jasmine test fails on all (appears to pass but no return)
+
+  /////////////// macOS 10.12
+
+  // Sauce has Chrome 27+
+  // Trivial Jasmine test fails on 27-30 (no launch)
+  ["macOS 10.12", "Chrome", "31"],
+  ["macOS 10.12", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  // Trivial Jasmine test fails on 56+ (appears to pass but no return)
+  ["macOS 10.12", "Firefox", "4"],
+  ["macOS 10.12", "Firefox", "55"],
+
+  // Sauce has Edge 79+
+  ["macOS 10.12", "MicrosoftEdge", "79"],
+  ["macOS 10.12", "MicrosoftEdge", "latest"],
+
+  // Sauce has Safari 10-11
+  // Trivial Jasmine test fails on all (appears to pass but no return)
+
+  /////////////// macOS 10.10
+
+  // All browsers receive "Unsupported OS/browser/version/device combo" error
+
+  /////////////// macOS 10.10
+
+  // All browsers receive "Unsupported OS/browser/version/device combo" error
+
+  /////////////// Linux
+
+  // Sauce has Chrome 26+
+  // Trivial Jasmine test fails on 26-29 (no launch)
+  ["Linux", "Chrome", "30"],
+  ["Linux", "Chrome", "latest"],
+
+  // Sauce has Firefox 4+
+  ["Linux", "Firefox", "4"],
+  ["Linux", "Firefox", "latest"]
+];
+
+// var saucePlatforms = [
+//   /////////////// Windows 10
+
+//   ["Windows 10", "Firefox", "56"],
+//   ["Windows 10", "Firefox", "latest"],
+
+//   ["Windows 10", "Internet Explorer", "11"],
+
+//   /////////////// Windows 8.1
+
+//   ["Windows 8.1", "Firefox", "56"],
+//   ["Windows 8.1", "Firefox", "latest"],
+
+//   ["Windows 8.1", "Internet Explorer", "11"],
+
+//   /////////////// Windows 8
+
+//   ["Windows 8", "Firefox", "56"],
+//   ["Windows 8", "Firefox", "latest"],
+
+//   ["Windows 8", "Internet Explorer", "10"],
+
+//   /////////////// Windows 7
+
+//   ["Windows 7", "Firefox", "56"],
+//   ["Windows 7", "Firefox", "latest"],
+
+//   ["Windows 7", "Internet Explorer", "10"],
+//   ["Windows 7", "Internet Explorer", "11"],
+
+//   /////////////// macOS 10.14
+
+//   ["macOS 10.14", "Firefox", "56"],
+//   ["macOS 10.14", "Firefox", "latest"],
+
+//   ["macOS 10.14", "Safari", "12"],
+
+//   /////////////// macOS 10.13
+
+//   ["macOS 10.13", "Firefox", "56"],
+//   ["macOS 10.13", "Firefox", "latest"],
+
+//   ["macOS 10.13", "Safari", "11"],
+//   ["macOS 10.13", "Safari", "12"],
+//   ["macOS 10.13", "Safari", "13"],
+
+//   /////////////// macOS 10.12
+
+//   ["macOS 10.12", "Firefox", "56"],
+//   ["macOS 10.12", "Firefox", "latest"],
+
+//   ["macOS 10.12", "Safari", "10"],
+//   ["macOS 10.12", "Safari", "11"]
+// ];
 
 // Run the tests
 async.series(

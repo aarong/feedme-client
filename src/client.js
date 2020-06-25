@@ -687,7 +687,6 @@ proto.action = function action(name, args, ...callbacks) {
   } else {
     // Promise style
     dbg("Promise style action requested");
-
     ret = new Promise((resolve, reject) => {
       // Invoke the action - could fail, so done before the timeout is set
       // Session fires all action callbacks with error on disconnect
@@ -704,7 +703,6 @@ proto.action = function action(name, args, ...callbacks) {
           }
         }
       });
-
       // Set the timeout, if so configured
       if (this._options.actionTimeoutMs > 0) {
         dbg("Action timout timer created");

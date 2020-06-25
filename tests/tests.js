@@ -2401,32 +2401,32 @@ describe("The client.action() function", function() {
     });
   });
 
-  describe("throw and return - promise style", function() {
-    it("should throw on bad argument (just test one)", function() {
-      var harness = harnessFactory();
-      harness.connectClient();
-      expect(function() {
-        harness.client.action("some_action", 123);
-      }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid action arguments object.")
-      );
-    });
+  // describe("throw and return - promise style", function() {
+  //   it("should throw on bad argument (just test one)", function() {
+  //     var harness = harnessFactory();
+  //     harness.connectClient();
+  //     expect(function() {
+  //       harness.client.action("some_action", 123);
+  //     }).toThrow(
+  //       new Error("INVALID_ARGUMENT: Invalid action arguments object.")
+  //     );
+  //   });
 
-    it("should throw if not connected", function() {
-      var harness = harnessFactory();
-      expect(function() {
-        harness.client.action("SomeAction", {});
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
-    });
+  //   it("should throw if not connected", function() {
+  //     var harness = harnessFactory();
+  //     expect(function() {
+  //       harness.client.action("SomeAction", {});
+  //     }).toThrow(new Error("INVALID_STATE: Not connected."));
+  //   });
 
-    it("should return promise on success", function() {
-      var harness = harnessFactory();
-      harness.connectClient();
-      expect(harness.client.action("SomeAction", {})).toEqual(
-        jasmine.any(Promise)
-      );
-    });
-  });
+  //   it("should return promise on success", function() {
+  //     var harness = harnessFactory();
+  //     harness.connectClient();
+  //     expect(harness.client.action("SomeAction", {})).toEqual(
+  //       jasmine.any(Promise)
+  //     );
+  //   });
+  // });
 
   // Client and feed state functions - N/A
 
@@ -2462,33 +2462,33 @@ describe("The client.action() function", function() {
     });
   });
 
-  describe("transport calls - promise style", function() {
-    it("should send an Action message on the transport", function() {
-      var harness = harnessFactory();
-      harness.connectClient();
+  // describe("transport calls - promise style", function() {
+  //   it("should send an Action message on the transport", function() {
+  //     var harness = harnessFactory();
+  //     harness.connectClient();
 
-      // Reset transport spies
-      harness.transport.spyClear();
+  //     // Reset transport spies
+  //     harness.transport.spyClear();
 
-      // Invoke an action
-      harness.client.action("SomeAction", { Action: "Arg" });
+  //     // Invoke an action
+  //     harness.client.action("SomeAction", { Action: "Arg" });
 
-      // Check all transport calls
-      expect(harness.transport.connect.calls.count()).toBe(0);
-      expect(harness.transport.disconnect.calls.count()).toBe(0);
-      expect(harness.transport.send.calls.count()).toBe(1);
-      expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
-      // You can't check the whole message in one go, since callback id is created internally
-      var msg = JSON.parse(harness.transport.send.calls.argsFor(0)[0]);
-      expect(msg.MessageType).toBe("Action");
-      expect(msg.ActionName).toBe("SomeAction");
-      expect(msg.ActionArgs).toEqual({ Action: "Arg" });
-      expect(
-        typeof msg.CallbackId === "string" || msg.CallbackId instanceof String
-      ).toBe(true);
-      expect(harness.transport.state.calls.count() >= 0).toBe(true);
-    });
-  });
+  //     // Check all transport calls
+  //     expect(harness.transport.connect.calls.count()).toBe(0);
+  //     expect(harness.transport.disconnect.calls.count()).toBe(0);
+  //     expect(harness.transport.send.calls.count()).toBe(1);
+  //     expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+  //     // You can't check the whole message in one go, since callback id is created internally
+  //     var msg = JSON.parse(harness.transport.send.calls.argsFor(0)[0]);
+  //     expect(msg.MessageType).toBe("Action");
+  //     expect(msg.ActionName).toBe("SomeAction");
+  //     expect(msg.ActionArgs).toEqual({ Action: "Arg" });
+  //     expect(
+  //       typeof msg.CallbackId === "string" || msg.CallbackId instanceof String
+  //     ).toBe(true);
+  //     expect(harness.transport.state.calls.count() >= 0).toBe(true);
+  //   });
+  // });
 
   // Callbacks
 
