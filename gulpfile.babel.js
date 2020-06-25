@@ -18,9 +18,5 @@ const transpile = () =>
 const copy = () =>
   gulp.src("./{package.json,LICENSE,README.md}").pipe(gulp.dest("build/"));
 
-export const nodeTranspile = gulp.series(
-  // eslint-disable-line import/prefer-default-export
-  clean,
-  transpile,
-  copy
-);
+// eslint-disable-next-line import/prefer-default-export
+export const nodeTranspile = gulp.series(clean, transpile, copy);

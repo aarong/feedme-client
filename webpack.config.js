@@ -3,8 +3,8 @@ const path = require('path');
 // One build with source maps and one without
 module.exports = [true, false].map(sourceMaps => ({
   entry: './src/main.browser.js',
-  stats: "verbose",
   mode: 'production',
+
   module: {
     rules: [
       {
@@ -57,7 +57,7 @@ module.exports = [true, false].map(sourceMaps => ({
               ],
 
               // Verbose preset-env output
-              debug: true
+              // debug: true
             }]]
           }
         }
@@ -88,4 +88,7 @@ module.exports = [true, false].map(sourceMaps => ({
     maxAssetSize: 400000,
     maxEntrypointSize: 400000
   },
+  
+  // Detailed Webpack info
+  // stats: "verbose"
 }));
