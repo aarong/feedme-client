@@ -13,12 +13,12 @@ jobs:
       node_js: "6"
       script:
         - nvm list
-        - nvm install lts/carbon
+        - nvm install lts/carbon # Must build in Node 8+ (for webpack and babel-loader)
         - nvm use lts/carbon # 8
         - npm run build # test-src, build, test-build-node
         - nvm install lts/boron
         - nvm use lts/boron # 6
-        - nvm run test-build-node
+        - npm run test-build-node
         - npm run test-build-browsers # Browser tests only once
         - npm run coveralls
     - stage: Test
