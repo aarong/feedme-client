@@ -51,8 +51,9 @@ module.exports = [true, false].map(sourceMaps => ({
                 "edge >= 13",
                 "safari >= 10",
                 "node >= 6",
-                "not dead",        // Capture non-tested browsers
-                "last 2 versions", // Capture non-tested browsers
+                "not dead",        // Capture any non-tested browsers
+                "last 2 versions", // Capture any non-tested browsers
+                "> 0.25%"          // Capture any non-tested browsers
               ],
 
               // Verbose preset-env output
