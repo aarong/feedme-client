@@ -30,10 +30,6 @@ jobs:
         - nvm use 6
         - npm run test-build-node
 
-        - nvm install 4
-        - nvm use 4
-        - node tests/tests.node.js # Can't use eslint
-
         - npm run test-build-browsers # Browser tests only once
         - npm run coveralls
       deploy: # Can't use npm provider because you need to publish the build folder
