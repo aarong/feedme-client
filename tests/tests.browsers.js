@@ -402,9 +402,11 @@ process.on("unhandledRejection", err => {
     }
   }
 
-  // Close the Sauce Connect proxy
-  console.log("Stopping Sauce Connect proxy...");
-  await promisify(sauceConnectProcess.close)();
+  // Close the Sauce Connect proxy (if not on Travis)
+  if (sauceConnectProcess) {
+    console.log("Stopping Sauce Connect proxy...");
+    await promisify(sauceConnectProcess.close)();
+  }
 
   // Stop the webserver
   console.log("Stopping the webserver...");
