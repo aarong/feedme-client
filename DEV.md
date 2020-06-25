@@ -6,11 +6,12 @@ This documentation is for developers of the Feedme client library itself.
 
 - [Getting Started](#getting-started)
 - [Directory Structure](#directory-structure)
-- [Source Modules](#source-modules)
+- [Source Code](#source-code)
   - [Source Files](#source-files)
 - [Target Node and NPM Versions](#target-node-and-npm-versions)
 - [NPM Scripts](#npm-scripts)
-- [Development and Deployment Workflow](#development-and-deployment-workflow)
+- [Committing and Deploying](#committing-and-deploying)
+- [Contributions](#contributions)
 - [Transport API](#transport-api)
   - [Fundamentals](#fundamentals)
   - [Transport States](#transport-states)
@@ -33,6 +34,9 @@ npm run build
 The build procedure runs unit tests on the `src` folder, assembles a transpiled
 and publish-ready NPM package in the `build` folder (including a Node module
 and a browser bundle), and runs funtional tests on the built Node module.
+
+To enable debugging output set the `debug` environment variable to
+`feedme-client*`.
 
 ## Directory Structure
 
@@ -66,7 +70,8 @@ and a browser bundle), and runs funtional tests on the built Node module.
   - `src/main.node.js` Entrypoint for transpiling the Node NPM package, which
     includes `source-map-support`.
 
-  - `src/main.browser.js` Entrypoint for transpiling the browser bundle.
+  - `src/main.browser.js` Entrypoint for transpiling the browser bundle. No
+    special functionality.
 
   - `src/main.js` Common entrypoint to the module for Node and the browser.
 
@@ -78,24 +83,24 @@ and a browser bundle), and runs funtional tests on the built Node module.
   
   Functional tests are written for Jasmine, as Jest can not run in the browser.
 
-  - `tests/tests.js` The functional tests.
+  - `tests/tests.js` The functional tests, run against Node and browser builds.
 
   - `tests/tests.node.js` Runs tests in Node.
 
-  - `tests/tests.browsers.js` Runs tests in targetted browsers using Sauce Labs.
+  - `tests/tests.browsers.js` Runs tests in the browser.
 
   - `tests/webroot`
 
     A hosting root to run functional tests on Sauce. Derived from
     Jasmine-standalone.
 
-## Source Modules
+## Source Code
 
-Module source code is written in ES6 and is transpiled on build for Node and the
+Source code is written in ES6 and is transpiled on build for Node and the
 browser.
 
-Eslint enforces Airbnb style and applies Prettier (which takes precence over
-some Airbnb rules). A lint check is performed before unit tests.
+Eslint enforces Airbnb style and applies Prettier, which takes precence over
+some Airbnb rules. A lint check is performed before unit tests.
 
 Errors are thrown, called back, and emitted in the form
 `new Error("ERROR_CODE: Some more descriptive text.")`. Altering the `name`
@@ -124,52 +129,73 @@ property of an error object breaks sourcemaps in the browser.
 - `main.browser.js` is the entrypoint for browser transpilation. No special
   functionality.
 
-- `messageparser.js` checks the validity of incoming server messages.
-
 - `transportwrapper.js` ensures that the transport object behaves as required.
 
 ## Target Node and NPM Versions
 
 The intention is to support Node and NPM back as far as realistically possible.
 
-For a development install, the binding dependency constraint is that Eslint
-requires Node 6+, but package-lock.json is only supported by NPM 5+, which comes
-with Node 8+. Develop on Node 8+ and NPM 5+ to ensure that the repo has
-package-lock.json, and rely on Travis to test on Node 6. The Node 6 build is
-published to NPM, as it should be compatible with later versions of Node.
+For a development install, the binding dependency constraint is that Webpack
+and babel-loader require Node 8+. Also, package-lock.json is only supported by
+NPM 5+, which comes with Node 8+. So develop and build on Node 8+ and NPM 5+.
 
-Since production installs run code transpiled for Node 6, there is no guarantee
-that they will support earlier versions of Node even though there are far fewer
-dependency-related version constraints.
+Although the library needs to be developed and built on Node 8+, its production
+dependencies are more lenient and can be run on Node 6+, which is verified
+on the Travis build.
 
 ## NPM Scripts
 
-- `npm run docs` Generate source code documentation in `docs`.
+- `npm run docs` Generates source code documentation in `docs`.
 
-- `npm run lint-src` Check for linting errors in `src`.
+- `npm run lint-src` Checks for linting errors in `src`.
 
-- `npm run lint-build-tests` Check for linting errors in `tests`.
+- `npm run lint-build-tests` Checks for linting errors in `tests`.
 
-- `npm run coverage` Display Jest unit test coverage.
+- `npm run coverage` Displays Jest unit test coverage.
 
 - `npm run coveralls` Used by Travis to pass coverage information to Coveralls.
 
-- `npm run test-src` Run linting and Jest unit tests on the source code. Aliased
-  by `npm run test`. (Jest)
+- `npm run test-src` Runs linting and Jest unit tests on the source code.
+  Aliased by `npm run test`. (Jest)
 
-- `npm run build` Run the unit tests, build a publishable NPM package in
-  `build`, and run the Node functional tests on the build. Browser tests must be
-  run explicitly, given the need for Sauce credentials.
+- `npm run build` Runs the unit tests, builds a publishable NPM package in
+  `build`, and runs the Node functional tests on the build. Browser tests must
+  be run explicitly.
 
-- `npm run test-build-node` Run functional tests against the Node module in the
+- `npm run test-build-node` Runs functional tests against the Node module in the
   `build` folder. (Jasmine)
 
-- `npm run test-build-browsers` Run functional tests against the browser bundle
-  in the `build` folder on Sauce Labs. Requires the environmental variables
-  `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY`, otherwise the Sauce Connect proxy
-  will fail. (Jasmine)
+- `npm run test-build-browsers -- <mode>` Runs functional tests against the
+  browser bundle in the `build` folder. The tests are built using Jasmine, which
+  supports both Node and the browser (though sourcemaps only work in Node).
+  
+  Modes:
 
-## Development and Deployment Workflow
+  - `local` Launches a local webserver with the browser tests, which can then
+  be accessed manually from a browser.
+
+  - `sauce-live` Launches a local webserver with the browser tests and loads
+  Sauce Connect the proxy. You can then log in to Sauce and run the browser 
+  tests live via the Sauce Connect tunnel. Useful for viewing console output.
+
+  - `sauce-automatic` (Default) Launches a local server with the browser tests,
+  loads the Sauce Connect proxy, instructs the Sauce REST API to run automated
+  tests across the widest possible set of platforms, and reports results.
+  Requires the environmental variables `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY`,
+  otherwise the Sauce Connect proxy will fail. Runs on each Travis build.
+
+  - `sauce-automatic-hanging` Many Sauce browser-platform combinations run the
+  tests successfully but, frustratingly, do not actually return success. This
+  option runs tests on those combinations, which can then be verified manually
+  on the Sauce website. Requires Sauce credentials in environmental variables.
+
+## Committing and Deploying
+
+Commits to the master branch on Github are built and tested by Travis CI. If the
+NPM package version has been incremented, then Travis will deploy by publishing
+the build to NPM.
+
+## Contributions
 
 Contributors can fork the repo, make changes, and submit a pull request.
 
@@ -183,10 +209,6 @@ git commit -m "Added my new feature."
 git push origin my-new-feature
 # Submit a pull request
 ```
-
-Commits to the master branch are built and tested by Travis CI. If the NPM
-package version has been incremented, then Travis will deploy by publishing the
-build to NPM.
 
 ## Transport API
 
