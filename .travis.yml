@@ -30,19 +30,15 @@ jobs:
         - nvm use 6
         - npm run test-build-node
 
+        - nvm install 4
+        - nvm use 4
+        - npm run test-build-node
+
         - npm run test-build-browsers # Browser tests only once
         - npm run coveralls
-    # - stage: Test
-    #   language: node_js
-    #   node_js: "8"
-    #   script: npm run build # test-src, build, test-build-node
-    # - stage: Test
-    #   language: node_js
-    #   node_js: "10"
-    #   script: npm run build # test-src, build, test-build-node
     - stage: Deploy # Runs on each build, but only publishes on new version
       language: node_js
-      node_js: "6" # Maximum compatibility
+      node_js: "14" 
       script:
         - npm run build
       deploy: # Can't use npm provider because you need to publish the build folder
