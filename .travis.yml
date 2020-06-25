@@ -30,6 +30,7 @@ jobs:
         - nvm use 6
         - npm run test-build-node
 
+        - nvm use 8
         - npm run test-build-browsers # Browser tests only once
         - npm run coveralls
       deploy: # Can't use npm provider because you need to publish the build folder
