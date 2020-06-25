@@ -1,4 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies, no-console */
+import "make-promises-safe"; // Exit with error on unhandled rejection
 import express from "express";
 import sauceConnectLauncher from "sauce-connect-launcher";
 import request from "request";
@@ -26,14 +27,14 @@ process.on("unhandledRejection", err => {
   if (process.argv.length >= 3) {
     if (
       _.includes(
-        ["sauce-automatic", "sauce-live", "local"],
+        ["sauce-automatic", "sauce-automatic-hanging", "sauce-live", "local"],
         process.argv[2].toLowerCase()
       )
     ) {
       mode = process.argv[2].toLowerCase();
     } else {
       throw new Error(
-        "INVALID_ARGUMENT: Mode must be local, sauce-live, or sauce-automatic (default)."
+        "INVALID_ARGUMENT: Mode must be local, sauce-live, sauce-automatic (default), or sauce-automatic-hanging."
       );
     }
   }
@@ -191,62 +192,62 @@ process.on("unhandledRejection", err => {
     ["Linux", "Firefox", "latest"]
   ];
 
-  // // The following platforms test successfully on sauce, judging by the video,
-  // // but the Sauce results do not return successfully
-  // const saucePlatformsHanging = [
-  //   // ///////////// Windows 10
+  // The following platforms test successfully on sauce, judging by the video,
+  // but the Sauce results do not return successfully
+  const saucePlatformsHanging = [
+    // ///////////// Windows 10
 
-  //   ["Windows 10", "Firefox", "56"],
-  //   ["Windows 10", "Firefox", "latest"],
+    ["Windows 10", "Firefox", "56"],
+    ["Windows 10", "Firefox", "latest"],
 
-  //   ["Windows 10", "Internet Explorer", "11"],
+    ["Windows 10", "Internet Explorer", "11"],
 
-  //   // ///////////// Windows 8.1
+    // ///////////// Windows 8.1
 
-  //   ["Windows 8.1", "Firefox", "56"],
-  //   ["Windows 8.1", "Firefox", "latest"],
+    ["Windows 8.1", "Firefox", "56"],
+    ["Windows 8.1", "Firefox", "latest"],
 
-  //   ["Windows 8.1", "Internet Explorer", "11"],
+    ["Windows 8.1", "Internet Explorer", "11"],
 
-  //   // ///////////// Windows 8
+    // ///////////// Windows 8
 
-  //   ["Windows 8", "Firefox", "56"],
-  //   ["Windows 8", "Firefox", "latest"],
+    ["Windows 8", "Firefox", "56"],
+    ["Windows 8", "Firefox", "latest"],
 
-  //   ["Windows 8", "Internet Explorer", "10"],
+    ["Windows 8", "Internet Explorer", "10"],
 
-  //   // ///////////// Windows 7
+    // ///////////// Windows 7
 
-  //   ["Windows 7", "Firefox", "56"],
-  //   ["Windows 7", "Firefox", "latest"],
+    ["Windows 7", "Firefox", "56"],
+    ["Windows 7", "Firefox", "latest"],
 
-  //   ["Windows 7", "Internet Explorer", "10"],
-  //   ["Windows 7", "Internet Explorer", "11"],
+    ["Windows 7", "Internet Explorer", "10"],
+    ["Windows 7", "Internet Explorer", "11"],
 
-  //   // ///////////// macOS 10.14
+    // ///////////// macOS 10.14
 
-  //   ["macOS 10.14", "Firefox", "56"],
-  //   ["macOS 10.14", "Firefox", "latest"],
+    ["macOS 10.14", "Firefox", "56"],
+    ["macOS 10.14", "Firefox", "latest"],
 
-  //   ["macOS 10.14", "Safari", "12"],
+    ["macOS 10.14", "Safari", "12"],
 
-  //   // ///////////// macOS 10.13
+    // ///////////// macOS 10.13
 
-  //   ["macOS 10.13", "Firefox", "56"],
-  //   ["macOS 10.13", "Firefox", "latest"],
+    ["macOS 10.13", "Firefox", "56"],
+    ["macOS 10.13", "Firefox", "latest"],
 
-  //   ["macOS 10.13", "Safari", "11"],
-  //   ["macOS 10.13", "Safari", "12"],
-  //   ["macOS 10.13", "Safari", "13"],
+    ["macOS 10.13", "Safari", "11"],
+    ["macOS 10.13", "Safari", "12"],
+    ["macOS 10.13", "Safari", "13"],
 
-  //   // ///////////// macOS 10.12
+    // ///////////// macOS 10.12
 
-  //   ["macOS 10.12", "Firefox", "56"],
-  //   ["macOS 10.12", "Firefox", "latest"],
+    ["macOS 10.12", "Firefox", "56"],
+    ["macOS 10.12", "Firefox", "latest"],
 
-  //   ["macOS 10.12", "Safari", "10"],
-  //   ["macOS 10.12", "Safari", "11"]
-  // ];
+    ["macOS 10.12", "Safari", "10"],
+    ["macOS 10.12", "Safari", "11"]
+  ];
 
   // Transpile the tests and drop in webroot
   console.log("Transpiling tests...");
@@ -318,7 +319,11 @@ process.on("unhandledRejection", err => {
     body: {
       url: `http://localhost:${port}`,
       framework: "custom",
-      platforms: saucePlatforms,
+      platforms:
+        mode === "sauce-automatic-hanging"
+          ? saucePlatformsHanging
+          : saucePlatforms,
+      maxDuration: 60, // Seconds/platform; kill hanging tests quickly or they won't all run before global timeout
       "tunnel-identifier": sauceTunnelId
     }
   });

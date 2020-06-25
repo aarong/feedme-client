@@ -21,47 +21,18 @@ This documentation is for developers of the Feedme client library itself.
 
 ## Getting Started
 
-To get started:
+Clone the repo, install dependencies, and build the package:
 
 ```shell
 git clone https://github.com/aarong/feedme-client
 cd feedme-client
 npm install
-```
-
-Edit the source code in the `src` folder and run linting and unit tests:
-
-```shell
-npm run test-src
-# or
-npm run test-src -- --watch
-```
-
-Build a publish-ready NPM package in the `build` folder, including a browser
-bundle:
-
-```shell
 npm run build
 ```
 
-When the build process has completed, functional tests are automatically run on
-the Node module in `build`. Those tests can also be run explicitly:
-
-```shell
-npm run test-build-node
-```
-
-Functional tests in targeted browsers require Sauce credentials in the
-`SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` environmental variables. Then do:
-
-```shell
-npm run test-build-browsers
-```
-
-Jasmine recognizes source maps in Node, but unfortunately not in the browser.
-
-To enable debugging output set the `debug` environment variable to
-`feedme-client*`.
+The build procedure runs unit tests on the `src` folder, assembles a transpiled
+and publish-ready NPM package in the `build` folder (including a Node module
+and a browser bundle), and runs funtional tests on the built Node module.
 
 ## Directory Structure
 
@@ -74,11 +45,11 @@ To enable debugging output set the `debug` environment variable to
 
   LICENSE, README.md, and package.json are included.
 
-  (Gulp/Browserify)
+  (Gulp/Webpack)
 
 - `coverage/`
 
-  Created by `npm run coverage`. Coverage information for unit tests only.
+  Created by `npm run coverage`. Coverage information is for unit tests only.
 
   (Jest)
 
@@ -90,13 +61,12 @@ To enable debugging output set the `debug` environment variable to
 
 - `src/`
 
-  Module source code. Linted ES6.
+  Module source code.
 
   - `src/main.node.js` Entrypoint for transpiling the Node NPM package, which
-    includes `source-map-support` (don't bundle for the browser).
+    includes `source-map-support`.
 
-  - `src/main.browser.js` Entrypoint for transpiling the browser bundle. No
-    special functionality.
+  - `src/main.browser.js` Entrypoint for transpiling the browser bundle.
 
   - `src/main.js` Common entrypoint to the module for Node and the browser.
 
@@ -105,10 +75,8 @@ To enable debugging output set the `debug` environment variable to
 - `tests/`
 
   Functional tests for the Node and and browser builds.
-
-  Written in ES5 so that it can be run directly in all versions of Node and the
-  browser. Functional tests are written for Jasmine, as Jest can not run in the
-  browser.
+  
+  Functional tests are written for Jasmine, as Jest can not run in the browser.
 
   - `tests/tests.js` The functional tests.
 
@@ -118,9 +86,8 @@ To enable debugging output set the `debug` environment variable to
 
   - `tests/webroot`
 
-    A hosting root to run functional tests on Sauce. The files `bundle.js`,
-    `bundle.js.map`, and `tests.js` are repopulated from the `build` folder on
-    each test. Derived from Jasmine-standalone.
+    A hosting root to run functional tests on Sauce. Derived from
+    Jasmine-standalone.
 
 ## Source Modules
 

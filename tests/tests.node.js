@@ -1,4 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies, no-console */
+import "make-promises-safe"; // Exit with error on unhandled rejection
 import Jasmine from "jasmine";
 import jsStringEscape from "js-string-escape";
 import path from "path";
