@@ -33,7 +33,7 @@ npm run build
 
 The build procedure runs unit tests on the `src` folder, assembles a transpiled
 and publish-ready NPM package in the `build` folder (including a Node module
-and a browser bundle), and runs funtional tests on the built Node module.
+and a browser bundle), and runs functional tests on the built Node module.
 
 To enable debugging output set the `debug` environment variable to
 `feedme-client*`.
