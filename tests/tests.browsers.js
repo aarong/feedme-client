@@ -18,6 +18,7 @@ import targets from "../targets";
 
   // Determine testing mode
   // sauce-automatic: launches Sauce Connect Proxy and a suite of testing VMs on Sauce
+  // sauce-automatic-hanging: launches Sauce Connect Proxy and a suite of hanging VMs on Sauce
   // sauce-live: launches Sauce Connect Proxy so that you log into Sauce and do a live test
   // local: launches only the local web server, which can be accessed from a local browser
   let mode = "sauce-automatic"; // default (for Travis)
