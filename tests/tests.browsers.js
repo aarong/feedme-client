@@ -4,9 +4,11 @@ import express from "express";
 import sauceConnectLauncher from "sauce-connect-launcher";
 import request from "request";
 import _ from "lodash";
-import childProcess from "child_process";
+import path from "path";
+import webpack from "webpack";
 import fs from "fs";
 import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
+import targets from "../targets";
 
 // Throw on unhandled Promise rejections so that the script fails
 process.on("unhandledRejection", err => {
@@ -249,11 +251,75 @@ process.on("unhandledRejection", err => {
     ["macOS 10.12", "Safari", "11"]
   ];
 
-  // Transpile the tests and drop in webroot
-  console.log("Transpiling tests...");
-  await promisify(childProcess.exec)(
-    `babel "${__dirname}/tests.js" --out-file "${__dirname}/webroot/tests.js"`
-  );
+  // Transpile and bundle the tests and drop in webroot
+  // Webpack bundling required to insert promise polyfills and dependencies like component-emitter
+  console.log("Transpiling and bundling tests...");
+  let webpackStats;
+  try {
+    webpackStats = await promisify(webpack)({
+      entry: path.resolve(__dirname, "tests.js"),
+      mode: "production",
+      module: {
+        rules: [
+          {
+            test: /\.js$/,
+            exclude: [
+              /\bnode_modules[\\/]{1}core-js\b/,
+              /\bnode_modules[\\/]{1}webpack\b/
+            ],
+            use: {
+              loader: "babel-loader",
+              options: {
+                babelrc: false,
+                sourceType: "unambiguous",
+                presets: [
+                  [
+                    "@babel/preset-env",
+                    {
+                      modules: false,
+                      useBuiltIns: "usage",
+                      corejs: {
+                        version: "3",
+                        proposals: true
+                      },
+                      targets: targets.browsers
+                      // debug: true
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        ]
+      },
+      output: {
+        filename: "tests.js",
+        path: path.resolve(__dirname, "webroot")
+      },
+      optimization: {
+        minimize: false
+      },
+      devtool: "source-maps"
+      // performance: {
+      //   maxAssetSize: 400000,
+      //   maxEntrypointSize: 400000
+      // }
+      // stats: "verbose"
+    });
+  } catch (e) {
+    console.log("Webpack threw an error");
+    console.log(e.toString());
+    return; // Stop
+  }
+  if (webpackStats.hasErrors()) {
+    console.log("Webpack reported one or more compilation errors");
+    console.log(webpackStats.toString());
+    process.exit(1); // Return failure
+  }
+  if (webpackStats.hasWarnings()) {
+    console.log("Webpack reported one or more warnings");
+    console.log(webpackStats.toString());
+  }
 
   // Copy the latest client browser bundle and sourcemaps into the webroot
   // Note that Node 6 does not have fs.copyFile()

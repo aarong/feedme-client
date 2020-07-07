@@ -1,3 +1,5 @@
+import emitter from "component-emitter";
+
 /* global feedmeClient */
 /*
 
@@ -25,30 +27,9 @@ const harnessFactory = options => {
   const harness = Object.create(harnessProto);
 
   // Create the transport basics
-  const t = {};
+  const t = emitter({});
   harness.transport = t;
   options.transport = t; // eslint-disable-line no-param-reassign
-
-  // Transport event emitter fuctionality
-  t._listeners = {}; // properties are arrays
-  t.on = (event, listener) => {
-    if (!t._listeners[event]) {
-      t._listeners[event] = [];
-    }
-    t._listeners[event].push(listener);
-  };
-  t.emit = (event, arg) => {
-    // max one arg
-    if (t._listeners[event]) {
-      for (let i = 0; i < t._listeners[event].length; i += 1) {
-        if (arg !== undefined) {
-          t._listeners[event][i](arg);
-        } else {
-          t._listeners[event][i]();
-        }
-      }
-    }
-  };
 
   // Transport spies
   t.connect = jasmine.createSpy();
