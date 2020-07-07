@@ -379,7 +379,7 @@ import targets from "../targets";
     },
     json: true,
     body: {
-      url: `http://localhost:${port}`,
+      url: `http://localhost:${port}/?throwFailures=true&oneFailurePerSpec=true`,
       framework: "custom",
       platforms:
         mode === "sauce-automatic-hanging"
