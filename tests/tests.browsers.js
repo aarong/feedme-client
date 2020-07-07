@@ -10,11 +10,6 @@ import fs from "fs";
 import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
 import targets from "../targets";
 
-// Throw on unhandled Promise rejections so that the script fails
-process.on("unhandledRejection", err => {
-  throw err;
-});
-
 (async () => {
   // Config
   const port = 3000;
