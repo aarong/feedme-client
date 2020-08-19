@@ -1,5 +1,6 @@
 import emitter from "component-emitter";
 import debug from "debug";
+import queueMicrotask from "./queuemicrotask";
 
 const dbg = debug("feedme-client:feed");
 
@@ -12,6 +13,8 @@ const dbg = debug("feedme-client:feed");
  *
  * - Receives notifications about changes in server feed state and action
  * revelations through the inform function set.
+ *
+ * - Events are emitted asynchronously.
  *
  * - Tested alongside the client.
  *
@@ -420,15 +423,28 @@ proto._serverActionRevelation = function _serverActionRevelation(
     return;
   }
 
-  // Desired state is open - fire the events
-  this.emit("action", actionName, actionData, newFeedData, oldFeedData);
-  this.emit(`action:${actionName}`, actionData, newFeedData, oldFeedData);
+  // Desired state is open - fire the events asynchronously
+  queueMicrotask(
+    this.emit.bind(this),
+    "action",
+    actionName,
+    actionData,
+    newFeedData,
+    oldFeedData
+  );
+  queueMicrotask(
+    this.emit.bind(this),
+    `action:${actionName}`,
+    actionData,
+    newFeedData,
+    oldFeedData
+  );
 };
 
 // Emitter functions that track the last emission
 
 /**
- * Emit closed. Emit with correct number of arguments.
+ * Emit close asynchronously. Emit with correct number of arguments.
  * @memberof Feed
  * @instance
  * @private
@@ -446,9 +462,9 @@ proto._emitClose = function _emitClose(err) {
   this._lastEmission = "close";
   this._lastCloseError = err || null;
   if (err) {
-    this.emit("close", err);
+    queueMicrotask(this.emit.bind(this), "close", err);
   } else {
-    this.emit("close");
+    queueMicrotask(this.emit.bind(this), "close");
   }
 };
 
@@ -463,7 +479,7 @@ proto._emitOpening = function _emitOpening() {
 
   this._lastEmission = "opening";
   this._lastCloseError = null;
-  this.emit("opening");
+  queueMicrotask(this.emit.bind(this), "opening");
 };
 
 /**
@@ -478,7 +494,7 @@ proto._emitOpen = function _emitOpen() {
 
   this._lastEmission = "open";
   this._lastCloseError = null;
-  this.emit("open");
+  queueMicrotask(this.emit.bind(this), "open");
 };
 
 // Internal helper

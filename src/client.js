@@ -6,9 +6,9 @@ import _pull from "lodash/pull";
 import _startsWith from "lodash/startsWith";
 import debug from "debug";
 import feedSerializer from "feedme-util/feedserializer";
-import jsonExpressible from "json-expressible";
 import config from "./config";
 import feed from "./feed";
+import queueMicrotask from "./queuemicrotask";
 
 const dbg = debug("feedme-client");
 
@@ -27,6 +27,8 @@ const dbg = debug("feedme-client");
  * - All feed object methods pass through to client functionality until destroyed
  * - State is stored within the feed objects and is accessed and modified by the client
  *
+ * No need to emit events asynchronously - that behavior is required of the
+ * transport and filters through the session object.
  * @typedef {Object} Client
  * @extends emitter
  */
@@ -570,156 +572,63 @@ proto.id = function id() {
 };
 
 /**
- * Pass-through to session.action() plus timeout functionality and promisification.
- * Arguments are checked at the session level and errors are cascaded.
- *
- * If the client passes only two arguments (action name and args) then return
- * a promise. If the client passes three or more arguments (i.e. it includes
- * a callback or callbackLate argument) then return nothing and call back
- * on action completion.
- *
- * Arguments are checked here even though they are validated by the session,
- * because (1) in callback mode, a function is always passed to the session
- * and callbackLast is not passed to the session, and (2) in promise mode,
- * session errors result in the promise being rejected, not a thrown error.
- * For the latter reason, client state is also checked here.
- *
- * In callback mode:
+ * Pass-through to session.action() plus timeout functionality.
+ * Arguments are checked at the session level and errors are cascaded, except
+ * callback is verified because a function is always passed to the session.
  *
  * If the server hasn't returned a response before options.actionTimeoutMs
- * then callback() receives a TIMEOUT error. In that case, if a response is
- * subsequently received from the server, it is routed to callbackLate() if present.
- * If the client disconnects before a response is received, then callbackLate()
- * is called with a DISCONNECTED error, if present.
- *
- * In promise mode:
- *
- * If the server hasn't returned a response before options.actionTimeoutMs
- * then the promise is rejected with a TIMEOUT error. There is no callbackLate
- * functionality.
+ * then callback() receives a TIMEOUT error.
  *
  * @memberof Client
  * @instance
  * @param {string}          name
  * @param {Object}          args
- * @param {?actionCallback} callback
- * @param {?actionCallback} callbackLate
+ * @param {actionCallback} callback
  * @throws {Error} Passed through from session
  */
 
-proto.action = function action(name, args, ...callbacks) {
+proto.action = function action(name, args, callback) {
   dbg("Action requested");
 
-  // Check name
-  if (!check.nonEmptyString(name)) {
-    throw new Error("INVALID_ARGUMENT: Invalid action name.");
-  }
-
-  // Check args
-  if (!check.object(args)) {
-    throw new Error("INVALID_ARGUMENT: Invalid action arguments object.");
-  }
-  if (!jsonExpressible(args)) {
-    throw new Error(
-      "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
-    );
-  }
-
-  // Transport connected and handshake complete?
-  if (this.state() !== "connected") {
-    throw new Error("INVALID_STATE: Not connected.");
+  // Check callback
+  if (!check.function(callback)) {
+    throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
   let timer;
-  let ret;
 
-  if (callbacks.length > 0) {
-    // Callback style
-    dbg("Callback style action requested");
-    const callback = callbacks[0];
-    const callbackLate = callbacks.length > 1 ? callbacks[1] : () => {};
-
-    // Check callback
-    if (!check.function(callback)) {
-      throw new Error("INVALID_ARGUMENT: Invalid callback.");
-    }
-
-    // Check callbackLate
-    if (!check.function(callbackLate)) {
-      throw new Error("INVALID_ARGUMENT: Invalid callbackLate.");
-    }
-
-    // Invoke the action - could fail, so done before the timeout is set
-    // Session fires all action callbacks with error on disconnect
-    this._session.action(name, args, (err, actionData) => {
-      // Timer not set if actionTimeoutMs === 0
-      if (timer || this._options.actionTimeoutMs === 0) {
-        if (timer) {
-          clearTimeout(timer); // Not present if actionTimeoutMs === 0
-        }
-        if (err) {
-          callback(err);
-        } else {
-          callback(err, actionData);
-        }
-      } else if (err) {
-        callbackLate(err);
+  // Invoke the action
+  // Could throw an error, so done before the timeout is created
+  // Session fires all action callbacks with error on disconnect
+  this._session.action(name, args, (err, actionData) => {
+    // Timer not set if actionTimeoutMs === 0
+    if (timer || this._options.actionTimeoutMs === 0) {
+      dbg("Received pre-timeout action callback from session - calling back.");
+      if (timer) {
+        clearTimeout(timer); // Not present if actionTimeoutMs === 0
+      }
+      if (err) {
+        queueMicrotask(callback, err);
       } else {
-        callbackLate(err, actionData);
+        queueMicrotask(callback, err, actionData);
       }
-    });
-
-    // Set the timeout, if so configured
-    if (this._options.actionTimeoutMs > 0) {
-      dbg("Action timout timer created");
-      timer = setTimeout(() => {
-        dbg("Action timeout timer fired");
-        timer = null; // Mark fired
-        callback(
-          new Error(
-            "TIMEOUT: The server did not respond within the allocated time."
-          )
-        );
-      }, this._options.actionTimeoutMs);
+    } else {
+      dbg("Received post-timeout action callback from session - discarding.");
     }
+  });
 
-    ret = undefined;
-  } else {
-    // Promise style
-    dbg("Promise style action requested");
-    ret = new Promise((resolve, reject) => {
-      // Invoke the action - could fail, so done before the timeout is set
-      // Session fires all action callbacks with error on disconnect
-      this._session.action(name, args, (err, actionData) => {
-        // Timer not set if actionTimeoutMs === 0
-        if (timer || this._options.actionTimeoutMs === 0) {
-          if (timer) {
-            clearTimeout(timer); // Not present if actionTimeoutMs === 0
-          }
-          if (err) {
-            reject(err);
-          } else {
-            resolve(actionData);
-          }
-        }
-      });
-      // Set the timeout, if so configured
-      if (this._options.actionTimeoutMs > 0) {
-        dbg("Action timout timer created");
-        timer = setTimeout(() => {
-          dbg("Action timeout timer fired");
-          timer = null; // Mark fired
-          reject(
-            new Error(
-              "TIMEOUT: The server did not respond within the allocated time."
-            )
-          );
-        }, this._options.actionTimeoutMs);
-      }
-    });
+  // Set the timeout, if so configured
+  if (this._options.actionTimeoutMs > 0) {
+    dbg("Action timout timer created");
+    timer = setTimeout(() => {
+      dbg("Action timeout timer fired");
+      timer = null; // Mark fired
+      const err = new Error(
+        "TIMEOUT: The server did not respond within the allocated time."
+      );
+      queueMicrotask(callback, err);
+    }, this._options.actionTimeoutMs);
   }
-
-  return ret;
 };
 
 /**
@@ -776,7 +685,7 @@ proto.feed = function feedF(feedName, feedArgs) {
 proto._processConnecting = function _processConnecting() {
   dbg("Observed session connecting event");
 
-  this.emit("connecting");
+  queueMicrotask(this.emit.bind(this), "connecting");
   this._lastSessionState = "connecting";
 };
 
@@ -796,7 +705,7 @@ proto._processConnect = function _processConnect() {
   // Timer is not set (we were connecting, not disconnected)
   this._connectRetryCount = 0;
 
-  this.emit("connect");
+  queueMicrotask(this.emit.bind(this), "connect");
 
   _each(this._appFeeds, (arr, ser) => {
     const { feedName, feedArgs } = feedSerializer.unserialize(ser);
@@ -833,9 +742,9 @@ proto._processDisconnect = function _processDisconnect(err) {
 
   // Emit with correct number of args
   if (err) {
-    this.emit("disconnect", err);
+    queueMicrotask(this.emit.bind(this), "disconnect", err);
   } else {
-    this.emit("disconnect");
+    queueMicrotask(this.emit.bind(this), "disconnect");
   }
 
   // Reset feed reopen counts/timers
@@ -1027,7 +936,7 @@ proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
 proto._processBadServerMessage = function _processBadServerMessage(err) {
   dbg("Observed session badServerMessage event");
 
-  this.emit("badServerMessage", err);
+  queueMicrotask(this.emit.bind(this), "badServerMessage", err);
 };
 
 /**
@@ -1042,7 +951,7 @@ proto._processBadClientMessage = function _processBadClientMessage(
 ) {
   dbg("Observed session badClientMessage event");
 
-  this.emit("badClientMessage", diagnostics);
+  queueMicrotask(this.emit.bind(this), "badClientMessage", diagnostics);
 };
 
 /**
@@ -1055,7 +964,7 @@ proto._processBadClientMessage = function _processBadClientMessage(
 proto._processTransportError = function _processTransportError(err) {
   dbg("Observed session transportError event");
 
-  this.emit("transportError", err);
+  queueMicrotask(this.emit.bind(this), "transportError", err);
 };
 
 // Feed object functions
@@ -1507,6 +1416,9 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
  *
  * The session is assumed to be connected and session feed state is
  * assumed to be closed.
+ *
+ * This method does not defer callbacks, as it is not calling back to outside
+ * code.
  * @memberof Client
  * @instance
  * @private

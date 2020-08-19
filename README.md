@@ -302,7 +302,7 @@ Errors thrown:
 
 ##### client.action(...) - Callback Style
 
-Usage: `client.action(actionName, actionArgs, callback, callbackLate)`
+Usage: `client.action(actionName, actionArgs, callback)`
 
 Invokes an an action on the server. The client state must be `connected`.
 Returns nothing.
@@ -333,13 +333,6 @@ Arguments:
 
   ... where `err` is an `Error` object.
 
-- `callbackLate` - Optional function. Invoked when the server responds to an
-  action request after it has timed out and when the client disconnects from the
-  server after the action request has timed out.
-
-  The function is invoked in the same manner as `callback` with the exception
-  that it will never receive a `TIMEOUT` error.
-
 Errors thrown:
 
 - `err.message === "INVALID_ARGUMENT: ..."`
@@ -355,7 +348,8 @@ Errors called back:
 - `err.message === "TIMEOUT: ..."`
 
   The server did not respond within the amount of time specified by
-  `options.actionTimeoutMs`.
+  `options.actionTimeoutMs`. The library will discard any subsequent response
+  from the server.
 
 - `err.message === "DISCONNECTED: ..."`
 

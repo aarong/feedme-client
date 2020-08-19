@@ -101,7 +101,7 @@ describe("The factory function", () => {
 });
 
 describe("the state() function", () => {
-  it("if the transport throws an error, it should throw TRANSPORT_ERROR and emit transportError", () => {
+  it("if the transport throws an error, it should throw TRANSPORT_ERROR and asynchronously emit transportError", async () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -120,6 +120,11 @@ describe("the state() function", () => {
     }).toThrow(
       new Error("TRANSPORT_ERROR: The transport unexpectedly threw an error.")
     );
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(1);
     expect(listener.mock.calls[0].length).toBe(1);
     expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -132,7 +137,7 @@ describe("the state() function", () => {
     );
   });
 
-  it("if the transport returns an invalid state given the emission sequence, it should throw TRANSPORT_ERROR and emit transportError", () => {
+  it("if the transport returns an invalid state, it should throw TRANSPORT_ERROR and asynchronously emit transportError", async () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -143,21 +148,26 @@ describe("the state() function", () => {
     const wrapper = transportWrapper(transport);
     const listener = jest.fn();
     wrapper.on("transportError", listener);
-    transport.state = () => "connecting";
+    transport.state = () => "junk";
     expect(() => {
       wrapper.state();
     }).toThrow(
-      new Error("TRANSPORT_ERROR: The transport returned an unexpected state.")
+      new Error("TRANSPORT_ERROR: The transport returned an invalid state.")
     );
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(1);
     expect(listener.mock.calls[0].length).toBe(1);
     expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport unexpectedly returned 'connecting' on a call to state() when previous emission was 'disconnect'."
+      "INVALID_RESULT: Transport returned invalid state 'junk' on a call to state()."
     );
   });
 
-  it("if the transport returns a valid state given the emission sequence, it should emit nothing and return the state", () => {
+  it("if the transport returns a valid state, it should emit nothing and return the state", async () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -169,33 +179,15 @@ describe("the state() function", () => {
     const listener = jest.fn();
     wrapper.on("transportError", listener);
     expect(wrapper.state()).toBe("disconnected");
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(0);
   });
 });
 
 describe("the connect() function", () => {
-  it("if the library made an invalid call", () => {
-    const transport = emitter({
-      _state: "disconnected",
-      state: () => transport._state,
-      connect: () => {
-        transport.emit("connecting");
-      },
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    wrapper.connect();
-    expect(() => {
-      wrapper.connect();
-    }).toThrow(
-      new Error(
-        "INVALID_CALL: Library called connect() when transport state was not 'disconnected'."
-      )
-    );
-  });
-
-  it("if the state was disconnected and the transport threw an error, it should throw TRANSPORT_ERROR and emit transportError", () => {
+  it("if the state was disconnected and the transport threw an error, it should throw TRANSPORT_ERROR and asynchronously emit transportError", async () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -213,11 +205,16 @@ describe("the connect() function", () => {
     }).toThrow(
       new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.")
     );
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(1);
     expect(listener.mock.calls[0].length).toBe(1);
     expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport threw an error on a call to connect() when previous emission was 'disconnect'."
+      "INVALID_RESULT: Transport threw an error on a call to connect()."
     );
     expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].transportError.message).toBe(
@@ -225,7 +222,7 @@ describe("the connect() function", () => {
     );
   });
 
-  it("if the state was disconnected and the transport returned success, it should return successfully", () => {
+  it("if the state was disconnected and the transport returned success, it should return successfully", async () => {
     const transport = {
       on: () => {},
       state: () => "disconnected",
@@ -239,29 +236,15 @@ describe("the connect() function", () => {
     const listener = jest.fn();
     wrapper.on("transportError", listener);
     expect(wrapper.connect()).toBeUndefined();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(0);
   });
 });
 
 describe("the send() function", () => {
-  it("if the library made an invalid call", () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    expect(() => {
-      wrapper.send("something");
-    }).toThrow(
-      new Error(
-        "INVALID_CALL: Library called send() when transport state was not 'connected'."
-      )
-    );
-  });
-
-  it("if the state was connected and the transport threw an error, it should throw TRANSPORT_ERROR and emit transportError", () => {
+  it("if the state was connected and the transport threw an error, it should throw TRANSPORT_ERROR and asynchronously emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -283,11 +266,16 @@ describe("the send() function", () => {
     }).toThrow(
       new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.")
     );
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(1);
     expect(listener.mock.calls[0].length).toBe(1);
     expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport threw an error on a call to send() when previous emission was 'connect'."
+      "INVALID_RESULT: Transport threw an error on a call to send()."
     );
     expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].transportError.message).toBe(
@@ -295,7 +283,7 @@ describe("the send() function", () => {
     );
   });
 
-  it("if the state was connected and the transport returned success, it should return success", () => {
+  it("if the state was connected and the transport returned success, it should return success", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -311,29 +299,15 @@ describe("the send() function", () => {
     const listener = jest.fn();
     wrapper.on("transportError", listener);
     expect(wrapper.send("hi")).toBeUndefined();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(0);
   });
 });
 
 describe("the disconnect() function", () => {
-  it("if the library made an invalid call", () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-    expect(() => {
-      wrapper.disconnect();
-    }).toThrow(
-      new Error(
-        "INVALID_CALL: Library called disconnect() when transport state was 'disconnected'."
-      )
-    );
-  });
-
-  it("if the state was not disconnected and the transport threw an error, it should trow TRANSPORT_ERROR and emit transportError", () => {
+  it("if the state was not disconnected and the transport threw an error, it should trow TRANSPORT_ERROR and asynchronously emit transportError", async () => {
     const transport = emitter({
       _state: "disconnected",
       state: () => transport._state,
@@ -355,11 +329,16 @@ describe("the disconnect() function", () => {
     }).toThrow(
       new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.")
     );
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(1);
     expect(listener.mock.calls[0].length).toBe(1);
     expect(listener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].message).toBe(
-      "INVALID_RESULT: Transport threw an error on a call to disconnect() when previous emission was 'connecting' or 'connect'."
+      "INVALID_RESULT: Transport threw an error on a call to disconnect()."
     );
     expect(listener.mock.calls[0][0].transportError).toBeInstanceOf(Error);
     expect(listener.mock.calls[0][0].transportError.message).toBe(
@@ -367,7 +346,7 @@ describe("the disconnect() function", () => {
     );
   });
 
-  it("if the state was not disconnected and the transport returned success, it should return success", () => {
+  it("if the state was not disconnected and the transport returned success, it should return success", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -385,12 +364,15 @@ describe("the disconnect() function", () => {
     const listener = jest.fn();
     wrapper.on("transportError", listener);
     expect(wrapper.disconnect()).toBeUndefined();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(listener.mock.calls.length).toBe(0);
   });
 });
 
 describe("the transport 'connecting' event", () => {
-  it("if the state was not disconnected, it should emit transportError", () => {
+  it("if the state was not disconnected, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -403,11 +385,19 @@ describe("the transport 'connecting' event", () => {
     transport.emit("connecting");
     transport.state = () => "connected";
     transport.emit("connect");
+
+    await Promise.resolve(); // Execute queued microtasks
+
     const transportErrorListener = jest.fn();
     wrapper.on("transportError", transportErrorListener);
     const connectingListener = jest.fn();
     wrapper.on("connecting", connectingListener);
     transport.emit("connecting");
+
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
 
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
@@ -419,7 +409,7 @@ describe("the transport 'connecting' event", () => {
     expect(connectingListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was disconnected and arguments were invalid, it should emit transportError", () => {
+  it("if the state was disconnected and extraneous argument, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -435,17 +425,22 @@ describe("the transport 'connecting' event", () => {
     transport.state = () => "connecting";
     transport.emit("connecting", "JUNK ARG");
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
-      "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with the 'connecting' event."
+      "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with a 'connecting' event."
     );
 
     expect(connectingListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was disconnected, it should emit the event", () => {
+  it("if the state was disconnected, it should emit the event", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -462,6 +457,11 @@ describe("the transport 'connecting' event", () => {
     transport.emit("connecting");
 
     expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(transportErrorListener.mock.calls.length).toBe(0);
 
     expect(connectingListener.mock.calls.length).toBe(1);
     expect(connectingListener.mock.calls[0].length).toBe(0);
@@ -469,7 +469,7 @@ describe("the transport 'connecting' event", () => {
 });
 
 describe("the transport 'connect' event", () => {
-  it("if the state was not connecting, it should emit transportError", () => {
+  it("if the state was not connecting, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -483,17 +483,22 @@ describe("the transport 'connect' event", () => {
     wrapper.on("connect", connectListener);
     transport.emit("connect");
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(connectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
-      "UNEXPECTED_EVENT: Transport emitted a  'connect' event following an emission other than 'connecting'."
+      "UNEXPECTED_EVENT: Transport emitted a  'connect' event when the previous emission was 'disconnect'."
     );
 
     expect(connectListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was connecting and arguments were invalid, it should emit transportError", () => {
+  it("if the state was connecting and extraneous argument, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -510,17 +515,22 @@ describe("the transport 'connect' event", () => {
     wrapper.on("connect", connectListener);
     transport.emit("connect", "JUNK ARG");
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(connectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
-      "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with the 'connect' event."
+      "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with a 'connect' event."
     );
 
     expect(connectListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was connecting, it should emit the event", () => {
+  it("if the state was connecting, it should emit the event", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -538,6 +548,11 @@ describe("the transport 'connect' event", () => {
     transport.emit("connect");
 
     expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(connectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(transportErrorListener.mock.calls.length).toBe(0);
 
     expect(connectListener.mock.calls.length).toBe(1);
     expect(connectListener.mock.calls[0].length).toBe(0);
@@ -545,7 +560,7 @@ describe("the transport 'connect' event", () => {
 });
 
 describe("the transport 'message' event", () => {
-  it("if the state was not connected, it should emit transportError", () => {
+  it("if the state was not connected, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -559,17 +574,22 @@ describe("the transport 'message' event", () => {
     wrapper.on("message", messageListener);
     transport.emit("message", "some message");
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(messageListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
-      "UNEXPECTED_EVENT: Transport emitted a 'message' event when the previous emission was 'disconnect'."
+      "UNEXPECTED_EVENT: Transport emitted a 'message' event when the state was 'disconnected'."
     );
 
     expect(messageListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was connected and arguments were invalid, it should emit transportError", () => {
+  it("if the state was connected and extraneous argument, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -588,6 +608,11 @@ describe("the transport 'message' event", () => {
     wrapper.on("message", messageListener);
     transport.emit("message"); // No args
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(messageListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -598,7 +623,7 @@ describe("the transport 'message' event", () => {
     expect(messageListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was connected, it should emit the event", () => {
+  it("if the state was connected, it should emit the event", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -618,6 +643,11 @@ describe("the transport 'message' event", () => {
     transport.emit("message", "a valid message");
 
     expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(messageListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(transportErrorListener.mock.calls.length).toBe(0);
 
     expect(messageListener.mock.calls.length).toBe(1);
     expect(messageListener.mock.calls[0].length).toBe(1);
@@ -626,7 +656,7 @@ describe("the transport 'message' event", () => {
 });
 
 describe("the transport 'disconnect' event", () => {
-  it("if the state was disconnected, it should emit transportError", () => {
+  it("if the state was disconnected, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -640,6 +670,11 @@ describe("the transport 'disconnect' event", () => {
     wrapper.on("disconnect", disconnectListener);
     transport.emit("disconnect");
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(disconnectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -650,7 +685,7 @@ describe("the transport 'disconnect' event", () => {
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was not disconnected and arguments were invalid, it should emit transportError", () => {
+  it("if the state was not disconnected and extraneous argument, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -667,17 +702,22 @@ describe("the transport 'disconnect' event", () => {
     wrapper.on("disconnect", disconnectListener);
     transport.emit("disconnect", new Error(), new Error());
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(disconnectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
-      "BAD_EVENT_ARGUMENT: Received one or more extraneous arguments with the 'disconnect' event."
+      "BAD_EVENT_ARGUMENT: Received one or more extraneous arguments with a 'disconnect' event."
     );
 
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was not disconnected and argument was not an error, it should emit transportError", () => {
+  it("if the state was not disconnected and argument was not an error, it should emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -694,17 +734,22 @@ describe("the transport 'disconnect' event", () => {
     wrapper.on("disconnect", disconnectListener);
     transport.emit("disconnect", "not an error");
 
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(disconnectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(transportErrorListener.mock.calls.length).toBe(1);
     expect(transportErrorListener.mock.calls[0].length).toBe(1);
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
-      "BAD_EVENT_ARGUMENT: Received a non-Error argument with the 'disconnect' event."
+      "BAD_EVENT_ARGUMENT: Received a non-Error argument with a 'disconnect' event."
     );
 
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it("if the state was not disconnected, it should emit the event", () => {
+  it("if the state was not disconnected, it should emit the event", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -715,11 +760,18 @@ describe("the transport 'disconnect' event", () => {
     wrapper.connect();
     transport.state = () => "connecting";
     transport.emit("connecting");
+
     const transportErrorListener = jest.fn();
     wrapper.on("transportError", transportErrorListener);
     const disconnectListener = jest.fn();
     wrapper.on("disconnect", disconnectListener);
+
     transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(disconnectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
 
     expect(transportErrorListener.mock.calls.length).toBe(0);
 

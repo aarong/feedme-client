@@ -32,8 +32,8 @@ npm run build
 ```
 
 The build procedure runs unit tests on the `src` folder, assembles a transpiled
-and publish-ready NPM package in the `build` folder (including a Node module
-and a browser bundle), and runs functional tests on the built Node module.
+and publish-ready NPM package in the `build` folder (including a Node module and
+a browser bundle), and runs functional tests on the built Node module.
 
 To enable debugging output set the `debug` environment variable to
 `feedme-client*`.
@@ -80,7 +80,7 @@ To enable debugging output set the `debug` environment variable to
 - `tests/`
 
   Functional tests for the Node and and browser builds.
-  
+
   Functional tests are written for Jasmine, as Jest can not run in the browser.
 
   - `tests/tests.js` The functional tests, run against Node and browser builds.
@@ -135,13 +135,13 @@ property of an error object breaks sourcemaps in the browser.
 
 The intention is to support Node and NPM back as far as realistically possible.
 
-For a development install, the binding dependency constraint is that Webpack
-and babel-loader require Node 8+. Also, package-lock.json is only supported by
-NPM 5+, which comes with Node 8+. So develop and build on Node 8+ and NPM 5+.
+For a development install, the binding dependency constraint is that Webpack and
+babel-loader require Node 8+. Also, package-lock.json is only supported by NPM
+5+, which comes with Node 8+. So develop and build on Node 8+ and NPM 5+.
 
 Although the library needs to be developed and built on Node 8+, its production
-dependencies are more lenient and can be run on Node 6+, which is verified
-on the Travis build.
+dependencies are more lenient and can be run on Node 6+, which is verified on
+the Travis build.
 
 ## NPM Scripts
 
@@ -168,26 +168,27 @@ on the Travis build.
 - `npm run test-build-browsers -- <mode>` Runs functional tests against the
   browser bundle in the `build` folder. The tests are built using Jasmine, which
   supports both Node and the browser (though sourcemaps only work in Node).
-  
+
   Modes:
 
-  - `local` Launches a local webserver with the browser tests, which can then
-  be accessed manually from a browser.
+  - `local` Launches a local webserver with the browser tests, which can then be
+    accessed manually from a browser.
 
   - `sauce-live` Launches a local webserver with the browser tests and loads
-  Sauce Connect the proxy. You can then log in to Sauce and run the browser 
-  tests live via the Sauce Connect tunnel. Useful for viewing console output.
+    Sauce Connect the proxy. You can then log in to Sauce and run the browser
+    tests live via the Sauce Connect tunnel. Useful for viewing console output.
 
   - `sauce-automatic` (Default) Launches a local server with the browser tests,
-  loads the Sauce Connect proxy, instructs the Sauce REST API to run automated
-  tests across the widest possible set of platforms, and reports results.
-  Requires the environmental variables `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY`,
-  otherwise the Sauce Connect proxy will fail. Runs on each Travis build.
+    loads the Sauce Connect proxy, instructs the Sauce REST API to run automated
+    tests across the widest possible set of platforms, and reports results.
+    Requires the environmental variables `SAUCE_USERNAME` and
+    `SAUCE_ACCESS_KEY`, otherwise the Sauce Connect proxy will fail. Runs on
+    each Travis build.
 
   - `sauce-automatic-hanging` Many Sauce browser-platform combinations run the
-  tests successfully but, frustratingly, do not actually return success. This
-  option runs tests on those combinations, which can then be verified manually
-  on the Sauce website. Requires Sauce credentials in environmental variables.
+    tests successfully but, frustratingly, do not actually return success. This
+    option runs tests on those combinations, which can then be verified manually
+    on the Sauce website. Requires Sauce credentials in environmental variables.
 
 ## Committing and Deploying
 
@@ -214,25 +215,25 @@ git push origin my-new-feature
 
 Transport objects abstract away the specifics of the messaging connection
 between the client and the server. A transport object is injected into the
-client at initialization.
+client library at initialization.
 
 Transport objects must implement the following interface and behavior in order
-to function correctly with the client. The client object interacts with
-transports through a wrapper that aims to detect invalid behavior and emits a
-client `transportError` event if the transport does something unexpected.
+to function correctly with the client library. The client library interacts with
+transport objects through a wrapper that aims to detect invalid behavior and
+emits a `transportError` event if the transport does something unexpected.
 
 ### Fundamentals
 
-Transport objects must be able to exchange `string` messages across a
-client-server connection. Messages must be received by the other side in the
-order that they were sent.
+Once connected, transport objects must be able to exchange `string` messages
+across the client-server connection. Messages must be received by the other side
+in the order that they were sent.
 
 Transport objects must be traditional Javascript event emitters. Specifically,
-they must implement `transport.on(eventName, eventListenerFunction)` and emit
-events to subscribed listeners as described below.
+they must implement `transport.on(eventName, eventListenerFunction)` and must
+emit events to subscribed listeners as described below.
 
-Connection and messaging timeout functionality is implemented at the client
-level, so transports should not implement their own (they should be patient).
+Connection timeout functionality is implemented by the client library, so
+transports should generally not implement their own.
 
 ### Transport States
 
@@ -242,7 +243,7 @@ Transport objects must always be in one of three states:
   attempting to connect.
 
 - `connecting` - The transport is attempting to connect to the server but is not
-  ready to transmit messages.
+  ready to transmit or receive messages.
 
 - `connected` - The transport can transmit messages to the server and will emit
   any messages that it receives from the server.
@@ -255,7 +256,7 @@ Transport objects must only change state in the following circumstances:
 2. When `connecting` and a successful connection is established, the transport
    state must become `connected`.
 
-3. When `connecting` and a connection could not be established, the transport
+3. When `connecting` and a connection can not be established, the transport
    state must become `disconnected`.
 
 4. When `connecting` or `connected` and a call to `transport.disconnect()` is
@@ -263,7 +264,8 @@ Transport objects must only change state in the following circumstances:
 
 5. When `connected` and an unexpected connection failure occurs, the transport
    state must become `disconnected`. The transport must not automatically
-   attempt to reconnect, as reconnection behavior is controlled by the client.
+   attempt to reconnect, as reconnection behavior is controlled by the client
+   library.
 
 ### Transport Methods
 
@@ -271,40 +273,38 @@ Transport objects must implement the following methods:
 
 - `transport.state()`
 
-  Allows the client library to retrieve the current transport state.
+  Allows the library to retrieve the current transport state.
 
   Returns `"disconnected"`, `"connecting"`, or `"connected"`.
 
 - `transport.connect()`
 
-  Allows the client library to tell the transport to try to connect to the
-  server.
+  Allows the library to instruct the transport to connect to the server.
 
   The transport state must synchronously become `connecting` and the
   `connecting` event must be emitted asynchronously.
 
-  The transport must subsequently emit either `connect` or `disconnect` as
+  The transport state must subsequently become either `connected` or
+  `disconnected` and the transport must emit either `connect` or `disconnect` as
   appropriate.
 
-  The library will not call this method unless the transport state is
-  `disconnected`.
+  The library only calls this method if the transport state is `disconnected`.
 
   If a synchronous connection error occurs, the transport must asynchronously
   emit `connecting` and `disconnect(err)`. It must not throw an error.
 
 - `transport.send(msg)`
 
-  Allows the client library to send a `string` message to the server.
+  Allows the library to send a `string` message to the server.
 
-  The library will not call this method unless the transport state is
-  `connected`.
+  The library will only call this method if the transport state is `connected`.
 
   If a synchronous transmission error occurs, the transport must asynchronously
   emit `disconnect(err)`. It must not throw an error.
 
 - `transport.disconnect([err])`
 
-  Allows the client library to tell the transport to disconnect from the server.
+  Allows the library to instruct the transport to disconnect from the server.
 
   The transport state must synchronously become `disconnected` and the
   `disconnect` event must be emitted asynchronously.
@@ -313,23 +313,20 @@ Transport objects must implement the following methods:
   with `err` as an argument. If an `err` argument is not present, then the
   `disconnect` event must be emitted with no arguments.
 
-  The library will not call this method unless the transport state is
-  `connecting` or `connected`.
+  The library will only call this method if the transport state is `connecting`
+  or `connected`.
 
 ### Transport Events
 
-Transport objects must emit an event when they change state and when a message
-has been received from the server.
-
 - `connecting`
 
-  Informs the library that the transport state is now `connecting`. This event
-  must only be emitted when the transport state was previously `disconnected`.
+  Informs the library that the transport state changed from `disconnected` to
+  `connecting`.
 
 - `connect`
 
-  Informs the library that the transport state is now `connected`. This event
-  must only be emitted when the transport state was previously `connecting`.
+  Informs the library that the transport state changed from `connecting` to
+  `connected`.
 
 - `message(msg)`
 
@@ -338,17 +335,16 @@ has been received from the server.
 
 - `disconnect([err])`
 
-  Informs the library that the transport state is now `disconnected`. This event
-  must only be emitted when the transport state was previously `connecting` or
-  `connected`.
+  Informs the library that the transport state changed from `connecting` or
+  `connected` to `disconnected`.
 
   If the disconnect resulted from a library call to `transport.disconnect()`
-  with no error argument then the transport must not pass an error object the
-  event listeners. The transport must not pass `null`, `undefined`, `false`, or
-  any other value in place of the error object.
+  with no error argument then the transport must not pass an error argument to
+  the event listeners. The transport must not pass `null`, `undefined`, `false`,
+  or any other value in place of the error object.
 
   If the event resulted from a library call to `transport.disconnect(err)`
-  including an `err` argument, then `err` must be passed to the listeners.
+  including an `err` argument, then `err` must be passed to the event listeners.
 
   If the event resulted from a connection failure internal to the transport,
   either during the initial connection attempt or subsequently, then an error of

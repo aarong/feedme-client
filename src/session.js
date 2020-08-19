@@ -16,6 +16,7 @@ import feedValidator from "feedme-util/feedvalidator";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
 import feedSerializer from "feedme-util/feedserializer";
+import queueMicrotask from "./queuemicrotask";
 
 const dbg = debug("feedme-client:session");
 
@@ -28,6 +29,7 @@ const dbg = debug("feedme-client:session");
  * - Applies feed deltas and performs hash verification
  * - Extremely patient - no timeouts
  *
+ * No need to emit events asynchronously, as that is required of the transport.
  * @typedef {Object} Session
  * @extends emitter
  */
@@ -719,7 +721,7 @@ proto.feedData = function feedData(feedName, feedArgs) {
 proto._processTransportConnecting = function _processTransportConnecting() {
   dbg("Observed transport connecting event");
 
-  this.emit("connecting");
+  queueMicrotask(this.emit.bind(this), "connecting");
 };
 
 /**
@@ -792,33 +794,45 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
 
   const cbErr = new Error("DISCONNECTED: The transport disconnected."); // err may not exist
 
-  // Send action callbacks an error
+  // Send action callbacks an error - defer
   _each(actionCallbacks, val => {
     dbg("Returning disconnect error to action() callback");
-    val(cbErr);
+    queueMicrotask(val, cbErr);
   });
 
-  // For each feed, emit or callback according to state
+  // For each feed, emit or callback according to state - defer
   _each(feedStates, (feedState, feedSerial) => {
     if (feedState === "opening") {
       dbg("Returning disconnect error to feedOpen() callback");
-      feedOpenCallbacks[feedSerial](cbErr); // Error
+      queueMicrotask(feedOpenCallbacks[feedSerial], cbErr); // Error
     } else if (feedState === "open") {
       dbg("Emitting unexpectedFeedClosing/Closed for open feed");
       const { feedName, feedArgs } = feedSerializer.unserialize(feedSerial);
-      this.emit("unexpectedFeedClosing", feedName, feedArgs, cbErr);
-      this.emit("unexpectedFeedClosed", feedName, feedArgs, cbErr);
+      queueMicrotask(
+        this.emit.bind(this),
+        "unexpectedFeedClosing",
+        feedName,
+        feedArgs,
+        cbErr
+      );
+      queueMicrotask(
+        this.emit.bind(this),
+        "unexpectedFeedClosed",
+        feedName,
+        feedArgs,
+        cbErr
+      );
     } else {
       dbg("Returning success to feedClose() callback");
-      feedCloseCallbacks[feedSerial](); // Success (closing or terminated)
+      queueMicrotask(feedCloseCallbacks[feedSerial]); // Success (closing or terminated)
     }
   });
 
   // Emit disconnect event with correct number of arguments
   if (err) {
-    this.emit("disconnect", err);
+    queueMicrotask(this.emit.bind(this), "disconnect", err);
   } else {
-    this.emit("disconnect");
+    queueMicrotask(this.emit.bind(this), "disconnect");
   }
 };
 
@@ -832,7 +846,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
 proto._processTransportError = function _processTransportError(err) {
   dbg("Observed transport transportError event");
 
-  this.emit("transportError", err);
+  queueMicrotask(this.emit.bind(this), "transportError", err);
 };
 
 /**
@@ -870,7 +884,7 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
     const err = new Error("INVALID_MESSAGE: Invalid JSON or schema violation.");
     err.serverMessage = msg; // string
     err.parseError = e;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
@@ -890,7 +904,7 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
 proto._processViolationResponse = function _processViolationResponse(msg) {
   dbg("Received ViolationResponse message");
 
-  this.emit("badClientMessage", msg.Diagnostics);
+  queueMicrotask(this.emit.bind(this), "badClientMessage", msg.Diagnostics);
 };
 
 /**
@@ -907,14 +921,14 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
   if (this.state() !== "connecting") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected HandshakeResponse.");
     err.serverMessage = msg;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
   // Was the handshake successful?
   if (msg.Success) {
     this._clientId = msg.ClientId;
-    this.emit("connect");
+    queueMicrotask(this.emit.bind(this), "connect");
   } else {
     // Disconnect event fired via the transport, which is required to relay the error argument
     this._transportWrapper.disconnect(
@@ -939,21 +953,21 @@ proto._processActionResponse = function _processActionResponse(msg) {
   if (!actionCallback) {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected ActionResponse.");
     err.serverMessage = msg;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
   // Clear the callback
   delete this._actionCallbacks[msg.CallbackId];
 
-  // Call back the action result
+  // Call back the action result - defer
   if (msg.Success) {
-    actionCallback(undefined, Object.freeze(msg.ActionData));
+    queueMicrotask(actionCallback, undefined, Object.freeze(msg.ActionData));
   } else {
     const err = new Error("REJECTED: Server rejected the action request.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    actionCallback(err);
+    queueMicrotask(actionCallback, err);
   }
 };
 
@@ -973,7 +987,7 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
   if (this._feedState(msg.FeedName, msg.FeedArgs) !== "opening") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedOpenResponse.");
     err.serverMessage = msg;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
@@ -985,13 +999,13 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
   if (msg.Success) {
     this._feedStates[feedSerial] = "open";
     this._feedData[feedSerial] = msg.FeedData;
-    feedOpenCallback(undefined, msg.FeedData);
+    queueMicrotask(feedOpenCallback, undefined, msg.FeedData);
   } else {
     delete this._feedStates[feedSerial]; // Closed
     const err = new Error("REJECTED: Server rejected the feed open request.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    feedOpenCallback(err);
+    queueMicrotask(feedOpenCallback, err);
   }
 };
 
@@ -1017,7 +1031,7 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
   if (feedState !== "closing" && feedState !== "terminated") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedCloseResponse.");
     err.serverMessage = msg;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
@@ -1025,9 +1039,9 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
   const feedCloseCallback = this._feedCloseCallbacks[feedSerial];
   delete this._feedStates[feedSerial];
 
-  // Udpate the state and call the callback
+  // Udpate the state and call the callback - defer
   delete this._feedCloseCallbacks[feedSerial];
-  feedCloseCallback();
+  queueMicrotask(feedCloseCallback);
 };
 
 /**
@@ -1051,7 +1065,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
   if (feedState !== "open" && feedState !== "closing") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected ActionRevelation.");
     err.serverMessage = msg;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
@@ -1075,6 +1089,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       );
 
       // Close the feed and emit closed on completion
+      // The feedClose() function takes care of deferral
       this.feedClose(msg.FeedName, msg.FeedArgs, () => {
         this.emit(
           "unexpectedFeedClosed",
@@ -1085,7 +1100,8 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       });
 
       // Emit unexpectedFeedClosing
-      this.emit(
+      queueMicrotask(
+        this.emit.bind(this),
         "unexpectedFeedClosing",
         msg.FeedName,
         msg.FeedArgs,
@@ -1098,7 +1114,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       );
       err.deltaError = e;
       err.serverMessage = msg;
-      this.emit("badServerMessage", err);
+      queueMicrotask(this.emit.bind(this), "badServerMessage", err);
 
       return; // Stop
     }
@@ -1113,6 +1129,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       );
 
       // Close the feed and emit closed on completion
+      // The feedClose() function takes care of deferral
       this.feedClose(msg.FeedName, msg.FeedArgs, () => {
         this.emit(
           "unexpectedFeedClosed",
@@ -1123,7 +1140,8 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       });
 
       // Emit unexpectedFeedClosing
-      this.emit(
+      queueMicrotask(
+        this.emit.bind(this),
         "unexpectedFeedClosing",
         msg.FeedName,
         msg.FeedArgs,
@@ -1133,7 +1151,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       // Emit badServerMessage
       const err = new Error("INVALID_HASH: Feed data MD5 verification failed.");
       err.serverMessage = msg;
-      this.emit("badServerMessage", err);
+      queueMicrotask(this.emit.bind(this), "badServerMessage", err);
 
       return; // Stop
     }
@@ -1143,7 +1161,8 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
   this._feedData[feedSerial] = Object.freeze(newData);
 
   // Emit actionRevelation
-  this.emit(
+  queueMicrotask(
+    this.emit.bind(this),
     "actionRevelation",
     msg.FeedName,
     msg.FeedArgs,
@@ -1182,7 +1201,7 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
   if (feedState !== "open" && feedState !== "closing") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedTermination.");
     err.serverMessage = msg;
-    this.emit("badServerMessage", err);
+    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
     return; // Stop
   }
 
@@ -1192,8 +1211,20 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
     const err = new Error("TERMINATED: The server terminated the feed.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    this.emit("unexpectedFeedClosing", msg.FeedName, msg.FeedArgs, err);
-    this.emit("unexpectedFeedClosed", msg.FeedName, msg.FeedArgs, err);
+    queueMicrotask(
+      this.emit.bind(this),
+      "unexpectedFeedClosing",
+      msg.FeedName,
+      msg.FeedArgs,
+      err
+    );
+    queueMicrotask(
+      this.emit.bind(this),
+      "unexpectedFeedClosed",
+      msg.FeedName,
+      msg.FeedArgs,
+      err
+    );
   } else {
     this._feedStates[feedSerial] = "terminated";
     // Feed data deleted on feedClose()

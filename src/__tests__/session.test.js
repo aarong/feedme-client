@@ -100,6 +100,7 @@ const harnessFactory = function harnessFactory() {
   const harness = Object.create(harnessProto);
 
   // Create mock transport wrapper (disconnected)
+  // Do not emit events async so you can check Session-level deferrals
   const t = {};
   emitter(t);
   t.connect = jest.fn();
@@ -123,7 +124,7 @@ const harnessFactory = function harnessFactory() {
   return harness;
 };
 
-harnessProto.connectSession = function connectSession() {
+harnessProto.connectSession = async function connectSession() {
   this.session.connect();
   this.transportWrapper.state.mockReturnValue("connecting");
   this.transportWrapper.emit("connecting");
@@ -139,6 +140,27 @@ harnessProto.connectSession = function connectSession() {
     })
   );
   this.transportWrapper.mockClear();
+
+  await Promise.resolve(); // Execute queued microtasks
+};
+
+harnessProto.feedOpenSuccess = async function feedOpenSuccess(
+  feedName,
+  feedArgs,
+  data
+) {
+  this.transportWrapper.emit(
+    "message",
+    JSON.stringify({
+      MessageType: "FeedOpenResponse",
+      FeedName: feedName,
+      FeedArgs: feedArgs,
+      Success: true,
+      FeedData: data
+    })
+  );
+
+  await Promise.resolve(); // Execute queued microtasks
 };
 
 harnessProto.createSessionListener = function createSessionListener() {
@@ -174,23 +196,6 @@ harnessProto.createSessionListener = function createSessionListener() {
   this.session.on("badClientMessage", l.badClientMessage);
   this.session.on("transportError", l.transportError);
   return l;
-};
-
-harnessProto.feedOpenSuccess = function feedOpenSuccess(
-  feedName,
-  feedArgs,
-  data
-) {
-  this.transportWrapper.emit(
-    "message",
-    JSON.stringify({
-      MessageType: "FeedOpenResponse",
-      FeedName: feedName,
-      FeedArgs: feedArgs,
-      Success: true,
-      FeedData: data
-    })
-  );
 };
 
 harnessProto.getSessionState = function getSessionState() {
@@ -403,8 +408,8 @@ describe("The .connect() function", () => {
     harness = harnessFactory();
   });
 
-  it("should throw an error if the transport state is not disconnected", () => {
-    harness.connectSession();
+  it("should throw an error if the transport state is not disconnected", async () => {
+    await harness.connectSession();
     expect(() => {
       harness.session.connect();
     }).toThrow(new Error("INVALID_STATE: Already connecting or connected."));
@@ -413,9 +418,12 @@ describe("The .connect() function", () => {
   describe("can return success", () => {
     // Events
 
-    it("should emit nothing", () => {
+    it("should emit nothing", async () => {
       const sessionListener = harness.createSessionListener();
       harness.session.connect();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -461,9 +469,9 @@ describe("The .connect() function", () => {
 describe("The .disconnect() function", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
   it("should throw an error if the state is already disconnected", () => {
@@ -477,9 +485,12 @@ describe("The .disconnect() function", () => {
   describe("can return success", () => {
     // Events
 
-    it("should emit nothing", () => {
+    it("should emit nothing", async () => {
       const sessionListener = harness.createSessionListener();
       harness.session.disconnect();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -525,9 +536,9 @@ describe("The .disconnect() function", () => {
 describe("The .action() function", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
   it("should throw an error for invalid action names", () => {
@@ -567,9 +578,12 @@ describe("The .action() function", () => {
   describe("can return success", () => {
     // Events
 
-    it("should emit no events", () => {
+    it("should emit no events", async () => {
       const sessionListener = harness.createSessionListener();
       harness.session.action("myAction", { arg: "val" }, () => {});
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -624,9 +638,9 @@ describe("The .action() function", () => {
 describe("The .feedOpen() function", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
   it("should throw an error for invalid feed names", () => {
@@ -665,9 +679,12 @@ describe("The .feedOpen() function", () => {
   describe("can return success", () => {
     // Events
 
-    it("should emit no events", () => {
+    it("should emit no events", async () => {
       const sessionListener = harness.createSessionListener();
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -726,9 +743,9 @@ describe("The .feedOpen() function", () => {
 describe("The .feedClose() function", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
   it("should throw an error for invalid feed names", () => {
@@ -766,11 +783,14 @@ describe("The .feedClose() function", () => {
   describe("can return success", () => {
     // Events
 
-    it("should emit no events", () => {
+    it("should emit no events", async () => {
       const sessionListener = harness.createSessionListener();
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
       harness.session.feedClose("myFeed", { arg: "val" }, () => {});
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -784,9 +804,9 @@ describe("The .feedClose() function", () => {
 
     // State
 
-    it("should update ._feedStates and ._feedCloseCallbacks", () => {
+    it("should update ._feedStates and ._feedCloseCallbacks", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
       const feedSerial = feedSerializer.serialize("myFeed", {
         arg: "val"
       });
@@ -801,9 +821,9 @@ describe("The .feedClose() function", () => {
 
     // Transport
 
-    it("should call transport.send(msg)", () => {
+    it("should call transport.send(msg)", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
       harness.transportWrapper.mockClear();
       harness.session.feedClose("myFeed", { arg: "val" }, () => {});
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
@@ -823,9 +843,9 @@ describe("The .feedClose() function", () => {
 
     // Return value
 
-    it("should return nothing", () => {
+    it("should return nothing", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
       expect(
         harness.session.feedClose("myFeed", { arg: "val" }, () => {})
       ).toBeUndefined();
@@ -845,9 +865,22 @@ describe("The transport connecting event", () => {
   describe("runs successfully", () => {
     // Events
 
-    it("should emit connecting", () => {
+    it("should asynchronously emit connecting", async () => {
       const sessionListener = harness.createSessionListener();
       harness.transportWrapper.emit("connecting");
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(1);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -894,9 +927,12 @@ describe("The transport connect event", () => {
   describe("runs successfully", () => {
     // Events
 
-    it("should emit no events", () => {
+    it("should emit no events", async () => {
       const sessionListener = harness.createSessionListener();
       harness.transportWrapper.emit("connect");
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -920,9 +956,12 @@ describe("The transport connect event", () => {
 
     // Transport
 
-    it("should call transport.send(msg) with Handshake", () => {
+    it("should call transport.send(msg) with Handshake", async () => {
       harness.transportWrapper.mockClear();
       harness.transportWrapper.emit("connect");
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(1);
@@ -942,22 +981,35 @@ describe("The transport connect event", () => {
 describe("The transport disconnect(err) event", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
   describe("runs successfully", () => {
     // Events
 
-    it("should emit disconnect(DISCONNECTED) and unexpectedFeedClosing/Closed for open feeds if the transport failed", () => {
+    it("should asynchronously emit disconnect(DISCONNECTED) and unexpectedFeedClosing/Closed for open feeds if the transport failed", async () => {
       const err = new Error(
         "DISCONNECTED: Error message passed by the transport."
       );
       const sessionListener = harness.createSessionListener();
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
       harness.transportWrapper.emit("disconnect", err);
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(1);
@@ -999,7 +1051,7 @@ describe("The transport disconnect(err) event", () => {
       expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
-    it("should emit disconnect(HANDSHAKE_REJECTED) for open feeds if the handshake failed", () => {
+    it("should emit disconnect(HANDSHAKE_REJECTED) for open feeds if the handshake failed", async () => {
       // You need to set up a disconnected session - new harness
       harness = harnessFactory();
       harness.session.connect();
@@ -1014,10 +1066,16 @@ describe("The transport disconnect(err) event", () => {
           Success: false
         })
       );
+
+      await Promise.resolve(); // Execute queued microtasks
+
       // Route the transport.disconnect(err) to a disconnect(err) event to trigger the event
-      const sessionListener = harness.createSessionListener();
       const err = harness.transportWrapper.disconnect.mock.calls[0][0];
+      const sessionListener = harness.createSessionListener();
       harness.transportWrapper.emit("disconnect", err);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(1);
@@ -1034,11 +1092,14 @@ describe("The transport disconnect(err) event", () => {
       expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
-    it("should emit disconnect() and unexpectedFeedClosing/Closed for open feeds if requested", () => {
+    it("should emit disconnect() and unexpectedFeedClosing/Closed for open feeds if requested", async () => {
       const sessionListener = harness.createSessionListener();
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
       harness.transportWrapper.emit("disconnect"); // No error - requested
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(1);
@@ -1081,7 +1142,7 @@ describe("The transport disconnect(err) event", () => {
 
     // State
 
-    it("should reset the session state", () => {
+    it("should reset the session state", async () => {
       // Should establish full state fist
       const newState = harness.getSessionState();
       newState._transportWrapperState = "disconnected";
@@ -1095,6 +1156,9 @@ describe("The transport disconnect(err) event", () => {
         name: "ERR",
         message: "Error"
       });
+
+      await Promise.resolve(); // Execute queued microtasks
+
       harness.transportWrapper.state.mockReturnValue("disconnected");
       expect(harness.session).toHaveState(newState);
     });
@@ -1111,19 +1175,26 @@ describe("The transport disconnect(err) event", () => {
 
     // Callbacks
 
-    it("should call action/feedOpen callbacks with error and feedClose callbacks with success", () => {
+    it("should asynchronously call action/feedOpen callbacks with error and feedClose callbacks with success", async () => {
       const acb = jest.fn();
       harness.session.action("MyAction", { arg: "val" }, acb);
       const focb = jest.fn();
       harness.session.feedOpen("MyFeed", { arg: "val" }, focb);
       harness.session.feedOpen("MyFeed2", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("MyFeed2", { arg: "val" }, {});
+      await harness.feedOpenSuccess("MyFeed2", { arg: "val" }, {});
       const fccb = jest.fn();
       harness.session.feedClose("MyFeed2", { arg: "val" }, fccb);
       harness.transportWrapper.emit(
         "disconnect",
         new Error("FAILURE: Message from the transport")
       );
+
+      expect(acb.mock.calls.length).toBe(0);
+      expect(focb.mock.calls.length).toBe(0);
+      expect(fccb.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(acb.mock.calls.length).toBe(1);
       expect(acb.mock.calls[0].length).toBe(1);
       expect(acb.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -1145,14 +1216,17 @@ describe("The transport disconnect(err) event", () => {
 describe("The transport message(msg) event", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
-  it("should emit badServerMessage(err) if message is not valid JSON", () => {
+  it("should emit badServerMessage(err) if message is not valid JSON", async () => {
     const sessionListener = harness.createSessionListener();
     harness.transportWrapper.emit("message", "junk");
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1177,9 +1251,12 @@ describe("The transport message(msg) event", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  it("should emit badServerMessage(err) if message is structurally invalid", () => {
+  it("should emit badServerMessage(err) if message is structurally invalid", async () => {
     const sessionListener = harness.createSessionListener();
     harness.transportWrapper.emit("message", "{}");
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1215,9 +1292,9 @@ describe("The transport message(msg) event", () => {
 describe("The ViolationResponse processor", () => {
   // Mock a connected session, plus convenience setup
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
   const msg = {
     MessageType: "ViolationResponse",
@@ -1230,9 +1307,22 @@ describe("The ViolationResponse processor", () => {
   describe("can run successfully", () => {
     // Events
 
-    it("should emit badClientMessage(diagnostics)", () => {
+    it("should asynchronously emit badClientMessage(diagnostics)", async () => {
       const sessionListener = harness.createSessionListener();
       trigger();
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1288,12 +1378,14 @@ describe("The HandshakeResponse processor", () => {
     MessageType: "HandshakeResponse",
     Success: false
   };
-  const connectAndSendHandshake = function connectAndSendHandshake() {
+  const connectAndSendHandshake = async function connectAndSendHandshake() {
     harness.session.connect();
     harness.transportWrapper.emit("connecting");
     harness.transportWrapper.state.mockReturnValue("connecting");
     harness.transportWrapper.emit("connect");
     harness.transportWrapper.state.mockReturnValue("connected");
+
+    await Promise.resolve(); // Execute queued microtasks
   };
   const receiveSuccess = function receiveSuccess() {
     harness.transportWrapper.emit("message", JSON.stringify(msgSuccess));
@@ -1302,10 +1394,13 @@ describe("The HandshakeResponse processor", () => {
     harness.transportWrapper.emit("message", JSON.stringify(msgFailure));
   };
 
-  it("should emit badServerMessage(err) if not expected", () => {
-    harness.connectSession(); // Now it's not expected
+  it("should emit badServerMessage(err) if not expected", async () => {
+    await harness.connectSession(); // Now it's not expected
     const sessionListener = harness.createSessionListener();
     receiveSuccess(); // Failure would be just as good
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1327,10 +1422,24 @@ describe("The HandshakeResponse processor", () => {
   describe("can run successfully communicating a successful handshake result", () => {
     // Events
 
-    it("should emit connect", () => {
-      connectAndSendHandshake();
+    it("should asynchronously emit connect", async () => {
+      await connectAndSendHandshake();
+
       const sessionListener = harness.createSessionListener();
       receiveSuccess();
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(1);
       expect(sessionListener.connect.mock.calls[0].length).toBe(0);
@@ -1345,18 +1454,21 @@ describe("The HandshakeResponse processor", () => {
 
     // State
 
-    it("should set ._clientId", () => {
-      connectAndSendHandshake();
+    it("should set ._clientId", async () => {
+      await connectAndSendHandshake();
       const newState = harness.getSessionState();
       newState._clientId = "abc";
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
     // Transport
 
-    it("should make no transport calls", () => {
-      connectAndSendHandshake();
+    it("should make no transport calls", async () => {
+      await connectAndSendHandshake();
       harness.transportWrapper.mockClear();
       receiveSuccess();
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
@@ -1370,10 +1482,13 @@ describe("The HandshakeResponse processor", () => {
   describe("can run successfully communicating a failed handshake result", () => {
     // Events
 
-    it("should emit nothing", () => {
-      connectAndSendHandshake();
+    it("should emit nothing", async () => {
+      await connectAndSendHandshake();
       const sessionListener = harness.createSessionListener();
       receiveFailure();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1387,8 +1502,8 @@ describe("The HandshakeResponse processor", () => {
 
     // State
 
-    it("should update transport state to disconnected (other state is unmodified)", () => {
-      connectAndSendHandshake();
+    it("should update transport state to disconnected (other state is unmodified)", async () => {
+      await connectAndSendHandshake();
       const newState = harness.getSessionState();
       newState._transportWrapperState = "disconnected";
       receiveFailure();
@@ -1398,10 +1513,14 @@ describe("The HandshakeResponse processor", () => {
 
     // Transport
 
-    it("should call transport.disconnect()", () => {
-      connectAndSendHandshake();
+    it("should call transport.disconnect()", async () => {
+      await connectAndSendHandshake();
+
       harness.transportWrapper.mockClear();
       receiveFailure();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(1);
       expect(harness.transportWrapper.disconnect.mock.calls[0].length).toBe(1);
@@ -1421,9 +1540,9 @@ describe("The HandshakeResponse processor", () => {
 describe("The ActionResponse processor", () => {
   // Mock a connected session, plus convenience setup
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
   const requestAction = function requestAction(cb = () => {}) {
     harness.session.action("myAction", { arg: "val" }, cb);
@@ -1448,9 +1567,12 @@ describe("The ActionResponse processor", () => {
     harness.transportWrapper.emit("message", JSON.stringify(msgFailure));
   };
 
-  it("should emit badServerMessage(err) if not expected", () => {
+  it("should asynchronously emit badServerMessage(err) if not expected", async () => {
     const sessionListener = harness.createSessionListener();
     receiveSuccess(); // Failure would be just as good
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1475,10 +1597,13 @@ describe("The ActionResponse processor", () => {
   describe("can run successfully communicating a successful action result", () => {
     // Events
 
-    it("should not fire any events", () => {
+    it("should not fire any events", async () => {
       requestAction();
       const sessionListener = harness.createSessionListener();
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1492,11 +1617,14 @@ describe("The ActionResponse processor", () => {
 
     // // State
 
-    it("should delete the ._actionCallbacks entry", () => {
+    it("should delete the ._actionCallbacks entry", async () => {
       requestAction();
       const newState = harness.getSessionState();
       delete newState._actionCallbacks["1"];
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -1513,10 +1641,15 @@ describe("The ActionResponse processor", () => {
 
     // Callbacks
 
-    it("should call the appropriate callback with success", () => {
+    it("should asynchronously call the appropriate callback with success", async () => {
       const cb = jest.fn();
       requestAction(cb);
       receiveSuccess();
+
+      expect(cb.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(cb.mock.calls.length).toBe(1);
       expect(cb.mock.calls[0].length).toBe(2);
       expect(cb.mock.calls[0][0]).toBeUndefined();
@@ -1527,10 +1660,13 @@ describe("The ActionResponse processor", () => {
   describe("can run successfully communicating a failed action result", () => {
     // Events
 
-    it("should not fire any events", () => {
+    it("should not fire any events", async () => {
       requestAction();
       const sessionListener = harness.createSessionListener();
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1544,11 +1680,14 @@ describe("The ActionResponse processor", () => {
 
     // State
 
-    it("should delete the ._actionCallbacks entry", () => {
+    it("should delete the ._actionCallbacks entry", async () => {
       requestAction();
       const newState = harness.getSessionState();
       delete newState._actionCallbacks["1"];
       receiveFailure();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -1565,10 +1704,15 @@ describe("The ActionResponse processor", () => {
 
     // Callbacks
 
-    it("should call the appropriate callback with failure", () => {
+    it("should asynchronously call the appropriate callback with failure", async () => {
       const cb = jest.fn();
       requestAction(cb);
       receiveFailure();
+
+      expect(cb.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(cb.mock.calls.length).toBe(1);
       expect(cb.mock.calls[0].length).toBe(1);
       expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -1584,9 +1728,9 @@ describe("The ActionResponse processor", () => {
 describe("The FeedOpenResponse processor", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
   const msgSuccess = {
     MessageType: "FeedOpenResponse",
@@ -1610,9 +1754,12 @@ describe("The FeedOpenResponse processor", () => {
     harness.transportWrapper.emit("message", JSON.stringify(msgFailure));
   };
 
-  it("should emit badServerMessage(err) if not expexcted", () => {
+  it("should emit badServerMessage(err) if not expexcted", async () => {
     const sessionListener = harness.createSessionListener();
     receiveSuccess();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1637,10 +1784,13 @@ describe("The FeedOpenResponse processor", () => {
   describe("can run successfully communicating successful FeedOpen", () => {
     // Events
 
-    it("should not fire any events", () => {
+    it("should not fire any events", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
       const sessionListener = harness.createSessionListener();
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1654,7 +1804,7 @@ describe("The FeedOpenResponse processor", () => {
 
     // State
 
-    it("should update ._feedStates, ._feedOpenCallbacks, and ._feedData appropriately", () => {
+    it("should update ._feedStates, ._feedOpenCallbacks, and ._feedData appropriately", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
       const feedSerial = feedSerializer.serialize("myFeed", {
         arg: "val"
@@ -1664,6 +1814,9 @@ describe("The FeedOpenResponse processor", () => {
       newState._feedOpenCallbacks = {};
       newState._feedData[feedSerial] = { some: "info" };
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -1680,10 +1833,15 @@ describe("The FeedOpenResponse processor", () => {
 
     // Callbacks
 
-    it("should call back appropriately with success", () => {
+    it("should asynchronously call back appropriately with success", async () => {
       const cb = jest.fn();
       harness.session.feedOpen("myFeed", { arg: "val" }, cb);
       receiveSuccess();
+
+      expect(cb.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(cb.mock.calls.length).toBe(1);
       expect(cb.mock.calls[0].length).toBe(2);
       expect(cb.mock.calls[0][0]).toBeUndefined();
@@ -1694,10 +1852,13 @@ describe("The FeedOpenResponse processor", () => {
   describe("can run successfully communicating failed FeedOpen", () => {
     // Events
 
-    it("should not fire any events", () => {
+    it("should not fire any events", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
       const sessionListener = harness.createSessionListener();
       receiveFailure();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1711,13 +1872,16 @@ describe("The FeedOpenResponse processor", () => {
 
     // State
 
-    it("should update ._feedStates, ._feedOpenCallbacks, and ._feedData appropriately", () => {
+    it("should update ._feedStates, ._feedOpenCallbacks, and ._feedData appropriately", async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
       const newState = harness.getSessionState();
       newState._feedStates = {};
       newState._feedOpenCallbacks = {};
       newState._feedData = {};
       receiveFailure();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -1734,10 +1898,15 @@ describe("The FeedOpenResponse processor", () => {
 
     // Callbacks
 
-    it("should call back appropriately with failure", () => {
+    it("should asynchronously call back appropriately with failure", async () => {
       const cb = jest.fn();
       harness.session.feedOpen("myFeed", { arg: "val" }, cb);
       receiveFailure();
+
+      expect(cb.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(cb.mock.calls.length).toBe(1);
       expect(cb.mock.calls[0].length).toBe(1);
       expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -1753,11 +1922,11 @@ describe("The FeedOpenResponse processor", () => {
 describe("The FeedCloseResponse processor", () => {
   // Mock a connected session and an open feed
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
     harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-    harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
   });
   const msgSuccess = {
     MessageType: "FeedCloseResponse",
@@ -1768,9 +1937,12 @@ describe("The FeedCloseResponse processor", () => {
     harness.transportWrapper.emit("message", JSON.stringify(msgSuccess));
   };
 
-  it("should emit badServerMessage(err) if not expected", () => {
+  it("should emit badServerMessage(err) if not expected", async () => {
     const sessionListener = harness.createSessionListener();
     receiveSuccess();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1795,10 +1967,13 @@ describe("The FeedCloseResponse processor", () => {
   describe("can run successfully communicating successful FeedClose", () => {
     // Events
 
-    it("should not fire any events", () => {
+    it("should not fire any events", async () => {
       harness.session.feedClose("myFeed", { arg: "val" }, () => {});
       const sessionListener = harness.createSessionListener();
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1812,12 +1987,15 @@ describe("The FeedCloseResponse processor", () => {
 
     // State
 
-    it("should update ._feedStates and ._feedCloseCallbacks appropriately", () => {
+    it("should update ._feedStates and ._feedCloseCallbacks appropriately", async () => {
       harness.session.feedClose("myFeed", { arg: "val" }, () => {});
       const newState = harness.getSessionState();
       newState._feedCloseCallbacks = {};
       newState._feedStates = {};
       receiveSuccess();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -1834,10 +2012,15 @@ describe("The FeedCloseResponse processor", () => {
 
     // Callbacks
 
-    it("should call back appropriately with success", () => {
+    it("should asynchronously call back appropriately with success", async () => {
       const cb = jest.fn();
       harness.session.feedClose("myFeed", { arg: "val" }, cb);
       receiveSuccess();
+
+      expect(cb.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(cb.mock.calls.length).toBe(1);
       expect(cb.mock.calls[0].length).toBe(0);
     });
@@ -1847,9 +2030,9 @@ describe("The FeedCloseResponse processor", () => {
 describe("The ActionRevelation processor", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
   const msg = {
     MessageType: "ActionRevelation",
@@ -1864,9 +2047,12 @@ describe("The ActionRevelation processor", () => {
     harness.transportWrapper.emit("message", JSON.stringify(msg));
   };
 
-  it("should emit badServerMessage(err) if not expected", () => {
+  it("should emit badServerMessage(err) if not expected", async () => {
     const sessionListener = harness.createSessionListener();
     receiveRevelation();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1888,10 +2074,10 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  it("should do nothing if the feed is closing (no violation)", () => {
+  it("should do nothing if the feed is closing (no violation)", async () => {
     const sessionListener = harness.createSessionListener();
     harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-    harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
     harness.session.feedClose("myFeed", { arg: "val" }, () => {});
     receiveRevelation();
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
@@ -1905,15 +2091,21 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if delta writing fails", () => {
+  it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if delta writing fails", async () => {
     harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-    harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+
+    await Promise.resolve(); // Execute queued microtasks
+
     const sessionListener = harness.createSessionListener();
     const badMsg = _.clone(msg);
     badMsg.FeedDeltas = [
       { Operation: "Set", Path: ["nonexistent", "child"], Value: "123" }
     ];
     harness.transportWrapper.emit("message", JSON.stringify(badMsg));
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1951,14 +2143,17 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  it("should eventually emit unexpectedFeedClosed(fn, fa) if delta writing fails", () => {
+  it("should eventually emit unexpectedFeedClosed(fn, fa) if delta writing fails", async () => {
     harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-    harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
     const badMsg = _.clone(msg);
     badMsg.FeedDeltas = [
       { Operation: "Set", Path: ["nonexistent", "child"], Value: "123" }
     ];
     harness.transportWrapper.emit("message", JSON.stringify(badMsg)); // Initiates feed closure
+
+    await Promise.resolve(); // Execute queued microtasks
+
     const sessionListener = harness.createSessionListener();
     harness.transportWrapper.emit(
       "message",
@@ -1968,6 +2163,9 @@ describe("The ActionRevelation processor", () => {
         FeedArgs: { arg: "val" }
       })
     );
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -1985,13 +2183,16 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if MD5 verification fails", () => {
+  it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if MD5 verification fails", async () => {
     harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-    harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
     const sessionListener = harness.createSessionListener();
     const badMsg = _.clone(msg);
     badMsg.FeedMd5 = "123456789012345678901234";
     harness.transportWrapper.emit("message", JSON.stringify(badMsg));
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2026,13 +2227,17 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  it("should eventually emit unexpectedFeedClosed(fn, fa) if MD5 verification fails", () => {
+  it("should eventually emit unexpectedFeedClosed(fn, fa) if MD5 verification fails", async () => {
     harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-    harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
     const badMsg = _.clone(msg);
     badMsg.FeedMd5 = "123456789012345678901234";
     harness.transportWrapper.emit("message", JSON.stringify(badMsg)); // Initiates feed closure
+
+    await Promise.resolve(); // Execute queued microtasks
+
     const sessionListener = harness.createSessionListener();
+
     harness.transportWrapper.emit(
       "message",
       JSON.stringify({
@@ -2041,6 +2246,9 @@ describe("The ActionRevelation processor", () => {
         FeedArgs: { arg: "val" }
       })
     );
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2060,16 +2268,29 @@ describe("The ActionRevelation processor", () => {
 
   describe("can run successfully", () => {
     // Mock an open feed
-    beforeEach(() => {
+    beforeEach(async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
     });
 
     // Events
 
-    it("should emit action(an, ad, fn, fa, nd, od)", () => {
+    it("should asynchronously emit action(an, ad, fn, fa, nd, od)", async () => {
       const sessionListener = harness.createSessionListener();
       receiveRevelation();
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2100,13 +2321,16 @@ describe("The ActionRevelation processor", () => {
 
     // State
 
-    it("should update ._feedData", () => {
+    it("should update ._feedData", async () => {
       const feedSerial = feedSerializer.serialize("myFeed", {
         arg: "val"
       });
       const newState = harness.getSessionState();
       newState._feedData[feedSerial] = { member: "myval" };
       receiveRevelation();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -2127,9 +2351,9 @@ describe("The ActionRevelation processor", () => {
 describe("The FeedTermination processor", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
   const msg = {
     MessageType: "FeedTermination",
@@ -2142,9 +2366,12 @@ describe("The FeedTermination processor", () => {
     harness.transportWrapper.emit("message", JSON.stringify(msg));
   };
 
-  it("should emit badServerMessage(err) if not expected", () => {
+  it("should emit badServerMessage(err) if not expected", async () => {
     const sessionListener = harness.createSessionListener();
     receiveTermination();
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2168,16 +2395,29 @@ describe("The FeedTermination processor", () => {
 
   describe("can run successfully", () => {
     // Mock an open feed
-    beforeEach(() => {
+    beforeEach(async () => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
-      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+      await harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
     });
 
     // Events
 
-    it("should emit unexpectedFeedClosing and immediately Closed if the feed was open", () => {
+    it("should asynchronously  emit unexpectedFeedClosing and immediately Closed if the feed was open", async () => {
       const sessionListener = harness.createSessionListener();
       receiveTermination();
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2226,10 +2466,13 @@ describe("The FeedTermination processor", () => {
       expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
-    it("should emit nothing if the feed was closing", () => {
+    it("should emit nothing if the feed was closing", async () => {
       harness.session.feedClose("myFeed", { arg: "val" }, () => {});
       const sessionListener = harness.createSessionListener();
       receiveTermination();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(sessionListener.connecting.mock.calls.length).toBe(0);
       expect(sessionListener.connect.mock.calls.length).toBe(0);
       expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2243,7 +2486,7 @@ describe("The FeedTermination processor", () => {
 
     // State
 
-    it("should update ._feedStates and ._feedData if feed was open", () => {
+    it("should update ._feedStates and ._feedData if feed was open", async () => {
       const feedSerial = feedSerializer.serialize("myFeed", {
         arg: "val"
       });
@@ -2251,10 +2494,13 @@ describe("The FeedTermination processor", () => {
       delete newState._feedStates[feedSerial];
       delete newState._feedData[feedSerial];
       receiveTermination();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
-    it("should update ._feedStates if feed was closing", () => {
+    it("should update ._feedStates if feed was closing", async () => {
       const feedSerial = feedSerializer.serialize("myFeed", {
         arg: "val"
       });
@@ -2262,6 +2508,9 @@ describe("The FeedTermination processor", () => {
       const newState = harness.getSessionState();
       newState._feedStates[feedSerial] = "terminated";
       receiveTermination();
+
+      await Promise.resolve(); // Execute queued microtasks
+
       expect(harness.session).toHaveState(newState);
     });
 
@@ -2282,17 +2531,20 @@ describe("The FeedTermination processor", () => {
 describe("The transport transportError(err) event", () => {
   // Mock a connected session
   let harness;
-  beforeEach(() => {
+  beforeEach(async () => {
     harness = harnessFactory();
-    harness.connectSession();
+    await harness.connectSession();
   });
 
-  it("should emit the transportError event", () => {
+  it("should emit the transportError event", async () => {
     const sessionListener = harness.createSessionListener();
     harness.transportWrapper.emit(
       "transportError",
       new Error("SOME_ERROR: ...")
     );
+
+    await Promise.resolve(); // Execute queued microtasks
+
     expect(sessionListener.connecting.mock.calls.length).toBe(0);
     expect(sessionListener.connect.mock.calls.length).toBe(0);
     expect(sessionListener.disconnect.mock.calls.length).toBe(0);
@@ -2386,9 +2638,9 @@ describe("the feedState() function", () => {
     }).toThrow(new Error("INVALID_STATE: Not connected."));
   });
 
-  it("should return correctly through a feed open/close cycle", () => {
+  it("should return correctly through a feed open/close cycle", async () => {
     const feedSerial = feedSerializer.serialize("myFeed", { arg: "val" });
-    harness.connectSession();
+    await harness.connectSession();
     expect(harness.session.feedState("myFeed", { arg: "val" })).toBe("closed");
     harness.session._feedOpenCallbacks[feedSerial] = () => {};
     harness.session._feedStates[feedSerial] = "opening";
@@ -2428,9 +2680,9 @@ describe("the feedData() function", () => {
     }).toThrow(new Error("INVALID_STATE: Not connected."));
   });
 
-  it("should throw/return correctly through a feed open/close cycle", () => {
+  it("should throw/return correctly through a feed open/close cycle", async () => {
     const feedSerial = feedSerializer.serialize("myFeed", { arg: "val" });
-    harness.connectSession();
+    await harness.connectSession();
     expect(() => {
       harness.session.feedData("myFeed", { arg: "val" });
     }).toThrow(new Error("INVALID_FEED_STATE: Feed is not open."));
