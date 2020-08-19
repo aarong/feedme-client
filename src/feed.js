@@ -423,18 +423,11 @@ proto._serverActionRevelation = function _serverActionRevelation(
     return;
   }
 
-  // Desired state is open - fire the events asynchronously
+  // Desired state is open
   queueMicrotask(
     this.emit.bind(this),
     "action",
     actionName,
-    actionData,
-    newFeedData,
-    oldFeedData
-  );
-  queueMicrotask(
-    this.emit.bind(this),
-    `action:${actionName}`,
     actionData,
     newFeedData,
     oldFeedData

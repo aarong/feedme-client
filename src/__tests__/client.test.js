@@ -2719,13 +2719,9 @@ describe("The client._processActionRevelation() function", () => {
     await Promise.resolve(); // Execute queued microtasks
 
     const feedListener1 = harness.createFeedListener(feed1);
-    const someActionListener1 = jest.fn();
-    feed1.on("action:someAction", someActionListener1);
 
     const feed2 = harness.client.feed("someFeed", { arg: "val" }); // Desired closed
     const feedListener2 = harness.createFeedListener(feed2);
-    const someActionListener2 = jest.fn();
-    feed2.on("action:someAction", someActionListener2);
     harness.session.emit(
       "actionRevelation",
       "someFeed",
@@ -2740,12 +2736,10 @@ describe("The client._processActionRevelation() function", () => {
     expect(feedListener1.open.mock.calls.length).toBe(0);
     expect(feedListener1.close.mock.calls.length).toBe(0);
     expect(feedListener1.action.mock.calls.length).toBe(0);
-    expect(someActionListener1.mock.calls.length).toBe(0);
     expect(feedListener2.opening.mock.calls.length).toBe(0);
     expect(feedListener2.open.mock.calls.length).toBe(0);
     expect(feedListener2.close.mock.calls.length).toBe(0);
     expect(feedListener2.action.mock.calls.length).toBe(0);
-    expect(someActionListener2.mock.calls.length).toBe(0);
 
     await Promise.resolve(); // Execute queued microtasks
 
@@ -2759,16 +2753,10 @@ describe("The client._processActionRevelation() function", () => {
     expect(feedListener1.action.mock.calls[0][1]).toEqual({ action: "data" });
     expect(feedListener1.action.mock.calls[0][2]).toEqual({ new: "feedData" });
     expect(feedListener1.action.mock.calls[0][3]).toEqual({ old: "feedData" });
-    expect(someActionListener1.mock.calls.length).toBe(1);
-    expect(someActionListener1.mock.calls[0].length).toBe(3);
-    expect(someActionListener1.mock.calls[0][0]).toEqual({ action: "data" });
-    expect(someActionListener1.mock.calls[0][1]).toEqual({ new: "feedData" });
-    expect(someActionListener1.mock.calls[0][2]).toEqual({ old: "feedData" });
     expect(feedListener2.opening.mock.calls.length).toBe(0);
     expect(feedListener2.open.mock.calls.length).toBe(0);
     expect(feedListener2.close.mock.calls.length).toBe(0);
     expect(feedListener2.action.mock.calls.length).toBe(0);
-    expect(someActionListener2.mock.calls.length).toBe(0);
   });
 
   // State
@@ -6205,8 +6193,6 @@ describe("The client._informServerActionRevelation() and feed._serverActionRevel
     await Promise.resolve(); // Execute queued microtasks
 
     const feedListener = harness.createFeedListener(feed);
-    const nameListener = jest.fn();
-    feed.on("action:someAction", nameListener);
     harness.session.emit(
       "actionRevelation",
       "someFeed",
@@ -6221,7 +6207,6 @@ describe("The client._informServerActionRevelation() and feed._serverActionRevel
     expect(feedListener.open.mock.calls.length).toBe(0);
     expect(feedListener.close.mock.calls.length).toBe(0);
     expect(feedListener.action.mock.calls.length).toBe(0);
-    expect(nameListener.mock.calls.length).toBe(0);
 
     await Promise.resolve(); // Execute queued microtasks
 
@@ -6234,11 +6219,6 @@ describe("The client._informServerActionRevelation() and feed._serverActionRevel
     expect(feedListener.action.mock.calls[0][1]).toEqual({ action: "arg" });
     expect(feedListener.action.mock.calls[0][2]).toEqual({ new: "data" });
     expect(feedListener.action.mock.calls[0][3]).toEqual({ old: "data" });
-    expect(nameListener.mock.calls.length).toBe(1);
-    expect(nameListener.mock.calls[0].length).toBe(3);
-    expect(nameListener.mock.calls[0][0]).toEqual({ action: "arg" });
-    expect(nameListener.mock.calls[0][1]).toEqual({ new: "data" });
-    expect(nameListener.mock.calls[0][2]).toEqual({ old: "data" });
   });
 
   // State

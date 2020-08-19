@@ -57,7 +57,6 @@ Library contributors and transport developers should see the
       - [open](#open)
       - [close](#close)
       - [action](#action)
-      - [action:actionName](#actionactionname)
 - [Sample Code](#sample-code)
 
 <!-- /TOC -->
@@ -744,25 +743,6 @@ Arguments passed to the listeners:
    The feed data after applying any updates associated with the action.
 
 4. `oldFeedData` (object)
-
-   The feed data before applying any updates associated with the action.
-
-##### action:actionName
-
-Emitted when the server reveals a specific type of action on the feed, specified
-by `actionName`, provided that the feed is desired `open`.
-
-Arguments passed to the listeners:
-
-1. `actionData` (object)
-
-   The data returned by the server describing the action.
-
-2. `newFeedData` (object)
-
-   The feed data after applying any updates associated with the action.
-
-3. `oldFeedData` (object)
 
    The feed data before applying any updates associated with the action.
 
