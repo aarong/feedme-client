@@ -1,31 +1,89 @@
 import emitter from "component-emitter";
 import delayOrig from "delay"; // eslint-disable-line import/no-extraneous-dependencies
 
-// Don't use fake timers for delay
+/* global feedmeClient */
+
+// Delay must use real timers, not fake timers
 const delay = delayOrig.createWithTimers({ clearTimeout, setTimeout });
 
-/* global feedmeClient */
 /*
 
-Build integration/functional tests run on Node and in the browser.
-Assume an in-scope feedmeClient() factory function.
+Integration/functional tests for the built library are run on Node and in the
+browser. Assume an in-scope feedmeClient() factory function.
 
-Tests API promises in the user documentation, ensures that the client
+Tests API promises in the user documentation, ensures that the library
 interacts appropriately with the transport, and ensures that messages
-send via the transport abide by the Feedme spec.
+sent via the transport abide by the Feedme spec.
 
 1. Do configuration options work as documented?
 2. Do app-initiated operations work as documented?
 3. Do transport-initiated operations work as documented?
 
-There is no access to external modules (also runs in the browser), so
-basic event emitter functionality for the transport is included inline.
+-- TESTING DEFERRED CODE --
+
+Lots of code execution is deferred within the library. Events are deferred at
+the Session and Client levels and callbacks/promises always return
+asynchronously. There can be multiple stages of internal deferral: for example,
+when the transport emits a connecting event, it is deferred once by the session
+and then again by the client before reaching the application. All deferred code
+needs to be flushed throughout the tests in order to properly evaluate library
+behavior.
+
+In Node, deferrals are done using microtasks, so multi-stage deferrals could
+be flushed by awaiting a macrotask like setImmediate. But older browsers will
+polyfill deferrals using something else, so deferraks are fkysged using
+setTimeout (via the delay module, which exposes it as a promise) with a delay
+of DEFER_MS.
+
+For browsers where deferrals fall back on setTimeout(0), you would need
+DEFER_MS > 0 in order to ensure that multi-stage deferrals are flushed. But
+for the browsers that I test in Sauce, the tests work with DEFER_MS = 0,
+presumably because the promise polyfill falls back on something higher-priority
+than setTimeout in those browsers. Still setting DEFER_MS > 0 to avoid any
+potential issues.
 
 */
-const EPSILON = 1;
-const DEFER_MS = 10; // How long to wait for events/callbacks/promise resolution (could involve multiple deferrals under the hood)
+
+const DEFER_MS = 1;
+
+/*
+
+-- DEFERRAL STRATEGY --
+
+The main test suite is designed so that all deferred code (events, callbacks,
+promise settlements) is allowed to run before the tests continue. It is
+essential to run through all deferred behavior in order to properly verify
+library functionality.
+
+In order to accomplish this, the mock transport's emit() function is overlaid
+with an async function that returns after all deferred code has been run, which
+flushes events, callbacks, and promise settlement to the tests. Many tests
+therefore  do not need to explicitly account for deferral, they just do:
+
+  await transport.emit("something"); // All side effects have occurred after this
+
+You need to explicitly run deferred code for events, callbacks, and promise
+settlements that are not triggered by a transport event. For these cases the
+tests contain an explicit:
+
+  await delay(DEFER_MS);
+
+There are only a few cases in which this is necessary:
+
+1. For events triggered by application calls to the library, not transport emissions
+      - feed.desireOpen() emits deferred open event
+      - feed.desireClosed() emits deferred close event
+
+2. For callback and promise settlement triggered within the library:
+      - client.action() callback/settlement triggered by timeout
+
+3. To flush events that are not relevant to the test in question before creating
+   a listener object
+
+*/
 
 const harnessProto = {};
+
 const harnessFactory = options => {
   // Mock transport is added to any other specified options
   options = options || {}; // eslint-disable-line no-param-reassign
@@ -36,7 +94,8 @@ const harnessFactory = options => {
   harness.transport = t;
   options.transport = t; // eslint-disable-line no-param-reassign
 
-  // Overwrite the emit function so you can wait for all deferrals
+  // Substitute the emit function with an async version that only returns
+  // after all deferred code has been executed
   const emitSync = t.emit.bind(t);
   t.emit = async (...args) => {
     emitSync(...args);
@@ -150,12 +209,10 @@ describe("The connectTimeoutMs option", () => {
     harness.transport.state.and.returnValue("connecting");
     await harness.transport.emit("connecting");
 
-    await delay(DEFER_MS);
-
     // Advance to immediately before the timeout and verify that
     // transport.disconnect() was not called
     harness.transport.spyClear();
-    jasmine.clock().tick(opts.connectTimeoutMs - EPSILON);
+    jasmine.clock().tick(opts.connectTimeoutMs - 1);
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
     expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -164,7 +221,7 @@ describe("The connectTimeoutMs option", () => {
     // Advance to immediately after the timeout and ensure that
     // transport.disconnect() was called
     harness.transport.spyClear();
-    jasmine.clock().tick(2 * EPSILON);
+    jasmine.clock().tick(1);
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
     expect(harness.transport.disconnect.calls.count()).toBe(1);
@@ -176,8 +233,6 @@ describe("The connectTimeoutMs option", () => {
     clientListener.spyClear();
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("TIMEOUT: ..."));
-
-    await delay(DEFER_MS);
 
     expect(clientListener.connecting.calls.count()).toBe(0);
     expect(clientListener.connect.calls.count()).toBe(0);
@@ -248,12 +303,10 @@ describe("The connectRetryMs option", () => {
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-    await delay(DEFER_MS);
-
     // Advance to immediately before the retry and verify that
     // transport.connect() was not called
     harness.transport.spyClear();
-    jasmine.clock().tick(opts.connectRetryMs - EPSILON);
+    jasmine.clock().tick(opts.connectRetryMs - 1);
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
     expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -262,7 +315,7 @@ describe("The connectRetryMs option", () => {
     // Advance to immediately after the retry and ensure that
     // transport.connect() was called
     harness.transport.spyClear();
-    jasmine.clock().tick(2 * EPSILON);
+    jasmine.clock().tick(1);
     expect(harness.transport.connect.calls.count()).toBe(1);
     expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
@@ -275,8 +328,6 @@ describe("The connectRetryMs option", () => {
     clientListener.spyClear();
     harness.transport.state.and.returnValue("connecting");
     await harness.transport.emit("connecting");
-
-    await delay(DEFER_MS);
 
     expect(clientListener.connecting.calls.count()).toBe(1);
     expect(clientListener.connecting.calls.argsFor(0).length).toBe(0);
@@ -305,8 +356,6 @@ describe("The connectRetryMs option", () => {
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-    await delay(DEFER_MS);
-
     jasmine.clock().tick(0); // The retry is async
 
     expect(harness.transport.connect.calls.count()).toBe(1);
@@ -321,8 +370,6 @@ describe("The connectRetryMs option", () => {
     clientListener.spyClear();
     harness.transport.state.and.returnValue("connecting");
     await harness.transport.emit("connecting");
-
-    await delay(DEFER_MS);
 
     expect(clientListener.connecting.calls.count()).toBe(1);
     expect(clientListener.connecting.calls.argsFor(0).length).toBe(0);
@@ -352,8 +399,6 @@ describe("The connectRetryMs option", () => {
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-    await delay(DEFER_MS);
-
     jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
@@ -376,8 +421,6 @@ describe("The connectRetryMs option", () => {
     harness.transport.state.and.returnValue("connected");
     await harness.transport.emit("connect");
 
-    await delay(DEFER_MS);
-
     // Have the trensport reject the handshake and verify that there is
     // a subsequent call to transport.disconnect(err) and no call to
     // transport.connect()
@@ -389,8 +432,6 @@ describe("The connectRetryMs option", () => {
         Success: false
       })
     );
-
-    await delay(DEFER_MS);
 
     expect(harness.transport.connect.calls.count()).toBe(0);
     expect(harness.transport.send.calls.count()).toBe(0);
@@ -414,8 +455,6 @@ describe("The connectRetryMs option", () => {
       "disconnect",
       new Error("HANDSHAKE_REJECTED: The server rejected the handshake.")
     );
-
-    await delay(DEFER_MS);
 
     jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
 
@@ -460,12 +499,10 @@ describe("The connectRetryBackoffMs and connectRetryMaxMs options", () => {
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect", new Error("FAILURE: ...")); // eslint-disable-line no-await-in-loop
 
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
-
       // Advance to immediately before the retry and verify that
       // transport.connect() was not called
       harness.transport.spyClear();
-      jasmine.clock().tick(ms - EPSILON);
+      jasmine.clock().tick(ms - 1);
       expect(harness.transport.connect.calls.count()).toBe(0);
       expect(harness.transport.send.calls.count()).toBe(0);
       expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -474,7 +511,7 @@ describe("The connectRetryBackoffMs and connectRetryMaxMs options", () => {
       // Advance to immediately after the retry and ensure that
       // transport.connect() was called
       harness.transport.spyClear();
-      jasmine.clock().tick(2 * EPSILON);
+      jasmine.clock().tick(1);
       expect(harness.transport.connect.calls.count()).toBe(1);
       expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
       expect(harness.transport.send.calls.count()).toBe(0);
@@ -512,15 +549,11 @@ describe("The connectRetryMaxAttempts option", () => {
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect", new Error("FAILURE: ...")); // eslint-disable-line no-await-in-loop
 
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
-
       // Advance to immediately after the retry and ensure that
       // transport.connect() was called if fewer than max retries and
       // not called otherwise
       harness.transport.spyClear();
       jasmine.clock().tick(0); // runs in timeout
-
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
 
       if (i < opts.connectRetryMaxAttempts) {
         expect(harness.transport.connect.calls.count()).toBe(1);
@@ -552,8 +585,6 @@ describe("The connectRetryMaxAttempts option", () => {
       await harness.transport.emit("connecting"); // eslint-disable-line no-await-in-loop
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect", new Error("FAILURE: ...")); // eslint-disable-line no-await-in-loop
-
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
 
       // Advance to immediately after the retry and ensure that
       // transport.connect() was called
@@ -591,15 +622,17 @@ describe("The actionTimeoutMs option", () => {
     const cb = jasmine.createSpy();
     harness.client.action("SomeAction", { Some: "Args" }, cb);
 
-    // Advance to immediately before the timeout and ensure that
-    // neither callback was called
-    jasmine.clock().tick(opts.actionTimeoutMs - EPSILON);
+    // Advance to immediately before the timeout
+    jasmine.clock().tick(opts.actionTimeoutMs - 1);
+
+    await delay(DEFER_MS); // Flush callbacks
+
     expect(cb.calls.count()).toBe(0);
 
-    // Advance to immediately after the timeout and ensure that cb was called
-    jasmine.clock().tick(2 * EPSILON);
+    // Advance to the timeout
+    jasmine.clock().tick(1);
 
-    await delay(DEFER_MS);
+    await delay(DEFER_MS); // Flush callbacks
 
     expect(cb.calls.count()).toBe(1);
     expect(cb.calls.argsFor(0).length).toBe(1);
@@ -646,13 +679,14 @@ describe("The feedTimeoutMs option", () => {
     const feed = harness.client.feed("SomeFeed", { Feed: "Args" });
     feed.desireOpen();
 
-    await delay(DEFER_MS);
+    await delay(DEFER_MS); // Flush events
 
     // Advance to immediately before the timeout and ensure that no events have fired
     const feedListener = harness.createFeedListener(feed);
-    jasmine.clock().tick(opts.feedTimeoutMs - EPSILON);
 
-    await delay(DEFER_MS);
+    jasmine.clock().tick(opts.feedTimeoutMs - 1);
+
+    await delay(DEFER_MS); // Get events
 
     expect(feedListener.opening.calls.count()).toBe(0);
     expect(feedListener.open.calls.count()).toBe(0);
@@ -660,9 +694,9 @@ describe("The feedTimeoutMs option", () => {
     expect(feedListener.action.calls.count()).toBe(0);
 
     // Advance to immediately after the timeout and ensure that close was fired
-    jasmine.clock().tick(2 * EPSILON);
+    jasmine.clock().tick(1);
 
-    await delay(DEFER_MS);
+    await delay(DEFER_MS); // Get events
 
     expect(feedListener.opening.calls.count()).toBe(0);
     expect(feedListener.open.calls.count()).toBe(0);
@@ -716,8 +750,6 @@ describe("The reconnect option", () => {
     harness.transport.spyClear();
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-    await delay(DEFER_MS);
 
     expect(harness.transport.connect.calls.count()).toBe(1);
     expect(harness.transport.connect.calls.argsFor(0).length).toBe(0);
@@ -778,11 +810,10 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
       })
     );
 
+    await delay(DEFER_MS); // Flush events
+
     const feedListener = harness.createFeedListener(feed);
     for (let i = 0; i < 5; i += 1) {
-      // Move past queued events
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
-
       feedListener.spyClear();
 
       // Transmit a bad action revelation; the session will ask to close the feed
@@ -809,8 +840,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
           FeedArgs: { Feed: "Args" }
         })
       );
-
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
 
       expect(feedListener.opening.calls.count()).toBe(1);
       expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
@@ -861,8 +890,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
       })
     );
 
-    await delay(DEFER_MS);
-
     const feedListener = harness.createFeedListener(feed);
 
     // Transmit a bad action revelation; the session will ask to close the feed
@@ -887,8 +914,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
         FeedArgs: { Feed: "Args" }
       })
     );
-
-    await delay(DEFER_MS);
 
     expect(feedListener.opening.calls.count()).toBe(0);
     expect(feedListener.open.calls.count()).toBe(0);
@@ -940,9 +965,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
         })
       );
 
-      // Move past queued events
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
-
       // Check that the feed is re-opened on success
       feedListener.spyClear();
       // eslint-disable-next-line no-await-in-loop
@@ -954,8 +976,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
           FeedArgs: { Feed: "Args" }
         })
       );
-
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
 
       expect(feedListener.opening.calls.count()).toBe(1);
       expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
@@ -990,8 +1010,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
       })
     );
 
-    await delay(DEFER_MS);
-
     // Check that the feed is NOT re-opened on success
     feedListener.spyClear();
     await harness.transport.emit(
@@ -1003,8 +1021,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
       })
     );
 
-    await delay(DEFER_MS);
-
     expect(feedListener.opening.calls.count()).toBe(0);
     expect(feedListener.open.calls.count()).toBe(0);
     expect(feedListener.close.calls.count()).toBe(0);
@@ -1012,9 +1028,10 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
 
     // Advance reopenTrailingMs and ensure the feed is reopened
     feedListener.spyClear();
+
     jasmine.clock().tick(opts.reopenTrailingMs);
 
-    await delay(DEFER_MS);
+    await delay(DEFER_MS); // Flush events
 
     expect(feedListener.opening.calls.count()).toBe(1);
     expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
@@ -1045,8 +1062,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
       })
     );
 
-    await delay(DEFER_MS);
-
     // Have the feed fail reopenMaxAttempts times
     const feedListener = harness.createFeedListener(feed);
     for (let i = 0; i < opts.reopenMaxAttempts; i += 1) {
@@ -1064,9 +1079,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
         })
       );
 
-      // Move past queued events
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
-
       // Check that the feed is re-opened on success
       feedListener.spyClear();
       // eslint-disable-next-line no-await-in-loop
@@ -1078,8 +1090,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
           FeedArgs: { Feed: "Args" }
         })
       );
-
-      await delay(DEFER_MS); // eslint-disable-line no-await-in-loop
 
       expect(feedListener.opening.calls.count()).toBe(1);
       expect(feedListener.opening.calls.argsFor(0).length).toBe(0);
@@ -1114,8 +1124,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
       })
     );
 
-    await delay(DEFER_MS);
-
     // Check that the feed is NOT re-opened on success
     feedListener.spyClear();
     await harness.transport.emit(
@@ -1145,8 +1153,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
     harness.client.disconnect();
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect");
-
-    await delay(DEFER_MS);
 
     feedListener.spyClear();
     await harness.connectClient();
@@ -1252,8 +1258,6 @@ describe("The client.connect() function", () => {
       harness.transport.state.and.returnValue("connecting");
       await harness.transport.emit("connecting");
 
-      await delay(DEFER_MS);
-
       // Check all state functions
       expect(harness.client.state()).toBe("connecting");
       expect(() => {
@@ -1284,8 +1288,6 @@ describe("The client.connect() function", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       // Check all state functions
       expect(harness.client.state()).toBe("connected");
       expect(harness.client.id()).toBe("SOME_CLIENT_ID");
@@ -1311,8 +1313,6 @@ describe("The client.connect() function", () => {
           FeedData: { Feed: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       // Check all state functions
       expect(harness.client.state()).toBe("connected");
@@ -1345,7 +1345,7 @@ describe("The client.connect() function", () => {
 
       it("if due to timeout, should update appropriately", async () => {
         // Trigger the timeout
-        jasmine.clock().tick(connectTimeoutMs + EPSILON);
+        jasmine.clock().tick(connectTimeoutMs);
 
         // The client will disconnect the transport
         harness.transport.state.and.returnValue("disconnected");
@@ -1480,7 +1480,7 @@ describe("The client.connect() function", () => {
         Feed: "Arg"
       });
 
-      await delay(DEFER_MS);
+      await delay(DEFER_MS); // Flush events
 
       // Create listeners
       const clientListener = harness.createClientListener();
@@ -1493,8 +1493,6 @@ describe("The client.connect() function", () => {
       harness.client.connect();
       harness.transport.state.and.returnValue("connecting");
       await harness.transport.emit("connecting");
-
-      await delay(DEFER_MS);
 
       // Check all client and feed events
       expect(clientListener.connecting.calls.count()).toBe(1);
@@ -1532,8 +1530,6 @@ describe("The client.connect() function", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       // Check all client and feed events
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(1);
@@ -1569,8 +1565,6 @@ describe("The client.connect() function", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       // Check all client and feed events
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -1603,8 +1597,6 @@ describe("The client.connect() function", () => {
         harness.client.connect();
         harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
-
-        await delay(DEFER_MS);
       });
 
       it("if due to timeout, should update appropriately", async () => {
@@ -1626,8 +1618,6 @@ describe("The client.connect() function", () => {
           "disconnect",
           harness.transport.disconnect.calls.argsFor(0)[0]
         );
-
-        await delay(DEFER_MS);
 
         // Check all client and feed events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -1666,9 +1656,7 @@ describe("The client.connect() function", () => {
         // Have the client disconnect
         harness.client.disconnect();
         harness.transport.state.and.returnValue("disconnected");
-        await harness.transport.emit("disconnect"); //
-
-        await delay(DEFER_MS);
+        await harness.transport.emit("disconnect");
 
         // Check all client and feed events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -1702,8 +1690,6 @@ describe("The client.connect() function", () => {
         harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-        await delay(DEFER_MS);
-
         // Check all client and feed events
         expect(clientListener.connecting.calls.count()).toBe(0);
         expect(clientListener.connect.calls.count()).toBe(0);
@@ -1733,8 +1719,6 @@ describe("The client.connect() function", () => {
         harness.transport.state.and.returnValue("connected");
         await harness.transport.emit("connect");
 
-        await delay(DEFER_MS);
-
         // Create listeners
         const clientListener = harness.createClientListener();
         const feedWantedOpenListener = harness.createFeedListener(
@@ -1753,16 +1737,12 @@ describe("The client.connect() function", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         // The client will disconnect the transport
         harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit(
           "disconnect",
           harness.transport.disconnect.calls.argsFor(0)[0]
         );
-
-        await delay(DEFER_MS);
 
         // Check all client and feed events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -1822,8 +1802,6 @@ describe("The client.connect() function", () => {
         harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
 
-        await delay(DEFER_MS);
-
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
         expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -1836,8 +1814,6 @@ describe("The client.connect() function", () => {
         // Have the transport emit connect
         harness.transport.state.and.returnValue("connected");
         await harness.transport.emit("connect");
-
-        await delay(DEFER_MS);
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -1865,8 +1841,6 @@ describe("The client.connect() function", () => {
             ClientId: "SOME_CLIENT_ID"
           })
         );
-
-        await delay(DEFER_MS);
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -1896,8 +1870,6 @@ describe("The client.connect() function", () => {
             FeedData: { Feed: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -1930,8 +1902,6 @@ describe("The client.connect() function", () => {
         harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
 
-        await delay(DEFER_MS);
-
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
         expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -1944,8 +1914,6 @@ describe("The client.connect() function", () => {
         // Have the transport emit connect
         harness.transport.state.and.returnValue("connected");
         await harness.transport.emit("connect");
-
-        await delay(DEFER_MS);
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -1974,8 +1942,6 @@ describe("The client.connect() function", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
         expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -1996,8 +1962,6 @@ describe("The client.connect() function", () => {
         harness.client.connect();
         harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
-
-        await delay(DEFER_MS);
       });
 
       it("if due to timeout, should be appropriate", () => {
@@ -2005,7 +1969,7 @@ describe("The client.connect() function", () => {
         harness.transport.spyClear();
 
         // Trigger the timeout
-        jasmine.clock().tick(connectTimeoutMs + EPSILON);
+        jasmine.clock().tick(connectTimeoutMs);
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -2067,8 +2031,6 @@ describe("The client.connect() function", () => {
         harness.transport.state.and.returnValue("connected");
         await harness.transport.emit("connect");
 
-        await delay(DEFER_MS);
-
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
         expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -2093,8 +2055,6 @@ describe("The client.connect() function", () => {
             Success: false
           })
         ); // The client will call transport.disconnect()
-
-        await delay(DEFER_MS);
 
         // Check all transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
@@ -2283,8 +2243,6 @@ describe("The client.disconnect() function", () => {
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
-      await delay(DEFER_MS);
-
       // Check all state functions
       expect(harness.client.state()).toBe("disconnected");
       expect(() => {
@@ -2320,8 +2278,6 @@ describe("The client.disconnect() function", () => {
       harness.transport.state.and.returnValue("connecting");
       await harness.transport.emit("connecting");
 
-      await delay(DEFER_MS);
-
       // Create listeners
       const clientListener = harness.createClientListener();
       const feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
@@ -2333,8 +2289,6 @@ describe("The client.disconnect() function", () => {
       harness.client.disconnect();
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
-
-      await delay(DEFER_MS);
 
       // Check all client and feed events
       expect(clientListener.connecting.calls.count()).toBe(0);
@@ -2370,8 +2324,6 @@ describe("The client.disconnect() function", () => {
       harness.transport.state.and.returnValue("connected");
       await harness.transport.emit("connect"); // Transport will send Handshake message
 
-      await delay(DEFER_MS);
-
       // Create listeners
       const clientListener = harness.createClientListener();
       const feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
@@ -2383,8 +2335,6 @@ describe("The client.disconnect() function", () => {
       harness.client.disconnect();
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
-
-      await delay(DEFER_MS);
 
       // Check all client and feed events
       expect(clientListener.connecting.calls.count()).toBe(0);
@@ -2419,7 +2369,7 @@ describe("The client.disconnect() function", () => {
         Feed: "Arg"
       });
 
-      await delay(DEFER_MS);
+      await delay(DEFER_MS); // Flush events
 
       // Create listeners
       const clientListener = harness.createClientListener();
@@ -2432,8 +2382,6 @@ describe("The client.disconnect() function", () => {
       harness.client.disconnect();
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
-
-      await delay(DEFER_MS);
 
       // Check all client and feed events
       expect(clientListener.connecting.calls.count()).toBe(0);
@@ -2690,13 +2638,15 @@ describe("The client.action() function", () => {
       const serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
         .CallbackId;
 
+      await delay(DEFER_MS); // Flush callbacks
+
       // Check callbacks
       expect(cb.calls.count()).toBe(0);
 
       // Run the timeout
       jasmine.clock().tick(timeoutMs);
 
-      await delay(DEFER_MS);
+      await delay(DEFER_MS); // Flush callbacks
 
       // Check callbacks
       expect(cb.calls.count()).toBe(1);
@@ -2720,8 +2670,6 @@ describe("The client.action() function", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       // Check callbacks
       expect(cb.calls.count()).toBe(0);
     });
@@ -2740,13 +2688,15 @@ describe("The client.action() function", () => {
       const cb = jasmine.createSpy();
       harness.client.action("SomeAction", { Action: "Arg" }, cb);
 
+      await delay(DEFER_MS); // Flush callbacks
+
       // Check callbacks
       expect(cb.calls.count()).toBe(0);
 
       // Run the timeout
       jasmine.clock().tick(timeoutMs);
 
-      await delay(DEFER_MS);
+      await delay(DEFER_MS); // Flush callbacks
 
       // Check callbacks
       expect(cb.calls.count()).toBe(1);
@@ -2763,8 +2713,6 @@ describe("The client.action() function", () => {
       harness.client.disconnect();
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
-
-      await delay(DEFER_MS);
 
       // Check callbacks
       expect(cb.calls.count()).toBe(0);
@@ -2788,13 +2736,15 @@ describe("The client.action() function", () => {
       const serverCb = JSON.parse(harness.transport.send.calls.argsFor(0)[0])
         .CallbackId;
 
+      await delay(DEFER_MS); // Flush callbacks
+
       // Check callbacks
       expect(cb.calls.count()).toBe(0);
 
       // Run the timeout
       jasmine.clock().tick(timeoutMs);
 
-      await delay(DEFER_MS);
+      await delay(DEFER_MS); // Flush callbacks
 
       // Check callbacks
       expect(cb.calls.count()).toBe(1);
@@ -2818,8 +2768,6 @@ describe("The client.action() function", () => {
           ErrorData: { Server: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       // Check callbacks
       expect(cb.calls.count()).toBe(0);
@@ -2854,8 +2802,6 @@ describe("The client.action() function", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       // Check callbacks
       expect(cb.calls.count()).toBe(1);
       expect(cb.calls.argsFor(0).length).toBe(2);
@@ -2881,8 +2827,6 @@ describe("The client.action() function", () => {
       harness.client.disconnect();
       harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
-
-      await delay(DEFER_MS);
 
       // Check callbacks
       expect(cb.calls.count()).toBe(1);
@@ -2922,8 +2866,6 @@ describe("The client.action() function", () => {
           ErrorData: { Server: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       // Check callbacks
       expect(cb.calls.count()).toBe(1);
@@ -3185,7 +3127,7 @@ describe("The feed.desireOpen() function", () => {
 
       feedWantedOpen.desireOpen();
 
-      await delay(DEFER_MS);
+      await delay(DEFER_MS); // Flush events
 
       expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
       expect(feedWantedOpenListener.open.calls.count()).toBe(0);
@@ -3253,8 +3195,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("open");
@@ -3277,7 +3217,7 @@ describe("The feed.desireOpen() function", () => {
 
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -3307,8 +3247,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3396,8 +3334,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("closed");
@@ -3424,7 +3360,7 @@ describe("The feed.desireOpen() function", () => {
 
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -3455,8 +3391,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3542,8 +3476,6 @@ describe("The feed.desireOpen() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("closed");
@@ -3570,7 +3502,7 @@ describe("The feed.desireOpen() function", () => {
 
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -3592,8 +3524,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3690,8 +3620,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("open");
@@ -3714,7 +3642,7 @@ describe("The feed.desireOpen() function", () => {
 
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -3744,8 +3672,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3825,8 +3751,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("closed");
@@ -3853,7 +3777,7 @@ describe("The feed.desireOpen() function", () => {
 
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -3884,8 +3808,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -3963,8 +3885,6 @@ describe("The feed.desireOpen() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("closed");
@@ -3991,7 +3911,7 @@ describe("The feed.desireOpen() function", () => {
 
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -4013,8 +3933,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4092,7 +4010,7 @@ describe("The feed.desireOpen() function", () => {
 
         earlierFeed.desireClosed();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the server responds to earlier FeedClose with success and subsequent FeedOpen with success", () => {
@@ -4121,8 +4039,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("opening");
@@ -4143,8 +4059,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feed.desiredState()).toBe("open");
@@ -4170,7 +4084,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -4200,8 +4114,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(0);
@@ -4227,8 +4139,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4271,8 +4181,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -4301,8 +4209,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
@@ -4338,8 +4244,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("opening");
@@ -4361,8 +4265,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feed.desiredState()).toBe("open");
@@ -4392,7 +4294,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -4422,8 +4324,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(0);
@@ -4450,8 +4350,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4500,8 +4398,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -4531,8 +4427,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
@@ -4568,8 +4462,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feed.desiredState()).toBe("open");
           expect(feed.state()).toBe("opening");
@@ -4582,8 +4474,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feed.desiredState()).toBe("open");
@@ -4613,7 +4503,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
@@ -4643,8 +4533,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(0);
@@ -4662,8 +4550,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4712,8 +4598,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -4734,8 +4618,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -4770,8 +4652,6 @@ describe("The feed.desireOpen() function", () => {
             ErrorData: { Error: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
       });
 
       describe("if the server responds to FeedOpen with success", () => {
@@ -4810,8 +4690,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("open");
@@ -4842,7 +4720,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(1);
@@ -4880,8 +4758,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -4985,8 +4861,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("closed");
@@ -5025,7 +4899,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(1);
@@ -5064,8 +4938,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5177,8 +5049,6 @@ describe("The feed.desireOpen() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("closed");
@@ -5217,7 +5087,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(1);
@@ -5247,8 +5117,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the client disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5336,7 +5204,7 @@ describe("The feed.desireOpen() function", () => {
         });
         feedAlreadyWantedOpen.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the server responds to earlier FeedOpen with success", () => {
@@ -5375,8 +5243,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("open");
@@ -5407,7 +5273,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire the feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5442,8 +5308,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5539,8 +5403,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("closed");
@@ -5579,7 +5441,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5615,8 +5477,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5716,8 +5576,6 @@ describe("The feed.desireOpen() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("closed");
@@ -5756,7 +5614,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5783,8 +5641,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5869,8 +5725,6 @@ describe("The feed.desireOpen() function", () => {
             FeedData: { Feed: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
       });
 
       it("state functions", () => {
@@ -5910,7 +5764,7 @@ describe("The feed.desireOpen() function", () => {
         // Desire the feed open
         feedWantedOpen.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
 
         // Check events
         expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -5970,12 +5824,10 @@ describe("The feed.desireOpen() function", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         feedAlreadyWantedOpen.desireClosed();
         feedAlreadyWantedOpen.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the server responds to earlier FeedClose with success and subsequent FeedOpen with success", () => {
@@ -6013,8 +5865,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("opening");
@@ -6042,8 +5892,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
@@ -6075,7 +5923,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6110,8 +5958,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
@@ -6142,8 +5988,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6193,8 +6037,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -6223,8 +6065,6 @@ describe("The feed.desireOpen() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
@@ -6269,8 +6109,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("opening");
@@ -6299,8 +6137,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
@@ -6340,7 +6176,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6375,8 +6211,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
@@ -6408,8 +6242,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6470,8 +6302,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -6501,8 +6331,6 @@ describe("The feed.desireOpen() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
@@ -6547,8 +6375,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
           expect(feedAlreadyWantedOpen.state()).toBe("opening");
@@ -6568,8 +6394,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feedAlreadyWantedOpen.desiredState()).toBe("open");
@@ -6609,7 +6433,7 @@ describe("The feed.desireOpen() function", () => {
           // Desire feed open
           feedWantedOpen.desireOpen();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6644,8 +6468,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(0);
@@ -6668,8 +6490,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedAlreadyWantedOpenListener.opening.calls.count()).toBe(0);
@@ -6731,8 +6551,6 @@ describe("The feed.desireOpen() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -6753,8 +6571,6 @@ describe("The feed.desireOpen() function", () => {
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Tries to reconnect by default
@@ -6898,8 +6714,6 @@ describe("The feed.desireClosed() function", () => {
             ErrorData: { Error: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
       });
 
       it("state functions", () => {
@@ -6930,7 +6744,7 @@ describe("The feed.desireClosed() function", () => {
 
         feed.desireClosed();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
 
         // Check events
         expect(feedListener.opening.calls.count()).toBe(0);
@@ -6965,7 +6779,7 @@ describe("The feed.desireClosed() function", () => {
         feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
         feed.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the client disconnects before FeedOpenResponse", () => {
@@ -7010,7 +6824,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7025,8 +6839,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7114,7 +6926,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7138,8 +6950,6 @@ describe("The feed.desireClosed() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7248,7 +7058,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7271,8 +7081,6 @@ describe("The feed.desireClosed() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7322,8 +7130,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -7344,8 +7150,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -7424,7 +7228,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7448,8 +7252,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
           expect(feedListener.open.calls.count()).toBe(0);
@@ -7468,8 +7270,6 @@ describe("The feed.desireClosed() function", () => {
               FeedArgs: { Feed: "Arg" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7506,8 +7306,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -7534,8 +7332,6 @@ describe("The feed.desireClosed() function", () => {
               FeedArgs: { Feed: "Arg" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
@@ -7565,8 +7361,6 @@ describe("The feed.desireClosed() function", () => {
             FeedData: { Feed: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
       });
 
       describe("if the server disconnects before FeedCloseResponse", () => {
@@ -7607,7 +7401,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7622,8 +7416,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7712,7 +7504,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7733,8 +7525,6 @@ describe("The feed.desireClosed() function", () => {
               FeedArgs: { Feed: "Arg" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7806,12 +7596,10 @@ describe("The feed.desireClosed() function", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         feed.desireClosed();
         feed.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the server disconnects before FeedCloseResponse", () => {
@@ -7856,7 +7644,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7871,8 +7659,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7957,7 +7743,7 @@ describe("The feed.desireClosed() function", () => {
 
           feed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -7978,8 +7764,6 @@ describe("The feed.desireClosed() function", () => {
               FeedArgs: { Feed: "Arg" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedListener.opening.calls.count()).toBe(0);
@@ -8048,8 +7832,6 @@ describe("The feed.desireClosed() function", () => {
             ErrorData: { Error: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
       });
 
       it("state functions", () => {
@@ -8099,7 +7881,7 @@ describe("The feed.desireClosed() function", () => {
 
         feedWantedClosed.desireClosed();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
 
         // Check events
         expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8141,7 +7923,7 @@ describe("The feed.desireClosed() function", () => {
         feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
         feedWantedOpen.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the client disconnects before FeedOpenResponse", () => {
@@ -8185,8 +7967,6 @@ describe("The feed.desireClosed() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -8214,7 +7994,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8235,8 +8015,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8334,8 +8112,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -8363,7 +8139,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8393,8 +8169,6 @@ describe("The feed.desireClosed() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8500,8 +8274,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -8517,8 +8289,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -8547,7 +8317,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8578,8 +8348,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
@@ -8598,8 +8366,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8691,8 +8457,6 @@ describe("The feed.desireClosed() function", () => {
             FeedData: { Feed: "Data" }
           })
         );
-
-        await delay(DEFER_MS);
       });
 
       describe("when the client eventually disconnects", () => {
@@ -8724,8 +8488,6 @@ describe("The feed.desireClosed() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -8753,7 +8515,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8775,8 +8537,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8846,14 +8606,12 @@ describe("The feed.desireClosed() function", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         feedWantedClosed.desireClosed();
         feedWantedClosed.desireOpen();
         feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
         feedWantedOpen.desireOpen();
 
-        await delay(DEFER_MS);
+        await delay(DEFER_MS); // Flush events
       });
 
       describe("if the client disconnects before receiving a response to earlier FeedClose", () => {
@@ -8897,8 +8655,6 @@ describe("The feed.desireClosed() function", () => {
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -8926,7 +8682,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8948,8 +8704,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8988,8 +8742,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -9046,8 +8798,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -9067,8 +8817,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
@@ -9097,7 +8845,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -9126,8 +8874,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
@@ -9145,8 +8891,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -9192,8 +8936,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -9214,8 +8956,6 @@ describe("The feed.desireClosed() function", () => {
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -9272,8 +9012,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -9303,8 +9041,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -9332,7 +9068,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -9361,8 +9097,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
@@ -9389,8 +9123,6 @@ describe("The feed.desireClosed() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -9436,8 +9168,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -9467,8 +9197,6 @@ describe("The feed.desireClosed() function", () => {
               ErrorData: { Error: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -9525,8 +9253,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -9555,8 +9281,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check state functions
           expect(feedWantedClosed.desiredState()).toBe("closed");
           expect(feedWantedClosed.state()).toBe("closed");
@@ -9580,7 +9304,7 @@ describe("The feed.desireClosed() function", () => {
 
           feedWantedClosed.desireClosed();
 
-          await delay(DEFER_MS);
+          await delay(DEFER_MS); // Flush events
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -9609,8 +9333,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
@@ -9636,8 +9358,6 @@ describe("The feed.desireClosed() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check events
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -9677,8 +9397,6 @@ describe("The feed.desireClosed() function", () => {
             })
           );
 
-          await delay(DEFER_MS);
-
           // Check transport calls
           expect(harness.transport.connect.calls.count()).toBe(0);
           expect(harness.transport.disconnect.calls.count()).toBe(0);
@@ -9707,8 +9425,6 @@ describe("The feed.desireClosed() function", () => {
               FeedData: { Feed: "Data" }
             })
           );
-
-          await delay(DEFER_MS);
 
           // Check transport calls
           expect(harness.transport.connect.calls.count() >= 0).toBe(true); // Reconnects by default
@@ -9856,8 +9572,6 @@ describe("if the transport violates a library requirement", () => {
     const clientListener = harness.createClientListener();
     await harness.transport.emit("disconnect"); // Unexpected
 
-    await delay(DEFER_MS);
-
     expect(clientListener.connecting.calls.count()).toBe(0);
     expect(clientListener.connect.calls.count()).toBe(0);
     expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -9940,7 +9654,7 @@ describe("if the transport unexpectedly disconnects", () => {
     feedClosing.desireClosed();
     feedClosing.desireOpen();
 
-    await delay(DEFER_MS);
+    await delay(DEFER_MS); // Flush events
   });
 
   // State functions
@@ -9976,8 +9690,6 @@ describe("if the transport unexpectedly disconnects", () => {
     // Have the transport disconnect
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-    await delay(DEFER_MS);
 
     // Check state functions
     expect(harness.client.state()).toBe("disconnected");
@@ -10027,8 +9739,6 @@ describe("if the transport unexpectedly disconnects", () => {
     // Have the transport disconnect
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
-
-    await delay(DEFER_MS);
 
     // Check events
     expect(clientListener.connecting.calls.count()).toBe(0);
@@ -10113,8 +9823,6 @@ describe("if the transport unexpectedly disconnects", () => {
     harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
 
-    await delay(DEFER_MS);
-
     expect(cb.calls.count()).toBe(1);
     expect(cb.calls.argsFor(0).length).toBe(1);
     expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
@@ -10160,8 +9868,6 @@ describe("structurally invalid server messages", () => {
       const clientListener = harness.createClientListener();
       await harness.transport.emit("message", "bad json");
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -10192,8 +9898,6 @@ describe("structurally invalid server messages", () => {
       await harness.connectClient();
       const clientListener = harness.createClientListener();
       await harness.transport.emit("message", "{}");
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10244,8 +9948,6 @@ describe("sequentially invalid server messages", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -10279,8 +9981,6 @@ describe("sequentially invalid server messages", () => {
       harness.transport.state.and.returnValue("connected");
       await harness.transport.emit("connect");
 
-      await delay(DEFER_MS);
-
       const clientListener = harness.createClientListener();
       await harness.transport.emit(
         "message",
@@ -10291,8 +9991,6 @@ describe("sequentially invalid server messages", () => {
           ActionData: { Action: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10333,8 +10031,6 @@ describe("sequentially invalid server messages", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -10368,8 +10064,6 @@ describe("sequentially invalid server messages", () => {
       harness.transport.state.and.returnValue("connected");
       await harness.transport.emit("connect");
 
-      await delay(DEFER_MS);
-
       const clientListener = harness.createClientListener();
       await harness.transport.emit(
         "message",
@@ -10381,8 +10075,6 @@ describe("sequentially invalid server messages", () => {
           FeedData: { Feed: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10423,8 +10115,6 @@ describe("sequentially invalid server messages", () => {
           FeedData: { Feed: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10477,8 +10167,6 @@ describe("sequentially invalid server messages", () => {
           FeedData: { Feed: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10533,8 +10221,6 @@ describe("sequentially invalid server messages", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -10568,8 +10254,6 @@ describe("sequentially invalid server messages", () => {
       harness.transport.state.and.returnValue("connected");
       await harness.transport.emit("connect");
 
-      await delay(DEFER_MS);
-
       const clientListener = harness.createClientListener();
       await harness.transport.emit(
         "message",
@@ -10579,8 +10263,6 @@ describe("sequentially invalid server messages", () => {
           FeedArgs: { Feed: "Arg" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10619,8 +10301,6 @@ describe("sequentially invalid server messages", () => {
           FeedArgs: { Feed: "Arg" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10661,8 +10341,6 @@ describe("sequentially invalid server messages", () => {
           FeedArgs: { Feed: "Arg" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10714,8 +10392,6 @@ describe("sequentially invalid server messages", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -10749,8 +10425,6 @@ describe("sequentially invalid server messages", () => {
       harness.transport.state.and.returnValue("connected");
       await harness.transport.emit("connect");
 
-      await delay(DEFER_MS);
-
       const clientListener = harness.createClientListener();
       await harness.transport.emit(
         "message",
@@ -10764,8 +10438,6 @@ describe("sequentially invalid server messages", () => {
           FeedMd5: "123451234512345123451234"
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10808,8 +10480,6 @@ describe("sequentially invalid server messages", () => {
           FeedMd5: "123451234512345123451234"
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10855,8 +10525,6 @@ describe("sequentially invalid server messages", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -10890,8 +10558,6 @@ describe("sequentially invalid server messages", () => {
       harness.transport.state.and.returnValue("connected");
       await harness.transport.emit("connect");
 
-      await delay(DEFER_MS);
-
       const clientListener = harness.createClientListener();
       await harness.transport.emit(
         "message",
@@ -10903,8 +10569,6 @@ describe("sequentially invalid server messages", () => {
           ErrorData: { Error: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10945,8 +10609,6 @@ describe("sequentially invalid server messages", () => {
           ErrorData: { Error: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
@@ -10990,8 +10652,6 @@ describe("sequentially invalid server messages", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       expect(clientListener.connecting.calls.count()).toBe(0);
       expect(clientListener.connect.calls.count()).toBe(0);
       expect(clientListener.disconnect.calls.count()).toBe(0);
@@ -11033,8 +10693,6 @@ describe("Structurally/sequentially valid ViolationResponse message", () => {
         Diagnostics: { Diagnostic: "Data" }
       })
     );
-
-    await delay(DEFER_MS);
 
     expect(clientListener.connecting.calls.count()).toBe(0);
     expect(clientListener.connect.calls.count()).toBe(0);
@@ -11078,8 +10736,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
           FeedData: { Feed: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
     });
 
     describe("if there is an invalid feed delta", () => {
@@ -11118,8 +10774,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
             ]
           })
         );
-
-        await delay(DEFER_MS);
 
         // Check state functions
         expect(harness.client.state()).toBe("connected");
@@ -11169,8 +10823,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
             ]
           })
         );
-
-        await delay(DEFER_MS);
 
         // Check client events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -11231,8 +10883,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         // Check transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
         expect(harness.transport.send.calls.count()).toBe(1); // FeedClose
@@ -11288,8 +10938,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         // Check state functions
         expect(harness.client.state()).toBe("connected");
         expect(harness.client.id()).toBe("SOME_CLIENT_ID");
@@ -11339,8 +10987,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
             FeedMd5: "123456789012345678901234"
           })
         );
-
-        await delay(DEFER_MS);
 
         // Check client events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -11400,8 +11046,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         // Check transport calls
         expect(harness.transport.connect.calls.count()).toBe(0);
         expect(harness.transport.send.calls.count()).toBe(1); // FeedClose
@@ -11457,8 +11101,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
           })
         );
 
-        await delay(DEFER_MS);
-
         // Check state functions
         expect(harness.client.state()).toBe("connected");
         expect(harness.client.id()).toBe("SOME_CLIENT_ID");
@@ -11504,8 +11146,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
             FeedMd5: "wh+CI4D0VYuSbmN8BzeSxA=="
           })
         );
-
-        await delay(DEFER_MS);
 
         // Check client events
         expect(clientListener.connecting.calls.count()).toBe(0);
@@ -11595,11 +11235,9 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
         })
       );
 
-      await delay(DEFER_MS);
-
       feed.desireClosed();
 
-      await delay(DEFER_MS); // Move past feed close event
+      await delay(DEFER_MS); // Flush events
     });
 
     describe("if there is an invalid feed delta", () => {
@@ -11997,7 +11635,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
           FeedData: { Feed: "Data" }
         })
       );
-      await delay(DEFER_MS);
     });
 
     // State functions
@@ -12026,8 +11663,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
           ErrorData: { Error: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       // Check state functions
       expect(harness.client.state()).toBe("connected");
@@ -12064,8 +11699,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
           ErrorData: { Error: "Data" }
         })
       );
-
-      await delay(DEFER_MS);
 
       // Check client events
       expect(clientListener.connecting.calls.count()).toBe(0);
@@ -12142,7 +11775,7 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
 
       feed.desireClosed();
 
-      await delay(DEFER_MS); // Move past feed close event
+      await delay(DEFER_MS); // Flush events
     });
     // State functions
 
