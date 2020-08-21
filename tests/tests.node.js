@@ -37,7 +37,8 @@ process.on("unhandledRejection", err => {
   jasmine.loadConfig({
     spec_dir: ".",
     spec_files: [`${__dirname}/node.tmp.js`],
-    random: false
+    random: false,
+    stopSpecOnExpectationFailure: true
   });
   jasmine.execute();
 

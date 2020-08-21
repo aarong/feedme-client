@@ -1,6 +1,5 @@
 import emitter from "component-emitter";
 import debug from "debug";
-import queueMicrotask from "./queuemicrotask";
 
 const dbg = debug("feedme-client:feed");
 
@@ -245,20 +244,6 @@ proto.data = function data() {
 };
 
 /**
- * Pass-through to client.
- * @memberof Feed
- * @instance
- * @returns {Client}
- * @throws {Error} "DESTROYED: ..."
- */
-proto.client = function client() {
-  dbg("Client requested");
-
-  this._checkDestroyed();
-  return this._client;
-};
-
-/**
  * Destroys the feed object.
  * @memberof Feed
  * @instance
@@ -424,14 +409,8 @@ proto._serverActionRevelation = function _serverActionRevelation(
   }
 
   // Desired state is open
-  queueMicrotask(
-    this.emit.bind(this),
-    "action",
-    actionName,
-    actionData,
-    newFeedData,
-    oldFeedData
-  );
+
+  this.emit("action", actionName, actionData, newFeedData, oldFeedData);
 };
 
 // Emitter functions that track the last emission
@@ -455,9 +434,9 @@ proto._emitClose = function _emitClose(err) {
   this._lastEmission = "close";
   this._lastCloseError = err || null;
   if (err) {
-    queueMicrotask(this.emit.bind(this), "close", err);
+    this.emit("close", err);
   } else {
-    queueMicrotask(this.emit.bind(this), "close");
+    this.emit("close");
   }
 };
 
@@ -472,7 +451,7 @@ proto._emitOpening = function _emitOpening() {
 
   this._lastEmission = "opening";
   this._lastCloseError = null;
-  queueMicrotask(this.emit.bind(this), "opening");
+  this.emit("opening");
 };
 
 /**
@@ -487,7 +466,7 @@ proto._emitOpen = function _emitOpen() {
 
   this._lastEmission = "open";
   this._lastCloseError = null;
-  queueMicrotask(this.emit.bind(this), "open");
+  this.emit("open");
 };
 
 // Internal helper

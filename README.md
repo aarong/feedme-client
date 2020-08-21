@@ -50,7 +50,6 @@ Library contributors and transport developers should see the
       - [feed.desiredState()](#feeddesiredstate)
       - [feed.state()](#feedstate)
       - [feed.data()](#feeddata)
-      - [feed.client()](#feedclient)
       - [feed.destroy()](#feeddestroy)
     - [Feed Object Events](#feed-object-events)
       - [opening](#opening)
@@ -624,16 +623,6 @@ Errors thrown:
 - `err.message === "INVALID_FEED_STATE: ..."`
 
   The feed object's actual state is not `open`.
-
-- `err.message === "DESTROYED: ..."`
-
-  The feed object has been destroyed.
-
-##### feed.client()
-
-Returns a reference to the client instance that created the feed object.
-
-Errors thrown:
 
 - `err.message === "DESTROYED: ..."`
 
