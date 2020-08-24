@@ -7,9 +7,9 @@ import _startsWith from "lodash/startsWith";
 import debug from "debug";
 import feedSerializer from "feedme-util/feedserializer";
 import config from "./config";
-import feed from "./feed";
 
-const dbg = debug("feedme-client");
+const dbgClient = debug("feedme-client");
+const dbgFeed = debug("feedme-client:feed");
 
 /**
  * ClientSync objects are to be accessed via ClientWrapper. ClientSync objects
@@ -34,8 +34,8 @@ const dbg = debug("feedme-client");
  * @extends emitter
  */
 
-const proto = {};
-emitter(proto);
+const protoClient = {};
+emitter(protoClient);
 
 /**
  * Client factory function.
@@ -171,8 +171,8 @@ emitter(proto);
  * @throws {Error}      "INVALID_ARGUMENT: ..."
  * @returns {Client}
  */
-export default function clientFactory(options) {
-  dbg("Initializing client");
+function clientFactory(options) {
+  dbgClient("Initializing client");
 
   // Check options
   if (!check.object(options)) {
@@ -282,7 +282,7 @@ export default function clientFactory(options) {
   }
 
   // Success
-  const client = Object.create(proto);
+  const client = Object.create(protoClient);
 
   /**
    * Configuration options excluding the session.
@@ -431,8 +431,6 @@ export default function clientFactory(options) {
   return client;
 }
 
-// Events
-
 /**
  * Pass-through for session event.
  * @event connecting
@@ -481,8 +479,6 @@ export default function clientFactory(options) {
  * @param {Error} err
  */
 
-// Callbacks
-
 /**
  * Callback for client.action()
  * Same as session callback, but it may timeout.
@@ -509,7 +505,165 @@ export default function clientFactory(options) {
  * @param {?object}   feedData  Only present on success
  */
 
-// Public functions
+/**
+ * Feed object returned by client.feed().
+ *
+ * - Some state information is held internally and accessed by the client.
+ *
+ * - Calls to feed object methods pass through to underlying client methods.
+ *
+ * - Receives notifications about changes in server feed state and action
+ * revelations through the inform function set.
+ *
+ * - Events are emitted asynchronously.
+ *
+ * - Tested alongside the client.
+ *
+ * @typedef {Object} FeedSync
+ * @extends emitter
+ */
+
+const protoFeed = {};
+emitter(protoFeed);
+
+/**
+ * Feed object factory function.
+ * @param {Client} client
+ * @param {string} name
+ * @param {Object} args
+ * @returns {Feed}
+ * @description
+ */
+function feedFactory(client, name, args) {
+  dbgFeed("Initializing feed");
+
+  const feed = Object.create(protoFeed);
+
+  /**
+   * The client object that created the feed. Deleted if destroyed.
+   * @memberof FeedSync
+   * @instance
+   * @private
+   * @type {client}
+   */
+  feed._client = client;
+
+  /**
+   * The feed name.
+   * @memberof FeedSync
+   * @instance
+   * @private
+   * @type {string}
+   */
+  feed._feedName = name;
+
+  /**
+   * The feed args.
+   * @memberof FeedSync
+   * @instance
+   * @private
+   * @type {Object}
+   */
+  feed._feedArgs = args;
+
+  /**
+   * Desired state. Initializes closed.
+   * @memberof FeedSync
+   * @instance
+   * @private
+   * @type {string} "open" or "closed"
+   */
+  feed._desiredState = "closed";
+
+  /**
+   * The name of the last event emitted. Tracked to ensure correct event
+   * sequencing. Initializes "close".
+   * @memberof FeedSync
+   * @instance
+   * @private
+   * @type {string} "open", "opening", or "close"
+   */
+  feed._lastEmission = "close";
+
+  /**
+   * The last error passed with the close emission. Null if close was
+   * emitted with no error or if last emission was not close.
+   * @memberof FeedSync
+   * @instance
+   * @private
+   * @type {?Error}
+   */
+  feed._lastCloseError = null;
+
+  return feed;
+}
+
+/**
+ * Emitted when the feed object state becomes opening.
+ * @event opening
+ * @memberof FeedSync
+ * @instance
+ */
+
+/**
+ * Emitted when the feed object state becomes open.
+ *
+ * An opening event is always emitted first, including when a late feed open response
+ * is received from the server (i.e. after closing due to timeout).
+ *
+ * @event open
+ * @memberof FeedSync
+ * @instance
+ */
+
+/**
+ * Emitted when the feed object state becomes closed and when the reason
+ * for its being closed has changed.
+ *
+ * May be emitted when the state is opening, open, or closed. The latter
+ * situation arises when:
+ *
+ * 1. The feed object is closed due to an error condition and the user makes
+ * a valid call to feed.desireClosed(). The feed object is now closed with
+ * no error.
+ *
+ * 2. The user makes a valid call to feed.desireOpen() but the client is not
+ * connected. The feed object is now closed with DISCONNECTED error.
+ *
+ * 3. A feed open times out and the client subsequently receives a
+ * rejection from the server or disconnects. The feed object is now closed with
+ * a REJECTED or DISCONNECTED error.
+ *
+ * @event close
+ * @memberof FeedSync
+ * @instance
+ * @param {?Error} err  If not present then the close resulted from feed.desireClosed()
+ *
+ *                      Error("TIMEOUT: ...")
+ *
+ *                      Error("REJECTED: ...")
+ *
+ *                        err.serverErrorCode (string)
+ *                        err.serverErrorData (object)
+ *
+ *                      Error("DISCONNECTED: ...")
+ *
+ *                      Error("TERMINATED: ...")
+ *
+ *                      Error("BAD_ACTION_REVELATION: ...")
+ */
+
+/**
+ * Emitted when an action is revealed on the server feed and the object
+ * is desired open.
+ * @event action
+ * @memberof FeedSync
+ * @instance
+ * @param {string} actionName
+ * @param {Object} actionArgs
+ * @param {Object} newFeedData
+ * @param {Object} oldFeedData
+ */
 
 /**
  * Pass-through to session.state()
@@ -517,8 +671,8 @@ export default function clientFactory(options) {
  * @instance
  * @returns {string} Passed through from session.state()
  */
-proto.state = function state() {
-  dbg("State requested");
+protoClient.state = function state() {
+  dbgClient("State requested");
 
   return this._session.state();
 };
@@ -530,8 +684,8 @@ proto.state = function state() {
  * @instance
  * @throws {Error} Passed through from session
  */
-proto.connect = function connect() {
-  dbg("Connect requested");
+protoClient.connect = function connect() {
+  dbgClient("Connect requested");
 
   // Attempt a connect with timeout (could fail if session state is bad)
   this._connect();
@@ -553,8 +707,8 @@ proto.connect = function connect() {
  * @instance
  * @throws {Error} Passed through from session
  */
-proto.disconnect = function disconnect() {
-  dbg("Disconnect requested");
+protoClient.disconnect = function disconnect() {
+  dbgClient("Disconnect requested");
 
   this._session.disconnect(); // No error - requested
 };
@@ -566,8 +720,8 @@ proto.disconnect = function disconnect() {
  * @returns {string}
  * @throws {Error} Passed through from session
  */
-proto.id = function id() {
-  dbg("Client id requested");
+protoClient.id = function id() {
+  dbgClient("Client id requested");
 
   return this._session.id();
 };
@@ -588,8 +742,8 @@ proto.id = function id() {
  * @throws {Error} Passed through from session
  */
 
-proto.action = function action(name, args, callback) {
-  dbg("Action requested");
+protoClient.action = function action(name, args, callback) {
+  dbgClient("Action requested");
 
   // Check callback
   if (!check.function(callback)) {
@@ -604,7 +758,9 @@ proto.action = function action(name, args, callback) {
   this._session.action(name, args, (err, actionData) => {
     // Timer not set if actionTimeoutMs === 0
     if (timer || this._options.actionTimeoutMs === 0) {
-      dbg("Received pre-timeout action callback from session - calling back.");
+      dbgClient(
+        "Received pre-timeout action callback from session - calling back."
+      );
       if (timer) {
         clearTimeout(timer); // Not present if actionTimeoutMs === 0
       }
@@ -614,15 +770,17 @@ proto.action = function action(name, args, callback) {
         callback(err, actionData);
       }
     } else {
-      dbg("Received post-timeout action callback from session - discarding.");
+      dbgClient(
+        "Received post-timeout action callback from session - discarding."
+      );
     }
   });
 
   // Set the timeout, if so configured
   if (this._options.actionTimeoutMs > 0) {
-    dbg("Action timout timer created");
+    dbgClient("Action timout timer created");
     timer = setTimeout(() => {
-      dbg("Action timeout timer fired");
+      dbgClient("Action timeout timer fired");
       timer = null; // Mark fired
       const err = new Error(
         "TIMEOUT: The server did not respond within the allocated time."
@@ -641,8 +799,8 @@ proto.action = function action(name, args, callback) {
  * @returns {Feed}
  * @throws {Error} "INVALID_ARGUMENT: ..."
  */
-proto.feed = function feedF(feedName, feedArgs) {
-  dbg("Feed interaction object requested");
+protoClient.feed = function feedF(feedName, feedArgs) {
+  dbgClient("Feed interaction object requested");
 
   // Check name
   if (!check.nonEmptyString(feedName)) {
@@ -667,7 +825,7 @@ proto.feed = function feedF(feedName, feedArgs) {
 
   // Store and return a new feed object
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
-  const appObject = feed(this, feedName, feedArgs);
+  const appObject = feedFactory(this, feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
     this._appFeeds[feedSerial] = [];
   }
@@ -675,16 +833,14 @@ proto.feed = function feedF(feedName, feedArgs) {
   return appObject;
 };
 
-// Session event handlers
-
 /**
  * Pass-through from session connecting event.
  * @memberof ClientSync
  * @instance
  * @private
  */
-proto._processConnecting = function _processConnecting() {
-  dbg("Observed session connecting event");
+protoClient._processConnecting = function _processConnecting() {
+  dbgClient("Observed session connecting event");
 
   this.emit("connecting");
   this._lastSessionState = "connecting";
@@ -696,8 +852,8 @@ proto._processConnecting = function _processConnecting() {
  * @instance
  * @private
  */
-proto._processConnect = function _processConnect() {
-  dbg("Observed session connect event");
+protoClient._processConnect = function _processConnect() {
+  dbgClient("Observed session connect event");
 
   // Session has returned a connection result - cancel timeout
   this._connectTimeoutCancel();
@@ -733,8 +889,8 @@ proto._processConnect = function _processConnect() {
  * @private
  * @param {Error?} err Present if not requested by .disconnect()
  */
-proto._processDisconnect = function _processDisconnect(err) {
-  dbg("Observed session disconnect event");
+protoClient._processDisconnect = function _processDisconnect(err) {
+  dbgClient("Observed session disconnect event");
 
   // Session has returned a connection result - cancel timeout
   this._connectTimeoutCancel();
@@ -790,9 +946,9 @@ proto._processDisconnect = function _processDisconnect(err) {
           this._options.connectRetryMaxMs
         ); // May be zero
         this._connectRetryCount += 1;
-        dbg("Connection retry timer created");
+        dbgClient("Connection retry timer created");
         this._connectRetryTimer = setTimeout(() => {
-          dbg("Connect retry timer fired");
+          dbgClient("Connect retry timer fired");
           this._connectRetryTimer = null;
           this._connect(); // Not .connect(), as that resets the retry counts
         }, retryMs);
@@ -823,7 +979,7 @@ proto._processDisconnect = function _processDisconnect(err) {
  * @param {Object} newFeedData
  * @param {Object} oldFeedData
  */
-proto._processActionRevelation = function _processActionRevelation(
+protoClient._processActionRevelation = function _processActionRevelation(
   feedName,
   feedArgs,
   actionName,
@@ -831,7 +987,7 @@ proto._processActionRevelation = function _processActionRevelation(
   newFeedData,
   oldFeedData
 ) {
-  dbg("Observed session actionRevelation event");
+  dbgClient("Observed session actionRevelation event");
 
   this._informServerActionRevelation(
     feedName,
@@ -852,12 +1008,12 @@ proto._processActionRevelation = function _processActionRevelation(
  * @param {Object} feedArgs
  * @param {Error} err Passed through from session
  */
-proto._processUnexpectedFeedClosing = function _processUnexpectedFeedClosing(
+protoClient._processUnexpectedFeedClosing = function _processUnexpectedFeedClosing(
   feedName,
   feedArgs,
   err
 ) {
-  dbg("Observed session unexpectedFeedClosing event");
+  dbgClient("Observed session unexpectedFeedClosing event");
 
   this._informServerFeedClosing(feedName, feedArgs, err);
 };
@@ -871,12 +1027,12 @@ proto._processUnexpectedFeedClosing = function _processUnexpectedFeedClosing(
  * @param {Object} feedArgs
  * @param {Error} err Passed through from session
  */
-proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
+protoClient._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
   feedName,
   feedArgs,
   err
 ) {
-  dbg("Observed session unexpectedFeedClosed event");
+  dbgClient("Observed session unexpectedFeedClosed event");
 
   // Inform the app
   this._informServerFeedClosed(feedName, feedArgs, err);
@@ -899,9 +1055,9 @@ proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
         this._reopenCounts[feedSerial] = reopenCount + 1;
         // Decrement after trailingMs (track reopens forever if trailingMs is 0)
         if (this._options.reopenTrailingMs > 0) {
-          dbg("Feed re-open counter timer created");
+          dbgClient("Feed re-open counter timer created");
           const timer = setTimeout(() => {
-            dbg("Feed re-open counter timer fired");
+            dbgClient("Feed re-open counter timer fired");
             // Decrement the reopen counter and stop tracking the timer
             this._reopenCounts[feedSerial] -= 1;
             _pull(this._reopenTimers, timer);
@@ -934,8 +1090,8 @@ proto._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
  * @private
  * @param {Error} err
  */
-proto._processBadServerMessage = function _processBadServerMessage(err) {
-  dbg("Observed session badServerMessage event");
+protoClient._processBadServerMessage = function _processBadServerMessage(err) {
+  dbgClient("Observed session badServerMessage event");
 
   this.emit("badServerMessage", err);
 };
@@ -947,10 +1103,10 @@ proto._processBadServerMessage = function _processBadServerMessage(err) {
  * @private
  * @param {Object} diagnostics
  */
-proto._processBadClientMessage = function _processBadClientMessage(
+protoClient._processBadClientMessage = function _processBadClientMessage(
   diagnostics
 ) {
-  dbg("Observed session badClientMessage event");
+  dbgClient("Observed session badClientMessage event");
 
   this.emit("badClientMessage", diagnostics);
 };
@@ -962,13 +1118,11 @@ proto._processBadClientMessage = function _processBadClientMessage(
  * @private
  * @param {Error} err
  */
-proto._processTransportError = function _processTransportError(err) {
-  dbg("Observed session transportError event");
+protoClient._processTransportError = function _processTransportError(err) {
+  dbgClient("Observed session transportError event");
 
   this.emit("transportError", err);
 };
-
-// Feed object functions
 
 /**
  * Passed through from feed.desireOpen(). Responsible for emitting as appropriate
@@ -980,8 +1134,8 @@ proto._processTransportError = function _processTransportError(err) {
  * @throws {Error} "INVALID_FEED_STATE: ..."
 
  */
-proto._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
-  dbg("Feed desire-open requested");
+protoClient._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
+  dbgClient("Feed desire-open requested");
 
   // Feed already desired open?
   if (appFeed._desiredState === "open") {
@@ -1027,8 +1181,8 @@ proto._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
  * @param {Feed} appFeed
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
-proto._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
-  dbg("Feed desire-closed requested");
+protoClient._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
+  dbgClient("Feed desire-closed requested");
 
   // Feed already desired closed?
   if (appFeed._desiredState === "closed") {
@@ -1067,8 +1221,8 @@ proto._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
  * @param {Feed} appFeed
  * @returns {string} "open" or "closed"
  */
-proto._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
-  dbg("Desired feed state requested");
+protoClient._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
+  dbgClient("Desired feed state requested");
   return appFeed._desiredState;
 };
 
@@ -1080,8 +1234,8 @@ proto._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
  * @param {Feed} appFeed
  * @returns {string} "open", "opening", or "closed"
  */
-proto._appFeedState = function _appFeedState(appFeed) {
-  dbg("Feed state requested");
+protoClient._appFeedState = function _appFeedState(appFeed) {
+  dbgClient("Feed state requested");
 
   if (appFeed._lastEmission === "close") {
     return "closed";
@@ -1097,8 +1251,8 @@ proto._appFeedState = function _appFeedState(appFeed) {
  * @private
  * @param {Feed} appFeed Interaction object, plus Error("INVALID_FEED_STATE: ...")
  */
-proto._appFeedDestroy = function _appFeedDestroy(appFeed) {
-  dbg("Feed destroy requested");
+protoClient._appFeedDestroy = function _appFeedDestroy(appFeed) {
+  dbgClient("Feed destroy requested");
 
   // You can't destroy a feed desired open
   if (appFeed._desiredState !== "closed") {
@@ -1130,8 +1284,8 @@ proto._appFeedDestroy = function _appFeedDestroy(appFeed) {
  * @returns {Object} Feed data
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
-proto._appFeedData = function _appFeedData(appFeed) {
-  dbg("Feed data requested");
+protoClient._appFeedData = function _appFeedData(appFeed) {
+  dbgClient("Feed data requested");
 
   // Is the feed open?
   if (appFeed.state() !== "open") {
@@ -1140,8 +1294,6 @@ proto._appFeedData = function _appFeedData(appFeed) {
 
   return this._session.feedData(appFeed._feedName, appFeed._feedArgs);
 };
-
-// Informers - Emit app feed events as the server feed state changes
 
 /**
  * Informs non-destroyed feed objects that the server feed is now closed.
@@ -1166,12 +1318,12 @@ proto._appFeedData = function _appFeedData(appFeed) {
  *                      Error("TERMINATED: ...")
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
-proto._informServerFeedClosed = function _informServerFeedClosed(
+protoClient._informServerFeedClosed = function _informServerFeedClosed(
   feedName,
   feedArgs,
   err
 ) {
-  dbg(`Informing server feed closed`);
+  dbgClient(`Informing server feed closed`);
 
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -1193,11 +1345,11 @@ proto._informServerFeedClosed = function _informServerFeedClosed(
  * @param {string}  feedName
  * @param {Object}  feedArgs
  */
-proto._informServerFeedOpening = function _informServerFeedOpening(
+protoClient._informServerFeedOpening = function _informServerFeedOpening(
   feedName,
   feedArgs
 ) {
-  dbg("Informing server feed opening");
+  dbgClient("Informing server feed opening");
 
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -1219,11 +1371,11 @@ proto._informServerFeedOpening = function _informServerFeedOpening(
  * @param {string}  feedName
  * @param {Object}  feedArgs
  */
-proto._informServerFeedOpen = function _informServerFeedOpen(
+protoClient._informServerFeedOpen = function _informServerFeedOpen(
   feedName,
   feedArgs
 ) {
-  dbg("Informing server feed open");
+  dbgClient("Informing server feed open");
 
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -1247,12 +1399,12 @@ proto._informServerFeedOpen = function _informServerFeedOpen(
  * @param {Object}  feedArgs
  * @param {?Error}  err
  */
-proto._informServerFeedClosing = function _informServerFeedClosing(
+protoClient._informServerFeedClosing = function _informServerFeedClosing(
   feedName,
   feedArgs,
   err
 ) {
-  dbg("Informing server feed closing");
+  dbgClient("Informing server feed closing");
 
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -1278,7 +1430,7 @@ proto._informServerFeedClosing = function _informServerFeedClosing(
  * @param {Object}  newFeedData
  * @param {Object}  oldFeedData
  */
-proto._informServerActionRevelation = function _informServerActionRevelation(
+protoClient._informServerActionRevelation = function _informServerActionRevelation(
   feedName,
   feedArgs,
   actionName,
@@ -1286,7 +1438,7 @@ proto._informServerActionRevelation = function _informServerActionRevelation(
   newFeedData,
   oldFeedData
 ) {
-  dbg("Informing server action revelation");
+  dbgClient("Informing server action revelation");
 
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -1304,8 +1456,6 @@ proto._informServerActionRevelation = function _informServerActionRevelation(
     );
   });
 };
-
-// Internal helper functions
 
 /**
  * Attempts to align actual server feed state with the desired state.
@@ -1332,8 +1482,8 @@ proto._informServerActionRevelation = function _informServerActionRevelation(
  * @param {string} feedName
  * @param {Object} feedArgs
  */
-proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
-  dbg("Considering feed state");
+protoClient._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
+  dbgClient("Considering feed state");
 
   // Do nothing if the session is not connected
   if (this.state() !== "connected") {
@@ -1361,7 +1511,7 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
       feedName,
       feedArgs,
       () => {
-        dbg("Feed open request timed out");
+        dbgClient("Feed open request timed out");
         const err = new Error(
           "TIMEOUT: The server did not respond to feed open request within the allocated time."
         );
@@ -1370,11 +1520,11 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
       err => {
         // Response callback - server feed is actionable
         if (err) {
-          dbg("Feed open request returned error");
+          dbgClient("Feed open request returned error");
           this._informServerFeedClosed(feedName, feedArgs, err);
           // The error is either DISCONNECTED or REJECTED - don't _consider in either case
         } else {
-          dbg("Feed open request returned success");
+          dbgClient("Feed open request returned success");
           this._informServerFeedOpen(feedName, feedArgs);
           this._considerFeedState(feedName, feedArgs); // Desired state may have changed
         }
@@ -1390,10 +1540,10 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
       // If server returned success, then inform feeds with no error
       // If client disconnected, then inform feeds with error
       if (this.state() === "connected") {
-        dbg("Server feed closed due to disconnect");
+        dbgClient("Server feed closed due to disconnect");
         this._informServerFeedClosed(feedName, feedArgs);
       } else {
-        dbg("Server feed closed due to CloseResponse");
+        dbgClient("Server feed closed due to CloseResponse");
         this._informServerFeedClosed(
           feedName,
           feedArgs,
@@ -1428,7 +1578,7 @@ proto._considerFeedState = function _reconsiderFeed(feedName, feedArgs) {
  * @param {feedOpenTimeoutCallback}   callbackTimeout
  * @param {feedOpenResponseCallback}  callbackResponse
  */
-proto._feedOpenTimeout = function _feedOpenTimeout(
+protoClient._feedOpenTimeout = function _feedOpenTimeout(
   feedName,
   feedArgs,
   callbackTimeout,
@@ -1446,9 +1596,9 @@ proto._feedOpenTimeout = function _feedOpenTimeout(
 
   // Create a timer
   if (this._options.feedTimeoutMs > 0) {
-    dbg("Feed open timeout timer created");
+    dbgClient("Feed open timeout timer created");
     timer = setTimeout(() => {
-      dbg("Feed open timeout timer fired");
+      dbgClient("Feed open timeout timer fired");
       timer = null; // Mark fired
       callbackTimeout();
     }, this._options.feedTimeoutMs);
@@ -1461,7 +1611,7 @@ proto._feedOpenTimeout = function _feedOpenTimeout(
  * @instance
  * @private
  */
-proto._connectTimeoutCancel = function _connectTimeoutCancel() {
+protoClient._connectTimeoutCancel = function _connectTimeoutCancel() {
   if (this._connectTimeoutTimer) {
     clearTimeout(this._connectTimeoutTimer);
   }
@@ -1475,7 +1625,7 @@ proto._connectTimeoutCancel = function _connectTimeoutCancel() {
  * @instance
  * @throws {Error} Passed through from session.connect()
  */
-proto._connect = function _connect() {
+protoClient._connect = function _connect() {
   // Connect the session - could fail, so before the timeout is set
   // If it works, you know you were disconnected
   this._session.connect();
@@ -1485,9 +1635,9 @@ proto._connect = function _connect() {
   // Set a timeout for the connection attempt?
   if (this._options.connectTimeoutMs > 0) {
     // The timeout is cleared on session connect/disconnect event
-    dbg("Connection timeout timer created");
+    dbgClient("Connection timeout timer created");
     this._connectTimeoutTimer = setTimeout(() => {
-      dbg("Connection timeout timer fired");
+      dbgClient("Connection timeout timer fired");
       this._session.disconnect(
         new Error("TIMEOUT: The connection attempt timed out.")
       );
@@ -1495,3 +1645,312 @@ proto._connect = function _connect() {
     }, this._options.connectTimeoutMs);
   }
 };
+
+/**
+ * Pass-through to client.
+ * @memberof FeedSync
+ * @instance
+ * @throws {Error} "DESTROYED: ..."
+ */
+protoFeed.desireOpen = function desireOpen() {
+  dbgFeed("Desire open requested");
+
+  this._checkDestroyed();
+  this._client._appFeedDesireOpen(this);
+};
+
+/**
+ * Pass-through to client.
+ * @memberof FeedSync
+ * @instance
+ * @throws {Error} "DESTROYED: ..."
+ */
+protoFeed.desireClosed = function desireClosed() {
+  dbgFeed("Desire closed requested");
+
+  this._checkDestroyed();
+  this._client._appFeedDesireClosed(this);
+};
+
+/**
+ * Pass-through to client.
+ * @memberof FeedSync
+ * @instance
+ * @returns {string}
+ * @throws {Error} "DESTROYED: ..."
+ */
+protoFeed.desiredState = function desiredState() {
+  dbgFeed("Desired state requested");
+
+  this._checkDestroyed();
+  return this._client._appFeedDesiredState(this);
+};
+
+/**
+ * Pass-through to client.
+ * @memberof FeedSync
+ * @instance
+ * @returns {string}
+ * @throws {Error} "DESTROYED: ..."
+ */
+protoFeed.state = function state() {
+  dbgFeed("Actual state requested");
+
+  this._checkDestroyed();
+  return this._client._appFeedState(this);
+};
+
+/**
+ * Pass-through to client.
+ * @memberof FeedSync
+ * @instance
+ * @returns {Object}
+ * @throws {Error} "DESTROYED: ..."
+ */
+protoFeed.data = function data() {
+  dbgFeed("Feed data requested");
+  this._checkDestroyed();
+  return this._client._appFeedData(this);
+};
+
+/**
+ * Destroys the feed object.
+ * @memberof FeedSync
+ * @instance
+ * @throws {Error} "ALREADY_DESTROYED: ..."
+ */
+protoFeed.destroy = function destroy() {
+  dbgFeed("Destroy requested");
+
+  this._checkDestroyed();
+  this._client._appFeedDestroy(this);
+  delete this._client;
+};
+
+// These functions are called by the client on server feed state
+// changes and action revelations
+
+/**
+ * Called by the client when the server feed state becomes closed.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ * @param {?Error} err Not present if requested by client
+ *
+ *                      Error("TIMEOUT: ...")
+ *                      Error("REJECTED: ...")
+ *                      Error("DISCONNECTED: ...")
+ *                      Error("TERMINATED: ...")
+ *                      Error("BAD_ACTION_REVELATION: ...")
+ */
+protoFeed._serverFeedClosed = function _serverFeedClosed(err) {
+  dbgFeed("Observed server feed closed");
+
+  // Do nothing if feed is desired closed
+  if (this._desiredState === "closed") {
+    return;
+  }
+
+  // Desired state is open
+  if (this._lastEmission === "close") {
+    // Emit only if the reason for closing (the error) has changed
+    const errCode = err.message.split(":")[0];
+    const lastCode = this._lastCloseError.message.split(":")[0];
+    if (errCode !== lastCode) {
+      this._emitClose(err);
+    }
+  } else if (this._lastEmission === "opening") {
+    if (!err) {
+      // Closure had been requested and feed will be reopened - don't cycle state
+    } else {
+      this._emitClose(err);
+    }
+  } else if (this._lastEmission === "open") {
+    // Shouldn't happen, as last emission becomes close on unexpectedFeedClosing (can't test)
+    this._emitClose(err);
+  }
+};
+
+/**
+ * Called by the client when the server feed state becomes opening.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ */
+protoFeed._serverFeedOpening = function _serverFeedOpening() {
+  dbgFeed("Observed server feed opening");
+
+  // Do nothing if feed is desired closed
+  if (this._desiredState === "closed") {
+    return;
+  }
+
+  // Desired state is open
+  if (this._lastEmission === "close") {
+    this._emitOpening();
+  } else if (this._lastEmission === "opening") {
+    // Closure had been requested and feed is being reopened - don't cycle state
+  } else if (this._lastEmission === "open") {
+    this._emitOpening(); // Shouldn't happen
+  }
+};
+
+/**
+ * Called by the client when the server feed state becomes open.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ */
+protoFeed._serverFeedOpen = function _serverFeedOpen() {
+  dbgFeed("Observed server feed open");
+
+  // Do nothing if feed is desired closed
+  if (this._desiredState === "closed") {
+    return;
+  }
+
+  // Desired state is open
+  if (this._lastEmission === "close") {
+    // Happens after feed open timeouts
+    this._emitOpening();
+    this._emitOpen();
+  } else if (this._lastEmission === "opening") {
+    this._emitOpen();
+  } else if (this._lastEmission === "open") {
+    this._emitOpen(); // Shouldn't happen, but relay new feed data (can't test)
+  }
+};
+
+/**
+ * Called by the client when the server feed state becomes closing.
+ * Called on intentional closure and unexpectedFeedClosing.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ * @param {?Error} err Not present if requested by client
+ *
+ *                      Error("TIMEOUT: ...")
+ *                      Error("REJECTED: ...")
+ *                      Error("DISCONNECTED: ...")
+ *                      Error("TERMINATED: ...")
+ *                      Error("BAD_ACTION_REVELATION: ...")
+ */
+protoFeed._serverFeedClosing = function _serverFeedClosing(err) {
+  dbgFeed("Observed server feed closing");
+
+  // Do nothing if feed is desired closed
+  if (this._desiredState === "closed") {
+    return;
+  }
+
+  // Desired state is open
+  if (this._lastEmission === "close") {
+    // The server feed was open. If this is due to an intentional
+    // closure or unexpectedFeedClosing the last emission would have been open
+    this._emitClose(err); // Should not happen (can't test)
+  } else if (this._lastEmission === "opening") {
+    this._emitClose(err); // Should not happen (can't test)
+  } else if (this._lastEmission === "open") {
+    this._emitClose(err);
+  }
+};
+
+/**
+ * Called by the client when an action is revealed on this feed.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ * @param {string}  actionName
+ * @param {Object}  actionData
+ * @param {Object}  newFeedData
+ * @param {Object}  oldFeedData
+ */
+protoFeed._serverActionRevelation = function _serverActionRevelation(
+  actionName,
+  actionData,
+  newFeedData,
+  oldFeedData
+) {
+  dbgFeed("Observed server action revelation");
+
+  // Do nothing if feed is desired closed
+  if (this._desiredState === "closed") {
+    return;
+  }
+
+  // Desired state is open
+
+  this.emit("action", actionName, actionData, newFeedData, oldFeedData);
+};
+
+// Emitter functions that track the last emission
+
+/**
+ * Emit close asynchronously. Emit with correct number of arguments.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ * @param {?Error} err Not present if requested by client
+ *
+ *                      Error("TIMEOUT: ...")
+ *                      Error("REJECTED: ...")
+ *                      Error("DISCONNECTED: ...")
+ *                      Error("TERMINATED: ...")
+ *                      Error("BAD_ACTION_REVELATION: ...")
+ */
+protoFeed._emitClose = function _emitClose(err) {
+  dbgFeed("Emitting close");
+
+  this._lastEmission = "close";
+  this._lastCloseError = err || null;
+  if (err) {
+    this.emit("close", err);
+  } else {
+    this.emit("close");
+  }
+};
+
+/**
+ * Emit opening.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ */
+protoFeed._emitOpening = function _emitOpening() {
+  dbgFeed("Emitting opening");
+
+  this._lastEmission = "opening";
+  this._lastCloseError = null;
+  this.emit("opening");
+};
+
+/**
+ * Emit open.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ * @param {Object} feedData
+ */
+protoFeed._emitOpen = function _emitOpen() {
+  dbgFeed("Emitting open");
+
+  this._lastEmission = "open";
+  this._lastCloseError = null;
+  this.emit("open");
+};
+
+// Internal helper
+
+/**
+ * Throw an error if the feed has been destroyed.
+ * @memberof FeedSync
+ * @instance
+ * @private
+ */
+protoFeed._checkDestroyed = function destroy() {
+  if (!this._client) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+};
+
+export default clientFactory;

@@ -2,6 +2,32 @@ import check from "check-types";
 import emitter from "component-emitter";
 import queueMicrotask from "queue-microtask";
 
+/**
+ * This module wraps ClientSync  It emits all events and
+ * invokes all callbacks synchronously and relies on the wrapper to defer
+ * and queue those invocations. The wrapper also overlays a promise API
+ * onto client.action().
+ *
+ * App-facing client object. Exposes the session API (lots of pass-through)
+ * while enhancing it with:
+ *
+ * - A feed object API
+ * - Connection timeouts and retries
+ * - Message timeouts and late receipt handling
+ * - Feed re-opens on feed data errors
+ *
+ * Feed objects:
+ *
+ * - The client maintains references to all feed objects until destroyed
+ * - All feed object methods pass through to client functionality until destroyed
+ * - State is stored within the feed objects and is accessed and modified by the client
+ *
+ * No need to emit events asynchronously - that behavior is required of the
+ * transport and filters through the session object.
+ * @typedef {Object} ClientWrapper
+ * @extends emitter
+ */
+
 const clientWrapperProto = emitter({});
 const feedWrapperProto = emitter({});
 
