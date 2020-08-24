@@ -17,7 +17,7 @@ const dbg = debug("feedme-client:feed");
  *
  * - Tested alongside the client.
  *
- * @typedef {Object} Feed
+ * @typedef {Object} FeedSync
  * @extends emitter
  */
 
@@ -39,7 +39,7 @@ export default function feedFactory(client, name, args) {
 
   /**
    * The client object that created the feed. Deleted if destroyed.
-   * @memberof Feed
+   * @memberof FeedSync
    * @instance
    * @private
    * @type {client}
@@ -48,7 +48,7 @@ export default function feedFactory(client, name, args) {
 
   /**
    * The feed name.
-   * @memberof Feed
+   * @memberof FeedSync
    * @instance
    * @private
    * @type {string}
@@ -57,7 +57,7 @@ export default function feedFactory(client, name, args) {
 
   /**
    * The feed args.
-   * @memberof Feed
+   * @memberof FeedSync
    * @instance
    * @private
    * @type {Object}
@@ -66,7 +66,7 @@ export default function feedFactory(client, name, args) {
 
   /**
    * Desired state. Initializes closed.
-   * @memberof Feed
+   * @memberof FeedSync
    * @instance
    * @private
    * @type {string} "open" or "closed"
@@ -76,7 +76,7 @@ export default function feedFactory(client, name, args) {
   /**
    * The name of the last event emitted. Tracked to ensure correct event
    * sequencing. Initializes "close".
-   * @memberof Feed
+   * @memberof FeedSync
    * @instance
    * @private
    * @type {string} "open", "opening", or "close"
@@ -86,7 +86,7 @@ export default function feedFactory(client, name, args) {
   /**
    * The last error passed with the close emission. Null if close was
    * emitted with no error or if last emission was not close.
-   * @memberof Feed
+   * @memberof FeedSync
    * @instance
    * @private
    * @type {?Error}
@@ -99,7 +99,7 @@ export default function feedFactory(client, name, args) {
 /**
  * Emitted when the feed object state becomes opening.
  * @event opening
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  */
 
@@ -110,7 +110,7 @@ export default function feedFactory(client, name, args) {
  * is received from the server (i.e. after closing due to timeout).
  *
  * @event open
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  */
 
@@ -133,7 +133,7 @@ export default function feedFactory(client, name, args) {
  * a REJECTED or DISCONNECTED error.
  *
  * @event close
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @param {?Error} err  If not present then the close resulted from feed.desireClosed()
  *
@@ -155,7 +155,7 @@ export default function feedFactory(client, name, args) {
  * Emitted when an action is revealed on the server feed and the object
  * is desired open.
  * @event action
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @param {string} actionName
  * @param {Object} actionArgs
@@ -167,7 +167,7 @@ export default function feedFactory(client, name, args) {
  * Emitted when a specific type of action is revealed on the server feed and the
  * object is desired open.
  * @event action:actionName
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @param {Object} actionArgs
  * @param {Object} newFeedData
@@ -178,7 +178,7 @@ export default function feedFactory(client, name, args) {
 
 /**
  * Pass-through to client.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @throws {Error} "DESTROYED: ..."
  */
@@ -191,7 +191,7 @@ proto.desireOpen = function desireOpen() {
 
 /**
  * Pass-through to client.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @throws {Error} "DESTROYED: ..."
  */
@@ -204,7 +204,7 @@ proto.desireClosed = function desireClosed() {
 
 /**
  * Pass-through to client.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @returns {string}
  * @throws {Error} "DESTROYED: ..."
@@ -218,7 +218,7 @@ proto.desiredState = function desiredState() {
 
 /**
  * Pass-through to client.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @returns {string}
  * @throws {Error} "DESTROYED: ..."
@@ -232,7 +232,7 @@ proto.state = function state() {
 
 /**
  * Pass-through to client.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @returns {Object}
  * @throws {Error} "DESTROYED: ..."
@@ -245,7 +245,7 @@ proto.data = function data() {
 
 /**
  * Destroys the feed object.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @throws {Error} "ALREADY_DESTROYED: ..."
  */
@@ -262,7 +262,7 @@ proto.destroy = function destroy() {
 
 /**
  * Called by the client when the server feed state becomes closed.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  * @param {?Error} err Not present if requested by client
@@ -303,7 +303,7 @@ proto._serverFeedClosed = function _serverFeedClosed(err) {
 
 /**
  * Called by the client when the server feed state becomes opening.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  */
@@ -327,7 +327,7 @@ proto._serverFeedOpening = function _serverFeedOpening() {
 
 /**
  * Called by the client when the server feed state becomes open.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  */
@@ -354,7 +354,7 @@ proto._serverFeedOpen = function _serverFeedOpen() {
 /**
  * Called by the client when the server feed state becomes closing.
  * Called on intentional closure and unexpectedFeedClosing.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  * @param {?Error} err Not present if requested by client
@@ -387,7 +387,7 @@ proto._serverFeedClosing = function _serverFeedClosing(err) {
 
 /**
  * Called by the client when an action is revealed on this feed.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  * @param {string}  actionName
@@ -417,7 +417,7 @@ proto._serverActionRevelation = function _serverActionRevelation(
 
 /**
  * Emit close asynchronously. Emit with correct number of arguments.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  * @param {?Error} err Not present if requested by client
@@ -442,7 +442,7 @@ proto._emitClose = function _emitClose(err) {
 
 /**
  * Emit opening.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  */
@@ -456,7 +456,7 @@ proto._emitOpening = function _emitOpening() {
 
 /**
  * Emit open.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  * @param {Object} feedData
@@ -473,7 +473,7 @@ proto._emitOpen = function _emitOpen() {
 
 /**
  * Throw an error if the feed has been destroyed.
- * @memberof Feed
+ * @memberof FeedSync
  * @instance
  * @private
  */

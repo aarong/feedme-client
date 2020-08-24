@@ -183,6 +183,8 @@ harnessProto.connectClient = async function connectClient() {
       ClientId: "SOME_CLIENT_ID"
     })
   );
+
+  this.transport.spyClear();
 };
 
 /*
@@ -2589,33 +2591,33 @@ describe("The client.action() function", () => {
     });
   });
 
-  // describe("transport calls - promise style", function() {
-  //   it("should send an Action message on the transport", function() {
-  //     var harness = harnessFactory();
-  //     await harness.connectClient();
+  describe("transport calls - promise style", () => {
+    it("should send an Action message on the transport", async () => {
+      const harness = harnessFactory();
+      await harness.connectClient();
 
-  //     // Reset transport spies
-  //     harness.transport.spyClear();
+      // Reset transport spies
+      harness.transport.spyClear();
 
-  //     // Invoke an action
-  //     harness.client.action("SomeAction", { Action: "Arg" });
+      // Invoke an action
+      harness.client.action("SomeAction", { Action: "Arg" });
 
-  //     // Check all transport calls
-  //     expect(harness.transport.connect.calls.count()).toBe(0);
-  //     expect(harness.transport.disconnect.calls.count()).toBe(0);
-  //     expect(harness.transport.send.calls.count()).toBe(1);
-  //     expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
-  //     // You can't check the whole message in one go, since callback id is created internally
-  //     var msg = JSON.parse(harness.transport.send.calls.argsFor(0)[0]);
-  //     expect(msg.MessageType).toBe("Action");
-  //     expect(msg.ActionName).toBe("SomeAction");
-  //     expect(msg.ActionArgs).toEqual({ Action: "Arg" });
-  //     expect(
-  //       typeof msg.CallbackId === "string" || msg.CallbackId instanceof String
-  //     ).toBe(true);
-  //     expect(harness.transport.state.calls.count() >= 0).toBe(true);
-  //   });
-  // });
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(1);
+      expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+      // You can't check the whole message in one go, since callback id is created internally
+      const msg = JSON.parse(harness.transport.send.calls.argsFor(0)[0]);
+      expect(msg.MessageType).toBe("Action");
+      expect(msg.ActionName).toBe("SomeAction");
+      expect(msg.ActionArgs).toEqual({ Action: "Arg" });
+      expect(
+        typeof msg.CallbackId === "string" || msg.CallbackId instanceof String
+      ).toBe(true);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+  });
 
   // Callbacks
 
@@ -2887,9 +2889,35 @@ describe("The client.action() function", () => {
       harness
         .connectClient()
         .then(() => {
-          // Reset the transport so you can get the callback
-          harness.transport.spyClear();
+          harness.client
+            .action("SomeAction", { Action: "Arg" })
+            .then(actionData => {
+              expect(actionData).toEqual({ Action: "Data" });
+              done();
+            });
         })
+        .then(async () => {
+          // Get the CallbackId sent with the Action message and return success
+          // This settles the action promise above
+          const serverCb = JSON.parse(
+            harness.transport.send.calls.argsFor(0)[0]
+          ).CallbackId;
+          await harness.transport.emit(
+            "message",
+            JSON.stringify({
+              MessageType: "ActionResponse",
+              CallbackId: serverCb,
+              Success: true,
+              ActionData: { Action: "Data" }
+            })
+          );
+        });
+    });
+
+    it("should operate correctly on action success", done => {
+      const harness = harnessFactory();
+      harness
+        .connectClient()
         .then(() => {
           harness.client
             .action("SomeAction", { Action: "Arg" })
@@ -2921,10 +2949,6 @@ describe("The client.action() function", () => {
 
       harness
         .connectClient()
-        .then(() => {
-          // Reset the transport so you can get the callback
-          harness.transport.spyClear();
-        })
         .then(() => {
           harness.client.action("SomeAction", { Action: "Arg" }).catch(err => {
             expect(err).toEqual(jasmine.any(Error));
@@ -2964,10 +2988,6 @@ describe("The client.action() function", () => {
       harness
         .connectClient()
         .then(() => {
-          // Reset the transport so you can get the callback
-          harness.transport.spyClear();
-        })
-        .then(() => {
           harness.client.action("SomeAction", { Action: "Arg" }).catch(err => {
             expect(err).toEqual(jasmine.any(Error));
             expect(err.message).toBe(
@@ -2988,10 +3008,6 @@ describe("The client.action() function", () => {
 
       harness
         .connectClient()
-        .then(() => {
-          // Reset the transport so you can get the callback
-          harness.transport.spyClear();
-        })
         .then(() => {
           harness.client.action("SomeAction", { Action: "Arg" }).catch(err => {
             expect(err).toEqual(jasmine.any(Error));
@@ -11872,3 +11888,35 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
     // Callbacks - N/A
   });
 });
+
+// it("...", async () => {
+//   jasmine.clock().install();
+//   const transport = emitter({
+//     connect: jasmine.createSpy(),
+//     disconnect: jasmine.createSpy(),
+//     state: jasmine.createSpy(),
+//     send: jasmine.createSpy(),
+//     on: jasmine.createSpy()
+//   });
+//   transport.state.and.returnValue("disconnected");
+//   const client = feedmeClient({
+//     transport,
+//     connectTimeoutMs: 100
+//   });
+
+//   client.connect();
+
+//   transport.state.and.returnValue("connecting");
+//   transport.emit("connecting");
+
+//   await delay(DEFER_MS);
+
+//   transport.state.and.returnValue("disconnected");
+//   transport.emit("disconnect");
+
+//   // disconnect event still queued at the session level
+
+//   jasmine.clock().tick(100);
+
+//   jasmine.clock().uninstall();
+// });
