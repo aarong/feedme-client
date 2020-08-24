@@ -16,11 +16,14 @@ import feedValidator from "feedme-util/feedvalidator";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
 import feedSerializer from "feedme-util/feedserializer";
-import queueMicrotask from "./queuemicrotask";
 
 const dbg = debug("feedme-client:session");
 
 /**
+ * SessionSync objects are to be accessed via SessionWrapper. SessionSync objects
+ * emit all events and invoke all callbacks synchronously and rely on the
+ * Session Wrapper to defer and queue those dependent invocations.
+ *
  * API for a Feedme conversation with the server.
  *
  * - Assures a spec-compliant sequence of messages to the server
@@ -29,8 +32,7 @@ const dbg = debug("feedme-client:session");
  * - Applies feed deltas and performs hash verification
  * - Extremely patient - no timeouts
  *
- * No need to emit events asynchronously, as that is required of the transport.
- * @typedef {Object} Session
+ * @typedef {Object} SessionSync
  * @extends emitter
  */
 
@@ -39,7 +41,7 @@ emitter(proto);
 
 /**
  * Hard-coded configuration.
- * @memberof Session
+ * @memberof SessionSync
  * @static
  */
 const config = {
@@ -49,30 +51,30 @@ const config = {
 /**
  * Factory function.
  * @param {TransportWrapper} transportWrapper
- * @returns {Session}
+ * @returns {SessionSync}
  */
-export default function sessionFactory(transportWrapper) {
-  const session = Object.create(proto);
+export default function sessionSyncFactory(transportWrapper) {
+  const sessionSync = Object.create(proto);
 
   dbg("Initializing session object");
 
   /**
    * Transport used to communicate with the server.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {TransportWrapper}
    */
-  session._transportWrapper = transportWrapper;
+  sessionSync._transportWrapper = transportWrapper;
 
   /**
    * Server-assigned client id. Null until after a handshake.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {?string}
    */
-  session._clientId = null;
+  sessionSync._clientId = null;
 
   /**
    * Feed state, as per the spec:
@@ -81,81 +83,81 @@ export default function sessionFactory(transportWrapper) {
    *    'open'        Open          _feedData exists
    *    'closing'     Closing       _feedCloseCallbacks exists
    *    'terminated'  Terminated    _feedCloseCallbacks exists
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {Object}
    */
-  session._feedStates = {};
+  sessionSync._feedStates = {};
 
   /**
    * Callbacks for .action() calls awaiting a response from the server.
    * Indexed by internally-generated callback id, which is round-tripped to
    * the server.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {Object}
    */
-  session._actionCallbacks = {};
+  sessionSync._actionCallbacks = {};
 
   /**
    * The next action callback id to use. Incremented on action.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {number}
    */
-  session._nextActionCallbackId = 1;
+  sessionSync._nextActionCallbackId = 1;
 
   /**
    * Callbacks for .feedOpen() calls awaiting a response from the server.
    * Indexed by feed serial.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {Object}
    */
-  session._feedOpenCallbacks = {};
+  sessionSync._feedOpenCallbacks = {};
 
   /**
    * Feed data for open feeds.
    * Indexed by feed serial.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {Object}
    */
-  session._feedData = {};
+  sessionSync._feedData = {};
 
   /**
    * Callbacks for .feedClose() calls awaiting a response from the server.
    * Indexed by feed serial.
-   * @memberof Session
+   * @memberof SessionSync
    * @instance
    * @private
    * @type {Object}
    */
-  session._feedCloseCallbacks = {};
+  sessionSync._feedCloseCallbacks = {};
 
   // Listen for transport events
-  session._transportWrapper.on("connecting", () => {
-    session._processTransportConnecting();
+  sessionSync._transportWrapper.on("connecting", () => {
+    sessionSync._processTransportConnecting();
   });
-  session._transportWrapper.on("connect", () => {
-    session._processTransportConnect();
+  sessionSync._transportWrapper.on("connect", () => {
+    sessionSync._processTransportConnect();
   });
-  session._transportWrapper.on("message", msg => {
-    session._processTransportMessage(msg);
+  sessionSync._transportWrapper.on("message", msg => {
+    sessionSync._processTransportMessage(msg);
   });
-  session._transportWrapper.on("disconnect", err => {
-    session._processTransportDisconnect(err); // err missing if requested
+  sessionSync._transportWrapper.on("disconnect", err => {
+    sessionSync._processTransportDisconnect(err); // err missing if requested
   });
-  session._transportWrapper.on("transportError", err => {
-    session._processTransportError(err);
+  sessionSync._transportWrapper.on("transportError", err => {
+    sessionSync._processTransportError(err);
   });
 
-  return session;
+  return sessionSync;
 }
 
 // Events
@@ -163,7 +165,7 @@ export default function sessionFactory(transportWrapper) {
 /**
  * Pass-through for transport event.
  * @event connecting
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  */
 
@@ -171,7 +173,7 @@ export default function sessionFactory(transportWrapper) {
  * Emitted after a transport connection has been established and a handshake
  * has been completed successfully.
  * @event connect
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  */
 
@@ -186,13 +188,13 @@ export default function sessionFactory(transportWrapper) {
  * - actionCallbacks and feedOpenCallbacks are called with error DISCONNECTED
  * - feedCloseCallbacks are called with no error
  * @event disconnect
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {?Error} err If not present then the event resulted from an
- *                     explicit session.disconnect()
+ *                     explicit sessionSync.disconnect()
  *
  *                     If present, then the event may have resulted from an
- *                     explicit call to session.disconnect(err), in which case
+ *                     explicit call to sessionSync.disconnect(err), in which case
  *                     the error is outside-determined.
  *
  *                     Error('HANDSHAKE_REJECTED: ...')
@@ -204,7 +206,7 @@ export default function sessionFactory(transportWrapper) {
  * Emitted when a compliant ActionRevelation message is received.
  * If a feed referenced by an ActionRevelation is closing then there is no emission.
  * @event actionRevelation
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {string} feedName
  * @param {Object} feedArgs
@@ -237,7 +239,7 @@ export default function sessionFactory(transportWrapper) {
  *   unexpectedFeedClosed is fired immediately as well.
  *
  * @event unexpectedFeedClosing
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {string} feedName
  * @param {Object} feedArgs
@@ -259,7 +261,7 @@ export default function sessionFactory(transportWrapper) {
  * various situations that give rise to these events are documented there.
  *
  * @event unexpectedFeedClosed
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {string} feedName
  * @param {Object} feedArgs
@@ -278,7 +280,7 @@ export default function sessionFactory(transportWrapper) {
  * Non-compliant messages from the server are discarded - they do not affect
  * the state of the conversation.
  * @event badServerMessage
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {Error} err Error('INVALID_MESSAGE: ...')
  *
@@ -328,7 +330,7 @@ export default function sessionFactory(transportWrapper) {
  * operating as intended, these events should only arise due to problems on
  * the server.
  * @event badClientMessage
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {Object} diagnostics Server-reported debugging information
  */
@@ -337,7 +339,7 @@ export default function sessionFactory(transportWrapper) {
  * Relayed from the transportWrapper when the transport violates
  * the prescribed behavior.
  * @event transportError
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {Error} err Passed from wrapper
  */
@@ -346,7 +348,7 @@ export default function sessionFactory(transportWrapper) {
 
 /**
  * @callback actionCallback
- * @memberof Session
+ * @memberof SessionSync
  * @param {?Error} err If not present then the action was invoked successfully.
  *
  *                     Error('DISCONNNECTED: ...')
@@ -361,7 +363,7 @@ export default function sessionFactory(transportWrapper) {
 
 /**
  * @callback feedOpenCallback
- * @memberof Session
+ * @memberof SessionSync
  * @param {?Error} err If not present then the feed was opened successfully.
  *
  *                     Error('DISCONNNECTED: ...')
@@ -377,7 +379,7 @@ export default function sessionFactory(transportWrapper) {
 /**
  * Always invoked without arguments.
  * @callback feedCloseCallback
- * @memberof Session
+ * @memberof SessionSync
  */
 
 // Public functions
@@ -385,7 +387,7 @@ export default function sessionFactory(transportWrapper) {
 /**
  * Returns the session state, which is the same as the transport state except
  * connecting through the handshake.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @returns {string} 'disconnected', 'connecting', or 'connected'
  */
@@ -404,7 +406,7 @@ proto.state = function state() {
  *
  * When the transport has connected, a handshake will be attempted internally
  * before a session "connected" event is emitted.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @throws {Error} "INVALID_STATE: ..."
  */
@@ -424,7 +426,7 @@ proto.connect = function connect() {
  *
  * If called with an error, then that error is passed to the transport
  * and emitted with its disconnect event.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @throws {Error} "INVALID_STATE: ..."
  */
@@ -447,7 +449,7 @@ proto.disconnect = function disconnect(err) {
 
 /**
  * Returns the client id assigned by the server.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @returns {string}
  * @throws {Error} "INVALID_STATE: ..."
@@ -467,7 +469,7 @@ proto.id = function id() {
  * Performs an action on the server.
  *
  * A callback is guaranteed - on disconnect at the latest.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {string} name
  * @param {Object} args
@@ -531,7 +533,7 @@ proto.action = function action(name, args, cb) {
  * from an explicit call to feedClose(), will result in a a sequence of
  * unexpectedFeedClosing/Closed events being emitted. This occurs on feed
  * termination, bad action revelation, and disconnect.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {string} feedName
  * @param {Object} feedArgs
@@ -585,7 +587,7 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
  * FeedCloseResponse is awaited and the callback is fired upon receipt. In that
  * case, no unexpectedFeedClosing/Closed is emitted and the feed state
  * becomes "terminated".
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @param {string} feedName
  * @param {Object} feedArgs
@@ -645,7 +647,7 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
  *
  * Because of the above mapping, this must not be used to retrieve state
  * internally. Use ._feedState() instead.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {string} feedName
@@ -679,7 +681,7 @@ proto.feedState = function feedState(feedName, feedArgs) {
  *
  * An INVALID_STATE error is thrown if the feed is closing. It may be closing
  * due to a bad action revelation, in which case the feed data is unknown.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {string} feedName
@@ -714,19 +716,19 @@ proto.feedData = function feedData(feedName, feedArgs) {
 
 /**
  * Pass-through from transport connecting event.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  */
 proto._processTransportConnecting = function _processTransportConnecting() {
   dbg("Observed transport connecting event");
 
-  queueMicrotask(this.emit.bind(this), "connecting");
+  this.emit("connecting");
 };
 
 /**
  * Processes a transport connect event. Initiates handshake and emits nothing.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  */
@@ -769,7 +771,7 @@ proto._processTransportConnect = function _processTransportConnect() {
  *      - Outstanding .action() and .feedOpen() callbacks receive a DISCONNECTED error
  *      - For each open feed, an unexpectedFeedClosing/Close sequence is emitted
  *
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {?Error} err Error passed by the transport
@@ -794,51 +796,39 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
 
   const cbErr = new Error("DISCONNECTED: The transport disconnected."); // err may not exist
 
-  // Send action callbacks an error - defer
+  // Send action callbacks an error
   _each(actionCallbacks, val => {
     dbg("Returning disconnect error to action() callback");
-    queueMicrotask(val, cbErr);
+    val(cbErr);
   });
 
-  // For each feed, emit or callback according to state - defer
+  // For each feed, emit or callback according to state
   _each(feedStates, (feedState, feedSerial) => {
     if (feedState === "opening") {
       dbg("Returning disconnect error to feedOpen() callback");
-      queueMicrotask(feedOpenCallbacks[feedSerial], cbErr); // Error
+      feedOpenCallbacks[feedSerial](cbErr); // Error
     } else if (feedState === "open") {
       dbg("Emitting unexpectedFeedClosing/Closed for open feed");
       const { feedName, feedArgs } = feedSerializer.unserialize(feedSerial);
-      queueMicrotask(
-        this.emit.bind(this),
-        "unexpectedFeedClosing",
-        feedName,
-        feedArgs,
-        cbErr
-      );
-      queueMicrotask(
-        this.emit.bind(this),
-        "unexpectedFeedClosed",
-        feedName,
-        feedArgs,
-        cbErr
-      );
+      this.emit("unexpectedFeedClosing", feedName, feedArgs, cbErr);
+      this.emit("unexpectedFeedClosed", feedName, feedArgs, cbErr);
     } else {
       dbg("Returning success to feedClose() callback");
-      queueMicrotask(feedCloseCallbacks[feedSerial]); // Success (closing or terminated)
+      feedCloseCallbacks[feedSerial](); // Success (closing or terminated)
     }
   });
 
   // Emit disconnect event with correct number of arguments
   if (err) {
-    queueMicrotask(this.emit.bind(this), "disconnect", err);
+    this.emit("disconnect", err);
   } else {
-    queueMicrotask(this.emit.bind(this), "disconnect");
+    this.emit("disconnect");
   }
 };
 
 /**
  * Processes a transport transportError event - relay to outside.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Error} err
@@ -846,12 +836,12 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
 proto._processTransportError = function _processTransportError(err) {
   dbg("Observed transport transportError event");
 
-  queueMicrotask(this.emit.bind(this), "transportError", err);
+  this.emit("transportError", err);
 };
 
 /**
  * Processes a transport message event.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {string} msg
@@ -884,7 +874,7 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
     const err = new Error("INVALID_MESSAGE: Invalid JSON or schema violation.");
     err.serverMessage = msg; // string
     err.parseError = e;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
@@ -896,7 +886,7 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
 
 /**
  * Processes a ViolationResponse from the server.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -904,12 +894,12 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
 proto._processViolationResponse = function _processViolationResponse(msg) {
   dbg("Received ViolationResponse message");
 
-  queueMicrotask(this.emit.bind(this), "badClientMessage", msg.Diagnostics);
+  this.emit("badClientMessage", msg.Diagnostics);
 };
 
 /**
  * Processes a HandshakeResponse from the server.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -921,14 +911,14 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
   if (this.state() !== "connecting") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected HandshakeResponse.");
     err.serverMessage = msg;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
   // Was the handshake successful?
   if (msg.Success) {
     this._clientId = msg.ClientId;
-    queueMicrotask(this.emit.bind(this), "connect");
+    this.emit("connect");
   } else {
     // Disconnect event fired via the transport, which is required to relay the error argument
     this._transportWrapper.disconnect(
@@ -939,7 +929,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
 /**
  * Processes an ActionResponse from the server.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -953,27 +943,27 @@ proto._processActionResponse = function _processActionResponse(msg) {
   if (!actionCallback) {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected ActionResponse.");
     err.serverMessage = msg;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
   // Clear the callback
   delete this._actionCallbacks[msg.CallbackId];
 
-  // Call back the action result - defer
+  // Call back the action result
   if (msg.Success) {
-    queueMicrotask(actionCallback, undefined, Object.freeze(msg.ActionData));
+    actionCallback(undefined, Object.freeze(msg.ActionData));
   } else {
     const err = new Error("REJECTED: Server rejected the action request.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    queueMicrotask(actionCallback, err);
+    actionCallback(err);
   }
 };
 
 /**
  * Processes a FeedOpenResponse from the server.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -987,7 +977,7 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
   if (this._feedState(msg.FeedName, msg.FeedArgs) !== "opening") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedOpenResponse.");
     err.serverMessage = msg;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
@@ -999,13 +989,13 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
   if (msg.Success) {
     this._feedStates[feedSerial] = "open";
     this._feedData[feedSerial] = msg.FeedData;
-    queueMicrotask(feedOpenCallback, undefined, msg.FeedData);
+    feedOpenCallback(undefined, msg.FeedData);
   } else {
     delete this._feedStates[feedSerial]; // Closed
     const err = new Error("REJECTED: Server rejected the feed open request.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    queueMicrotask(feedOpenCallback, err);
+    feedOpenCallback(err);
   }
 };
 
@@ -1016,7 +1006,7 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
  * was received since transmitting the FeedClose. In that case the spec-defined
  * feed state is currently "terminated". The feed state becomes "closed", as
  * in the normal case where no intervening FeedTermination is received.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -1029,9 +1019,10 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
   // Is the feed closing or terminated?
   const feedState = this._feedState(msg.FeedName, msg.FeedArgs);
   if (feedState !== "closing" && feedState !== "terminated") {
+    dbg("Unexpected message");
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedCloseResponse.");
     err.serverMessage = msg;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
@@ -1039,9 +1030,9 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
   const feedCloseCallback = this._feedCloseCallbacks[feedSerial];
   delete this._feedStates[feedSerial];
 
-  // Udpate the state and call the callback - defer
+  // Udpate the state and call the callback
   delete this._feedCloseCallbacks[feedSerial];
-  queueMicrotask(feedCloseCallback);
+  feedCloseCallback();
 };
 
 /**
@@ -1050,7 +1041,7 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
  * If the feed state is closing then the server has not violated the
  * spec, but you need to discard the message because you may not have the
  * feed data (in the case of previous bad delta/hash).
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -1065,7 +1056,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
   if (feedState !== "open" && feedState !== "closing") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected ActionRevelation.");
     err.serverMessage = msg;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
@@ -1089,7 +1080,6 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       );
 
       // Close the feed and emit closed on completion
-      // The feedClose() function takes care of deferral
       this.feedClose(msg.FeedName, msg.FeedArgs, () => {
         this.emit(
           "unexpectedFeedClosed",
@@ -1100,8 +1090,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       });
 
       // Emit unexpectedFeedClosing
-      queueMicrotask(
-        this.emit.bind(this),
+      this.emit(
         "unexpectedFeedClosing",
         msg.FeedName,
         msg.FeedArgs,
@@ -1114,7 +1103,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       );
       err.deltaError = e;
       err.serverMessage = msg;
-      queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+      this.emit("badServerMessage", err);
 
       return; // Stop
     }
@@ -1129,7 +1118,6 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       );
 
       // Close the feed and emit closed on completion
-      // The feedClose() function takes care of deferral
       this.feedClose(msg.FeedName, msg.FeedArgs, () => {
         this.emit(
           "unexpectedFeedClosed",
@@ -1140,8 +1128,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       });
 
       // Emit unexpectedFeedClosing
-      queueMicrotask(
-        this.emit.bind(this),
+      this.emit(
         "unexpectedFeedClosing",
         msg.FeedName,
         msg.FeedArgs,
@@ -1151,7 +1138,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
       // Emit badServerMessage
       const err = new Error("INVALID_HASH: Feed data MD5 verification failed.");
       err.serverMessage = msg;
-      queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+      this.emit("badServerMessage", err);
 
       return; // Stop
     }
@@ -1161,8 +1148,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
   this._feedData[feedSerial] = Object.freeze(newData);
 
   // Emit actionRevelation
-  queueMicrotask(
-    this.emit.bind(this),
+  this.emit(
     "actionRevelation",
     msg.FeedName,
     msg.FeedArgs,
@@ -1186,7 +1172,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
  *   has already issued a call to feedClose() and will be receive a callback
  *   when FeedCloseResponse is received. The client never finds out about the
  *   termination.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {Object} msg Schema-valid message object.
@@ -1201,7 +1187,7 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
   if (feedState !== "open" && feedState !== "closing") {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedTermination.");
     err.serverMessage = msg;
-    queueMicrotask(this.emit.bind(this), "badServerMessage", err);
+    this.emit("badServerMessage", err);
     return; // Stop
   }
 
@@ -1211,20 +1197,8 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
     const err = new Error("TERMINATED: The server terminated the feed.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    queueMicrotask(
-      this.emit.bind(this),
-      "unexpectedFeedClosing",
-      msg.FeedName,
-      msg.FeedArgs,
-      err
-    );
-    queueMicrotask(
-      this.emit.bind(this),
-      "unexpectedFeedClosed",
-      msg.FeedName,
-      msg.FeedArgs,
-      err
-    );
+    this.emit("unexpectedFeedClosing", msg.FeedName, msg.FeedArgs, err);
+    this.emit("unexpectedFeedClosed", msg.FeedName, msg.FeedArgs, err);
   } else {
     this._feedStates[feedSerial] = "terminated";
     // Feed data deleted on feedClose()
@@ -1236,7 +1210,7 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
 /**
  * Returns the spec-defined state of a feed. Differs from .feedState()
  * in that the latter maps "terminated" to "closed" for outside code.
- * @memberof Session
+ * @memberof SessionSync
  * @instance
  * @private
  * @param {string} feedName

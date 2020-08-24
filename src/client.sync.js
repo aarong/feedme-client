@@ -53,7 +53,7 @@ const protoClientSync = emitter({});
  *
  *                        - Feed reopening (how to handle bad action revelations) - 2 options
  *
- * @param {Session}      options.session
+ * @param {SessionWrapper} options.session
  *
  * @param {number}      options.connectTimeoutMs
  *
@@ -735,7 +735,6 @@ protoClientSync.id = function id() {
  * @param {actionCallback} callback
  * @throws {Error} Passed through from session
  */
-
 protoClientSync.action = function action(name, args, callback) {
   dbgClient("Action requested");
 

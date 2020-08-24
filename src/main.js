@@ -2,7 +2,8 @@ import check from "check-types";
 import _clone from "lodash/clone";
 import clientSync from "./client.sync";
 import clientWrapper from "./client.wrapper";
-import session from "./session";
+import sessionSync from "./session.sync";
+import sessionWrapper from "./session.wrapper";
 import transportWrapper from "./transportwrapper";
 
 /**
@@ -29,6 +30,8 @@ export default function feedmeClient(options) {
   // Create the client options object, initialize, and return
   const clientOptions = _clone(options);
   delete clientOptions.transport;
-  clientOptions.session = session(transportWrapper(options.transport));
+  clientOptions.session = sessionWrapper(
+    sessionSync(transportWrapper(options.transport))
+  );
   return clientWrapper(clientSync(clientOptions));
 }
