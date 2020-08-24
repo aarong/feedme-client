@@ -3,44 +3,36 @@ import emitter from "component-emitter";
 import queueMicrotask from "queue-microtask";
 
 /**
- * This module wraps ClientSync  It emits all events and
- * invokes all callbacks synchronously and relies on the wrapper to defer
- * and queue those invocations. The wrapper also overlays a promise API
- * onto client.action().
- *
- * App-facing client object. Exposes the session API (lots of pass-through)
- * while enhancing it with:
- *
- * - A feed object API
- * - Connection timeouts and retries
- * - Message timeouts and late receipt handling
- * - Feed re-opens on feed data errors
- *
- * Feed objects:
- *
- * - The client maintains references to all feed objects until destroyed
- * - All feed object methods pass through to client functionality until destroyed
- * - State is stored within the feed objects and is accessed and modified by the client
- *
- * No need to emit events asynchronously - that behavior is required of the
- * transport and filters through the session object.
+ * Wrapper for ClientSync objects that defers and queues all event emissons and
+ * callback invocations and overlays a promise API.
  * @typedef {Object} ClientWrapper
  * @extends emitter
  */
-
 const clientWrapperProto = emitter({});
-const feedWrapperProto = emitter({});
 
-export default function clientWrapperFactory(clientSync) {
+/**
+ * ClientWrapper factory function.
+ * @param {ClientSync} clientSync
+ * @throws {Error}      "INVALID_ARGUMENT: ..."
+ * @returns {ClientWrapper}
+ */
+function clientWrapperFactory(clientSync) {
   // Check object being wrapped
   if (!check.object(clientSync)) {
     throw new Error("INVALID_ARGUMENT: Argument must be an object.");
   }
 
   const clientWrapper = Object.create(clientWrapperProto);
+
+  /**
+   * @memberof ClientWrapper
+   * @instance
+   * @private
+   * @type {ClientSync}
+   */
   clientWrapper._clientSync = clientSync;
 
-  // Defer and queue events
+  // Relay ClientSync events - defer and queue
   const evts = [
     "connecting",
     "connect",
@@ -60,14 +52,159 @@ export default function clientWrapperFactory(clientSync) {
   return clientWrapper;
 }
 
-// Route synchronous public client methods
+/**
+ * Deferred and queued from ClientSync.
+ * @event connecting
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from ClientSync.
+ * @event connect
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from ClientSync.
+ * @event disconnect
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from ClientSync.
+ * @event badServerMessage
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from ClientSync.
+ * @event badClientMessage
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from ClientSync.
+ * @event transportError
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from ClientSync.
+ * @callback actionCallback
+ * @memberof ClientWrapper
+ */
+
+/**
+ * Wrapper for FeedSync that defers and queues all event emissIons.
+ * @typedef {Object} FeedWrapper
+ * @extends emitter
+ */
+const feedWrapperProto = emitter({});
+
+/**
+ * FeedWrapper factory function.
+ * @param {FeedSync} feedSync
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @returns {FeedWrapper}
+ */
+function feedWrapperFactory(feedSync) {
+  const feedWrapper = Object.create(feedWrapperProto);
+
+  /**
+   * @memberof FeedWrapper
+   * @instance
+   * @private
+   * @type {FeedSync}
+   */
+  feedWrapper._feedSync = feedSync;
+
+  // Relay FeedSync events - defer and queue
+  const evts = ["opening", "open", "close", "action"];
+  evts.forEach(evt => {
+    feedWrapper._feedSync.on(evt, (...eargs) => {
+      queueMicrotask(() => {
+        feedWrapper.emit(evt, ...eargs);
+      });
+    });
+  });
+
+  return feedWrapper;
+}
+
+/**
+ * Deferred and queued from FeedSync.
+ * @event opening
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from FeedSync.
+ * @event open
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from FeedSync.
+ * @event close
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Deferred and queued from FeedSync.
+ * @event action
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to ClientSync.
+ * @method state
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to ClientSync.
+ * @method connect
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to ClientSync.
+ * @method disconnect
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to ClientSync.
+ * @method id
+ * @memberof ClientWrapper
+ * @instance
+ */
+
 ["state", "connect", "disconnect", "id"].forEach(method => {
   clientWrapperProto[method] = function callMethod(...args) {
     return this._clientSync[method](...args);
   };
 });
 
-// Route client.action(), defer response, and overlay promise API
+/**
+ * Routed to ClientSync. Callbacks are deferred and queued and promise API overlaid.
+ * @method action
+ * @memberof ClientWrapper
+ * @instance
+ */
 clientWrapperProto.action = function action(...args) {
   // Get arguments
   const actionName = args.length > 0 ? args[0] : undefined;
@@ -117,25 +254,60 @@ clientWrapperProto.action = function action(...args) {
   return promise;
 };
 
-// Route client.feed() and wrap the resulting object
+/**
+ * Routed to ClientSync and wraps the result in a FeedWrapper.
+ * @method feed
+ * @memberof ClientWrapper
+ * @returns {FeedWrapper}
+ * @instance
+ */
 clientWrapperProto.feed = function feed(...args) {
-  const feedWrapper = Object.create(feedWrapperProto);
-  feedWrapper._feedSync = this._clientSync.feed(...args);
-
-  // Defer and queue events
-  const evts = ["opening", "open", "close", "action"];
-  evts.forEach(evt => {
-    feedWrapper._feedSync.on(evt, (...eargs) => {
-      queueMicrotask(() => {
-        feedWrapper.emit(evt, ...eargs);
-      });
-    });
-  });
-
-  return feedWrapper;
+  const feedSync = this._clientSync.feed(...args);
+  return feedWrapperFactory(feedSync);
 };
 
-// Route synchronous public feed methods
+/**
+ * Routed directly to FeedSync.
+ * @method desireOpen
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to FeedSync.
+ * @method desireClosed
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to FeedSync.
+ * @method desiredState
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to FeedSync.
+ * @method state
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to FeedSync.
+ * @method data
+ * @memberof FeedWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to FeedSync.
+ * @method destroy
+ * @memberof FeedWrapper
+ * @instance
+ */
+
 [
   "desireOpen",
   "desireClosed",
@@ -148,3 +320,5 @@ clientWrapperProto.feed = function feed(...args) {
     return this._feedSync[method](...args);
   };
 });
+
+export default clientWrapperFactory;

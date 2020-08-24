@@ -212,14 +212,14 @@ harnessProto.getClientState = function getClientState() {
   state._sessionState = this.client._session.state(); // String
   state._lastSessionState = this.client._lastSessionState; // String
   state._appFeeds = {}; // _appFeeds[ser][i] = object reference
-  state._appFeedStates = {}; // _appFeedStates[ser][i] = { _client, ... }
+  state._appFeedStates = {}; // _appFeedStates[ser][i] = { _clientSync, ... }
   _.each(this.client._appFeeds, (val, ser) => {
     state._appFeeds[ser] = [];
     state._appFeedStates[ser] = [];
     _.each(this.client._appFeeds[ser], (feed, idx) => {
       state._appFeeds[ser][idx] = feed; // Object reference
       state._appFeedStates[ser][idx] = {
-        _client: feed._client, // Object reference
+        _clientSync: feed._clientSync, // Object reference
         _feedName: feed._feedName, // String
         _feedArgs: _.clone(feed._feedArgs), // Object copy
         _desiredState: feed._desiredState, // String
@@ -353,12 +353,12 @@ expect.extend({
         const receivedFeed = receivedClient._appFeeds[key][i];
         const expectedFeed = expectedState._appFeedStates[key][i];
 
-        // Check that ._client matches
-        if (receivedFeed._client !== expectedFeed._client) {
+        // Check that ._clientSync matches
+        if (receivedFeed._clientSync !== expectedFeed._clientSync) {
           err = {
             pass: false,
             message() {
-              return "expected feed _client to match, but they didn't";
+              return "expected feed _clientSync to match, but they didn't";
             }
           };
         }
@@ -1170,7 +1170,7 @@ describe("The client.feed() function", () => {
       newState._appFeeds[feedSerial] = [f];
       newState._appFeedStates[feedSerial] = [
         {
-          _client: harness.client,
+          _clientSync: harness.client,
           _feedName: "someFeed",
           _feedArgs: { arg: "val" },
           _desiredState: "closed",
