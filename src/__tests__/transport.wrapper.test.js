@@ -1,5 +1,5 @@
 import emitter from "component-emitter";
-import transportWrapper from "../transportwrapper";
+import transportWrapper from "../transport.wrapper";
 
 describe("The factory function", () => {
   it("should throw if the transport is not an object", () => {
