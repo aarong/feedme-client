@@ -1,6 +1,9 @@
 import check from "check-types";
 import emitter from "component-emitter";
-import queueMicrotask from "./queuemicrotask";
+import queueMicrotask from "queue-microtask";
+import debug from "debug";
+
+const dbg = debug("feedme-client:transport-wrapper");
 
 /**
  * Wrapper that verifies that the app-provided transport object is acting as
@@ -34,6 +37,8 @@ emitter(proto);
  * @returns {TransportWrapper}
  */
 export default function transportWrapperFactory(transport) {
+  dbg("Initializing transportWrapper object");
+
   // Check that the transport is an object
   if (!check.object(transport)) {
     throw new Error(
@@ -152,6 +157,8 @@ export default function transportWrapperFactory(transport) {
  * @throws {Error} "TRANSPORT_ERROR: ...""
  */
 proto.state = function state() {
+  dbg("State requested");
+
   // Try to get the state
   let transportState;
   let transportErr;
@@ -167,7 +174,9 @@ proto.state = function state() {
       "INVALID_RESULT: Transport threw an error on call to state()."
     );
     emitErr.transportError = transportErr;
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     throw new Error(
       "TRANSPORT_ERROR: The transport unexpectedly threw an error."
     );
@@ -183,7 +192,9 @@ proto.state = function state() {
     const emitErr = new Error(
       `INVALID_RESULT: Transport returned invalid state '${transportState}' on a call to state().`
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     throw new Error(
       "TRANSPORT_ERROR: The transport returned an invalid state."
     );
@@ -200,6 +211,8 @@ proto.state = function state() {
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.connect = function connect() {
+  dbg("Connect requested");
+
   // Try to connect
   try {
     this._transport.connect();
@@ -209,7 +222,9 @@ proto.connect = function connect() {
       `INVALID_RESULT: Transport threw an error on a call to connect().`
     );
     emitErr.transportError = e;
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
   }
 };
@@ -221,6 +236,8 @@ proto.connect = function connect() {
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.send = function send(msg) {
+  dbg("Send requested");
+
   // Try to send the message
   try {
     this._transport.send(msg);
@@ -230,7 +247,9 @@ proto.send = function send(msg) {
       `INVALID_RESULT: Transport threw an error on a call to send().`
     );
     emitErr.transportError = e;
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
   }
 };
@@ -242,6 +261,8 @@ proto.send = function send(msg) {
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.disconnect = function disconnect(err) {
+  dbg("Disconnect requested");
+
   // Try to disconnect
   try {
     if (err) {
@@ -255,7 +276,9 @@ proto.disconnect = function disconnect(err) {
       `INVALID_RESULT: Transport threw an error on a call to disconnect().`
     );
     emitErr.transportError = e;
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
   }
 };
@@ -270,12 +293,16 @@ proto.disconnect = function disconnect(err) {
 proto._processTransportConnecting = function _processTransportConnecting(
   ...args
 ) {
+  dbg("Observed transport connecting event");
+
   // Is the emission sequence valid?
   if (this._lastEmission !== "disconnect") {
     const emitErr = new Error(
       `UNEXPECTED_EVENT: Transport emitted a  'connecting' event following a '${this._lastEmission}' emission.`
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
@@ -284,13 +311,17 @@ proto._processTransportConnecting = function _processTransportConnecting(
     const emitErr = new Error(
       "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with a 'connecting' event."
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
   // Emit
   this._lastEmission = "connecting";
-  queueMicrotask(this.emit.bind(this), "connecting");
+  queueMicrotask(() => {
+    this.emit("connecting");
+  });
 };
 
 /**
@@ -299,12 +330,15 @@ proto._processTransportConnecting = function _processTransportConnecting(
  * @private
  */
 proto._processTransportConnect = function _processTransportConnect(...args) {
+  dbg("Observed transport connect event");
   // Is the emission sequence valid?
   if (this._lastEmission !== "connecting") {
     const emitErr = new Error(
       `UNEXPECTED_EVENT: Transport emitted a  'connect' event when the previous emission was '${this._lastEmission}'.`
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
@@ -313,13 +347,17 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
     const emitErr = new Error(
       "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with a 'connect' event."
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
   // Emit
   this._lastEmission = "connect";
-  queueMicrotask(this.emit.bind(this), "connect");
+  queueMicrotask(() => {
+    this.emit("connect");
+  });
 };
 
 /**
@@ -328,13 +366,17 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
  * @private
  */
 proto._processTransportMessage = function _processTransportMessage(...args) {
+  dbg("Observed transport message event");
+
   // Is the transport connected?
   const transportState = this._transport.state();
   if (transportState !== "connected") {
     const emitErr = new Error(
       `UNEXPECTED_EVENT: Transport emitted a 'message' event when the state was '${transportState}'.`
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
@@ -343,7 +385,9 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
     const emitErr = new Error(
       "BAD_EVENT_ARGUMENT: Received an invalid number of arguments with a 'message' event."
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
@@ -352,12 +396,16 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
     const emitErr = new Error(
       "BAD_EVENT_ARGUMENT: Received a non-string argument with a 'message' event."
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
   // Emit
-  queueMicrotask(this.emit.bind(this), "message", args[0]);
+  queueMicrotask(() => {
+    this.emit("message", args[0]);
+  });
 };
 
 /**
@@ -368,12 +416,16 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
 proto._processTransportDisconnect = function _processTransportDisconnect(
   ...args
 ) {
+  dbg("Observed transport disconnect event");
+
   // Is the emission sequence valid?
   if (this._lastEmission === "disconnect") {
     const emitErr = new Error(
       `UNEXPECTED_EVENT: Transport emitted a  'disconnect' event when the previous emission was 'disconnect'.`
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
@@ -382,7 +434,9 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
     const emitErr = new Error(
       "BAD_EVENT_ARGUMENT: Received one or more extraneous arguments with a 'disconnect' event."
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
@@ -391,15 +445,21 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
     const emitErr = new Error(
       "BAD_EVENT_ARGUMENT: Received a non-Error argument with a 'disconnect' event."
     );
-    queueMicrotask(this.emit.bind(this), "transportError", emitErr);
+    queueMicrotask(() => {
+      this.emit("transportError", emitErr);
+    });
     return; // Stop
   }
 
   // Emit
   this._lastEmission = "disconnect";
   if (args.length === 0) {
-    queueMicrotask(this.emit.bind(this), "disconnect");
+    queueMicrotask(() => {
+      this.emit("disconnect");
+    });
   } else {
-    queueMicrotask(this.emit.bind(this), "disconnect", args[0]);
+    queueMicrotask(() => {
+      this.emit("disconnect", args[0]);
+    });
   }
 };

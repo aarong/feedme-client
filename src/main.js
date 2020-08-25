@@ -4,7 +4,7 @@ import clientSync from "./client.sync";
 import clientWrapper from "./client.wrapper";
 import sessionSync from "./session.sync";
 import sessionWrapper from "./session.wrapper";
-import transportWrapper from "./transportwrapper";
+import transportWrapper from "./transport.wrapper";
 
 /**
  * Outward-facing client factory function.

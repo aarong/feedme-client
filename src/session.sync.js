@@ -721,7 +721,7 @@ proto.feedData = function feedData(feedName, feedArgs) {
  * @private
  */
 proto._processTransportConnecting = function _processTransportConnecting() {
-  dbg("Observed transport connecting event");
+  dbg("Observed transportWrapper connecting event");
 
   this.emit("connecting");
 };
@@ -733,7 +733,7 @@ proto._processTransportConnecting = function _processTransportConnecting() {
  * @private
  */
 proto._processTransportConnect = function _processTransportConnect() {
-  dbg("Observed transport connect event");
+  dbg("Observed transportWrapper connect event");
 
   // Initiate a handshake - transport is 'connected', session is 'connecting'
   this._transportWrapper.send(
@@ -777,7 +777,7 @@ proto._processTransportConnect = function _processTransportConnect() {
  * @param {?Error} err Error passed by the transport
  */
 proto._processTransportDisconnect = function _processTransportDisconnect(err) {
-  dbg("Observed transport disconnect event");
+  dbg("Observed transportWrapper disconnect event");
 
   // Save the current session state as needed below
   const actionCallbacks = this._actionCallbacks;
@@ -834,7 +834,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
  * @param {Error} err
  */
 proto._processTransportError = function _processTransportError(err) {
-  dbg("Observed transport transportError event");
+  dbg("Observed transportWrapper transportError event");
 
   this.emit("transportError", err);
 };
@@ -847,7 +847,7 @@ proto._processTransportError = function _processTransportError(err) {
  * @param {string} msg
  */
 proto._processTransportMessage = function _processTransportMessage(msg) {
-  dbg("Observed transport message event");
+  dbg("Observed transportWrapper message event");
 
   // Try to parse JSON and validate message structure
   // No need to check JSON-expressibility (coming from JSON)
