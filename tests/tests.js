@@ -220,6 +220,10 @@ describe("The connectTimeoutMs option", () => {
     expect(harness.transport.disconnect.calls.count()).toBe(0);
     expect(harness.transport.state.calls.count()).toBe(0);
 
+    harness.transport.disconnect.and.callFake(() => {
+      harness.transport.state.and.returnValue("disconnected");
+    });
+
     // Advance to immediately after the timeout and ensure that
     // transport.disconnect() was called
     harness.transport.spyClear();
@@ -423,6 +427,10 @@ describe("The connectRetryMs option", () => {
     harness.transport.state.and.returnValue("connected");
     await harness.transport.emit("connect");
 
+    harness.transport.disconnect.and.callFake(() => {
+      harness.transport.state.and.returnValue("disconnected");
+    });
+
     // Have the trensport reject the handshake and verify that there is
     // a subsequent call to transport.disconnect(err) and no call to
     // transport.connect()
@@ -452,7 +460,7 @@ describe("The connectRetryMs option", () => {
     // Emit transport disconnect, advance forever, and check that
     // transport.connect() is never called
     harness.transport.spyClear();
-    harness.transport.state.and.returnValue("disconnected");
+
     await harness.transport.emit(
       "disconnect",
       new Error("HANDSHAKE_REJECTED: The server rejected the handshake.")
@@ -1152,8 +1160,10 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
     expect(feedListener.action.calls.count()).toBe(0);
 
     // Disconnect and reconnect and make sure the feed is reopened
+    harness.transport.disconnect.and.callFake(() => {
+      harness.transport.state.and.returnValue("disconnected");
+    });
     harness.client.disconnect();
-    harness.transport.state.and.returnValue("disconnected");
     await harness.transport.emit("disconnect");
 
     feedListener.spyClear();
@@ -1346,11 +1356,14 @@ describe("The client.connect() function", () => {
       });
 
       it("if due to timeout, should update appropriately", async () => {
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
+
         // Trigger the timeout
         jasmine.clock().tick(connectTimeoutMs);
 
         // The client will disconnect the transport
-        harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit(
           "disconnect",
           harness.transport.disconnect.calls.argsFor(0)[0]
@@ -1379,8 +1392,10 @@ describe("The client.connect() function", () => {
 
       it("if due to app call to client.disconnect(), should update appropriately", async () => {
         // Have the client disconnect
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
         harness.client.disconnect();
-        harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit("disconnect"); // Requested
 
         // Check all state functions
@@ -1434,6 +1449,11 @@ describe("The client.connect() function", () => {
         // Have the transport connect and emit a handshake failure
         harness.transport.state.and.returnValue("connected");
         await harness.transport.emit("connect");
+
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
+
         await harness.transport.emit(
           "message",
           JSON.stringify({
@@ -1441,7 +1461,7 @@ describe("The client.connect() function", () => {
             Success: false
           })
         ); // The client will disconnect the transport
-        harness.transport.state.and.returnValue("disconnected");
+
         await harness.transport.emit(
           "disconnect",
           harness.transport.disconnect.calls.argsFor(0)[0]
@@ -1611,11 +1631,13 @@ describe("The client.connect() function", () => {
           feedWantedClosed
         );
 
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
+
         // Trigger the timeout
         jasmine.clock().tick(connectTimeoutMs);
 
-        // The client will disconnect the transport
-        harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit(
           "disconnect",
           harness.transport.disconnect.calls.argsFor(0)[0]
@@ -1656,8 +1678,10 @@ describe("The client.connect() function", () => {
         );
 
         // Have the client disconnect
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
         harness.client.disconnect();
-        harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit("disconnect");
 
         // Check all client and feed events
@@ -1730,7 +1754,12 @@ describe("The client.connect() function", () => {
           feedWantedClosed
         );
 
-        // Emit a handshake failure
+        // Change transport state to disconnected on call to disconnect()
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
+
+        // Emit a handshake failure - client will disconnect transport
         await harness.transport.emit(
           "message",
           JSON.stringify({
@@ -1739,8 +1768,7 @@ describe("The client.connect() function", () => {
           })
         );
 
-        // The client will disconnect the transport
-        harness.transport.state.and.returnValue("disconnected");
+        // Transport will emit disconnect
         await harness.transport.emit(
           "disconnect",
           harness.transport.disconnect.calls.argsFor(0)[0]
@@ -1970,6 +1998,10 @@ describe("The client.connect() function", () => {
         // Reset transport spies
         harness.transport.spyClear();
 
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
+
         // Trigger the timeout
         jasmine.clock().tick(connectTimeoutMs);
 
@@ -1994,8 +2026,10 @@ describe("The client.connect() function", () => {
         harness.transport.spyClear();
 
         // Have the client disconnect
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
         harness.client.disconnect();
-        harness.transport.state.and.returnValue("disconnected");
         await harness.transport.emit("disconnect"); // Requested
 
         // Check all transport calls
@@ -2048,6 +2082,10 @@ describe("The client.connect() function", () => {
 
         // Reset transport spies
         harness.transport.spyClear();
+
+        harness.transport.disconnect.and.callFake(() => {
+          harness.transport.state.and.returnValue("disconnected");
+        });
 
         // Have the transport handshake failure
         await harness.transport.emit(
@@ -2103,6 +2141,9 @@ describe("The client.disconnect() function", () => {
       harness.client.connect();
       harness.transport.state.and.returnValue("connecting");
       await harness.transport.emit("connecting");
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       expect(harness.client.disconnect()).toBeUndefined();
     });
   });
@@ -2141,8 +2182,10 @@ describe("The client.disconnect() function", () => {
       }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all state functions
@@ -2195,8 +2238,10 @@ describe("The client.disconnect() function", () => {
       }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all state functions
@@ -2241,8 +2286,10 @@ describe("The client.disconnect() function", () => {
       }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all state functions
@@ -2288,8 +2335,10 @@ describe("The client.disconnect() function", () => {
       );
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all client and feed events
@@ -2334,8 +2383,10 @@ describe("The client.disconnect() function", () => {
       );
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all client and feed events
@@ -2381,8 +2432,10 @@ describe("The client.disconnect() function", () => {
       );
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all client and feed events
@@ -2432,8 +2485,10 @@ describe("The client.disconnect() function", () => {
       harness.transport.spyClear();
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all transport calls
@@ -2459,8 +2514,10 @@ describe("The client.disconnect() function", () => {
       harness.transport.spyClear();
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all transport calls
@@ -2480,8 +2537,10 @@ describe("The client.disconnect() function", () => {
       harness.transport.spyClear();
 
       // Call disconnect and have the transport emit disconnect
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check all transport calls
@@ -2712,8 +2771,10 @@ describe("The client.action() function", () => {
       cb.calls.reset();
 
       // Have the client disconnect (requested in this case)
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check callbacks
@@ -2826,8 +2887,10 @@ describe("The client.action() function", () => {
       expect(cb.calls.count()).toBe(0);
 
       // Have the client disconnect (requested in this case)
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
       harness.client.disconnect();
-      harness.transport.state.and.returnValue("disconnected");
       await harness.transport.emit("disconnect");
 
       // Check callbacks
@@ -3020,8 +3083,10 @@ describe("The client.action() function", () => {
         .then(async () => {
           // Have the client disconnect (requested in this case)
           // This settles the action promise above
+          harness.transport.disconnect.and.callFake(() => {
+            harness.transport.state.and.returnValue("disconnected");
+          });
           harness.client.disconnect();
-          harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect");
         });
     });
@@ -9599,7 +9664,7 @@ describe("if the transport violates a library requirement", () => {
       jasmine.any(Error)
     );
     expect(clientListener.transportError.calls.argsFor(0)[0].message).toBe(
-      "UNEXPECTED_EVENT: Transport emitted a  'disconnect' event when the previous emission was 'disconnect'."
+      "UNEXPECTED_EVENT: Transport emitted a  'disconnect' event when the previous state emission was 'disconnect'."
     );
   });
 
