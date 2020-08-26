@@ -32,6 +32,10 @@ const dbg = debug("feedme-client:session");
  * - Applies feed deltas and performs hash verification
  * - Extremely patient - no timeouts
  *
+ * The session must not assume the transport state in its event handlers
+ * or after performing operations on the transport. Checked explicitly where
+ * applicable, Specifically, state is verified on connect before transmitting
+ * a Handshake message, and on failed HandshakeResponse before disconnecting.
  * @typedef {Object} SessionSync
  * @extends emitter
  */
@@ -141,21 +145,26 @@ export default function sessionSyncFactory(transportWrapper) {
   sessionSync._feedCloseCallbacks = {};
 
   // Listen for transport events
-  sessionSync._transportWrapper.on("connecting", () => {
-    sessionSync._processTransportConnecting();
-  });
-  sessionSync._transportWrapper.on("connect", () => {
-    sessionSync._processTransportConnect();
-  });
-  sessionSync._transportWrapper.on("message", msg => {
-    sessionSync._processTransportMessage(msg);
-  });
-  sessionSync._transportWrapper.on("disconnect", err => {
-    sessionSync._processTransportDisconnect(err); // err missing if requested
-  });
-  sessionSync._transportWrapper.on("transportError", err => {
-    sessionSync._processTransportError(err);
-  });
+  sessionSync._transportWrapper.on(
+    "connecting",
+    sessionSync._processTransportConnecting.bind(sessionSync)
+  );
+  sessionSync._transportWrapper.on(
+    "connect",
+    sessionSync._processTransportConnect.bind(sessionSync)
+  );
+  sessionSync._transportWrapper.on(
+    "message",
+    sessionSync._processTransportMessage.bind(sessionSync)
+  );
+  sessionSync._transportWrapper.on(
+    "disconnect",
+    sessionSync._processTransportDisconnect.bind(sessionSync)
+  );
+  sessionSync._transportWrapper.on(
+    "transportError",
+    sessionSync._processTransportError.bind(sessionSync)
+  );
 
   return sessionSync;
 }
@@ -735,6 +744,11 @@ proto._processTransportConnecting = function _processTransportConnecting() {
 proto._processTransportConnect = function _processTransportConnect() {
   dbg("Observed transportWrapper connect event");
 
+  // Transport state is not guaranteed in event handlers - ensure still connected
+  if (this._transportWrapper.state() !== "connected") {
+    return; // Stop
+  }
+
   // Initiate a handshake - transport is 'connected', session is 'connecting'
   this._transportWrapper.send(
     JSON.stringify({
@@ -906,6 +920,11 @@ proto._processViolationResponse = function _processViolationResponse(msg) {
  */
 proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
   dbg("Received HandshakeResponse message");
+
+  // Transport state is not guaranteed in event handlers -- ensure not already disconnected
+  if (this._transportWrapper.state() === "disconnected") {
+    return; // stop
+  }
 
   // Is a handshake response expected?
   if (this.state() !== "connecting") {

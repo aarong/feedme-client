@@ -895,55 +895,113 @@ describe("The transport connect event", () => {
   beforeEach(() => {
     harness = harnessFactory();
     harness.session.connect();
+    harness.transportWrapper.state.mockReturnValue("connecting");
+    harness.transportWrapper.emit("connecting");
   });
 
   describe("runs successfully", () => {
-    // Events
+    describe("if the transport is still connected", () => {
+      // Events
 
-    it("should emit no events", () => {
-      const sessionListener = harness.createSessionListener();
-      harness.transportWrapper.emit("connect");
+      it("should emit no events", () => {
+        const sessionListener = harness.createSessionListener();
+        harness.transportWrapper.state.mockReturnValue("connected");
+        harness.transportWrapper.emit("connect");
 
-      expect(sessionListener.connecting.mock.calls.length).toBe(0);
-      expect(sessionListener.connect.mock.calls.length).toBe(0);
-      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
-      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
-      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
-      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
-      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
-    });
-
-    // State
-
-    it("should update transport state to connected", () => {
-      const newState = harness.getSessionState();
-      newState._transportWrapperState = "connected";
-      harness.transportWrapper.emit("connect");
-      harness.transportWrapper.state.mockReturnValue("connected");
-      expect(harness.session).toHaveState(newState);
-    });
-
-    // Transport
-
-    it("should call transport.send(msg) with Handshake", () => {
-      harness.transportWrapper.mockClear();
-      harness.transportWrapper.emit("connect");
-
-      expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
-      expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
-      expect(harness.transportWrapper.send.mock.calls.length).toBe(1);
-      expect(harness.transportWrapper.send.mock.calls[0].length).toBe(1);
-      expect(
-        JSON.parse(harness.transportWrapper.send.mock.calls[0][0])
-      ).toEqual({
-        MessageType: "Handshake",
-        Versions: ["0.1"]
+        expect(sessionListener.connecting.mock.calls.length).toBe(0);
+        expect(sessionListener.connect.mock.calls.length).toBe(0);
+        expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+        expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+        expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+        expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+        expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+        expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+        expect(sessionListener.transportError.mock.calls.length).toBe(0);
       });
+
+      // State
+
+      it("should update transport state to connected", () => {
+        const newState = harness.getSessionState();
+        newState._transportWrapperState = "connected";
+
+        harness.transportWrapper.state.mockReturnValue("connected");
+        harness.transportWrapper.emit("connect");
+
+        harness.transportWrapper.state.mockReturnValue("connected");
+        expect(harness.session).toHaveState(newState);
+      });
+
+      // Transport
+
+      it("should call transport.send(msg) with Handshake", () => {
+        harness.transportWrapper.mockClear();
+
+        harness.transportWrapper.state.mockReturnValue("connected");
+        harness.transportWrapper.emit("connect");
+
+        expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+        expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
+        expect(harness.transportWrapper.send.mock.calls.length).toBe(1);
+        expect(harness.transportWrapper.send.mock.calls[0].length).toBe(1);
+        expect(
+          JSON.parse(harness.transportWrapper.send.mock.calls[0][0])
+        ).toEqual({
+          MessageType: "Handshake",
+          Versions: ["0.1"]
+        });
+      });
+
+      // Callbacks - N/A
     });
 
-    // Callbacks - N/A
+    describe("if the transport is no longer connected", () => {
+      // Events
+
+      it("should emit no events", () => {
+        const sessionListener = harness.createSessionListener();
+        harness.transportWrapper.state.mockReturnValue("disconnected");
+        harness.transportWrapper.emit("connect");
+
+        expect(sessionListener.connecting.mock.calls.length).toBe(0);
+        expect(sessionListener.connect.mock.calls.length).toBe(0);
+        expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+        expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+        expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+        expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+        expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+        expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+        expect(sessionListener.transportError.mock.calls.length).toBe(0);
+      });
+
+      // State
+
+      it("should update transport state to connected", () => {
+        const newState = harness.getSessionState();
+        newState._transportWrapperState = "connected";
+
+        harness.transportWrapper.state.mockReturnValue("disconnected");
+        harness.transportWrapper.emit("connect");
+
+        harness.transportWrapper.state.mockReturnValue("connected");
+        expect(harness.session).toHaveState(newState);
+      });
+
+      // Transport
+
+      it("should do nothing on the transport", () => {
+        harness.transportWrapper.mockClear();
+
+        harness.transportWrapper.state.mockReturnValue("disconnected");
+        harness.transportWrapper.emit("connect");
+
+        expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+        expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
+        expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      });
+
+      // Callbacks - N/A
+    });
   });
 });
 
@@ -1388,7 +1446,7 @@ describe("The HandshakeResponse processor", () => {
     // Callbacks - N/A
   });
 
-  describe("can run successfully communicating a failed handshake result", () => {
+  describe("can run successfully communicating a failed handshake result - transport still connected", () => {
     // Events
 
     it("should emit nothing", () => {
@@ -1435,6 +1493,59 @@ describe("The HandshakeResponse processor", () => {
       expect(harness.transportWrapper.disconnect.mock.calls[0][0].message).toBe(
         "HANDSHAKE_REJECTED: The server rejected the handshake."
       );
+      expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+    });
+
+    // Callbacks - N/A (never connected, so none could be registered)
+  });
+
+  describe("can run successfully communicating a failed handshake result - transport no longer connected", () => {
+    // Events
+
+    it("should emit nothing", () => {
+      connectAndSendHandshake();
+      const sessionListener = harness.createSessionListener();
+
+      harness.transportWrapper.state.mockReturnValue("disconnected");
+      receiveFailure();
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+    });
+
+    // State
+
+    it("should not change the state", () => {
+      connectAndSendHandshake();
+
+      harness.transportWrapper.state.mockReturnValue("disconnected");
+
+      const newState = harness.getSessionState();
+
+      receiveFailure();
+
+      expect(harness.session).toHaveState(newState);
+    });
+
+    // Transport
+
+    it("should do nothing on the transport", () => {
+      connectAndSendHandshake();
+
+      harness.transportWrapper.mockClear();
+
+      harness.transportWrapper.state.mockReturnValue("disconnected");
+      receiveFailure();
+
+      expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
     });
 

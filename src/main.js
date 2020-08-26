@@ -30,7 +30,7 @@ export default function feedmeClient(options) {
   // Create the client options object, initialize, and return
   const clientOptions = _clone(options);
   delete clientOptions.transport;
-  clientOptions.session = sessionWrapper(
+  clientOptions.sessionWrapper = sessionWrapper(
     sessionSync(transportWrapper(options.transport))
   );
   return clientWrapper(clientSync(clientOptions));

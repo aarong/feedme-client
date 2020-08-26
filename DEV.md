@@ -218,15 +218,15 @@ client library at initialization.
 
 Transport objects must implement the following interface and behavior in order
 to function correctly with the library. The library aims to detect invalid
-behavior and emits a `transportError` event if the transport does something
-unexpected.
+behavior and emits a `transportError` event if the transport behaves
+unexpectedly.
 
 ### Fundamentals
 
-Once connected, transport objects must be able to exchange string messages with
-the server. Messages must be received by the other side in the order that they
-were sent. Transport objects are always in one of three states: `disconnected`,
-`connecting`, or `connected`.
+Transport objects are always in one of three states: `disconnected`,
+`connecting`, or `connected`. Once connected, transport objects must be able to
+exchange string messages with the server. Messages must be received by the other
+side in the order that they were sent.
 
 Transport objects must be traditional Javascript event emitters. They must
 implement `transport.on(eventName, eventHandler)` and must emit events to
@@ -292,7 +292,7 @@ Transport objects must sequence their event emissions as follows:
 - After library initialization, the transport must not emit any events until the
   library calls `transport.connect()`.
 
-- After the library calls `transport.connect()`, the transport must emit a
+- When the library calls `transport.connect()`, the transport must emit a
   `connecting` event.
 
 - A `connecting` event must be followed by a `connect` event or a `disconnect`
@@ -307,15 +307,12 @@ Transport objects must sequence their event emissions as follows:
 - A `disconnect` event must not be followed by any further events until the
   library has called `transport.connect()`.
 
-The transport is not required to defer event emissions that result immediately
-from method calls on the transport, event though this is widely viewed as a
-Javascript best practice. For example, when the library calls
-`transport.connect()`, the transport may synchronously emit a `connecting` event
-or it may defer the emission using a mechanism like `process.nextTick()` or
-`setTimeout()`. The library will function correctly in either case, provided
-that the transport emits events in the required sequence. The library ensures
-that all emissions and callbacks are deferred from the application's
-perspective.
+When the library invokes a transport method, the transport may emit any
+resulting events synchronously within the method or defer them using a mechanism
+like `process.nextTick()` or `setTimeout()`. The transport will function
+correctly with the library as long as the transport sequences events as
+required. The library will ensure that all events and callbacks are deferred
+from the application's perspective.
 
 ### Transport Methods
 
@@ -355,7 +352,7 @@ Transport objects must implement the following methods:
 
     If `transport.state()` returns `connected`, then the transport must accept
     synchronous library calls to `transport.send()` and
-    `transport.disconnect()`..
+    `transport.disconnect()`.
 
 - `transport.connect()` - Returns `undefined`
 
@@ -419,5 +416,5 @@ Transport objects must implement the following methods:
   `disconnected` and the transport must emit `disconnect([err])`. If the library
   supplied an `err` argument then the transport must emit the `disconnect` event
   with that argument. If the library did not supply an `err` argument then the
-  must transport emit the `disconnect` event with no arguments. The call to
+  transport must emit the `disconnect` event with no arguments. The call to
   `transport.disconnect([err])` must exit successfully.

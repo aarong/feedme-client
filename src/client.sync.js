@@ -53,7 +53,7 @@ const protoClientSync = emitter({});
  *
  *                        - Feed reopening (how to handle bad action revelations) - 2 options
  *
- * @param {SessionWrapper} options.session
+ * @param {SessionWrapper} options.sessionWrapper
  *
  * @param {number}      options.connectTimeoutMs
  *
@@ -178,9 +178,9 @@ function clientSyncFactory(options) {
     throw new Error("INVALID_ARGUMENT: Invalid options argument.");
   }
 
-  // Check options.session
-  if (!check.object(options.session)) {
-    throw new Error("INVALID_ARGUMENT: Invalid options.session.");
+  // Check options.sessionWrapper
+  if (!check.object(options.sessionWrapper)) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.sessionWrapper.");
   }
 
   // Check options.connectTimeoutMs (if specified)
@@ -304,7 +304,7 @@ function clientSyncFactory(options) {
    * @private
    * @type {Session}
    */
-  clientSync._session = options.session;
+  clientSync._sessionWrapper = options.sessionWrapper;
 
   /**
    * The previous state of the session object.
@@ -316,7 +316,7 @@ function clientSyncFactory(options) {
    * @private
    * @type {string}
    */
-  clientSync._lastSessionState = "disconnected";
+  clientSync._lastSessionWrapperState = "disconnected";
 
   /**
    * Feed API objects. Destroyed objects are removed.
@@ -387,45 +387,42 @@ function clientSyncFactory(options) {
   clientSync._reopenTimers = [];
 
   // Listen for session events
-  clientSync._session.on("connecting", () => {
-    clientSync._processConnecting();
-  });
-  clientSync._session.on("connect", () => {
-    clientSync._processConnect();
-  });
-  clientSync._session.on("disconnect", err => {
-    clientSync._processDisconnect(err);
-  });
-
-  clientSync._session.on(
-    "actionRevelation",
-    (feedName, feedArgs, actionName, actionData, newFeedData, oldFeedData) => {
-      clientSync._processActionRevelation(
-        feedName,
-        feedArgs,
-        actionName,
-        actionData,
-        newFeedData,
-        oldFeedData
-      );
-    }
+  clientSync._sessionWrapper.on(
+    "connecting",
+    clientSync._processConnecting.bind(clientSync)
   );
-  clientSync._session.on("unexpectedFeedClosing", (feedName, feedArgs, err) => {
-    clientSync._processUnexpectedFeedClosing(feedName, feedArgs, err);
-  });
-  clientSync._session.on("unexpectedFeedClosed", (feedName, feedArgs, err) => {
-    clientSync._processUnexpectedFeedClosed(feedName, feedArgs, err);
-  });
-
-  clientSync._session.on("badServerMessage", msg => {
-    clientSync._processBadServerMessage(msg);
-  });
-  clientSync._session.on("badClientMessage", msg => {
-    clientSync._processBadClientMessage(msg);
-  });
-  clientSync._session.on("transportError", msg => {
-    clientSync._processTransportError(msg);
-  });
+  clientSync._sessionWrapper.on(
+    "connect",
+    clientSync._processConnect.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "disconnect",
+    clientSync._processDisconnect.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "actionRevelation",
+    clientSync._processActionRevelation.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "unexpectedFeedClosing",
+    clientSync._processUnexpectedFeedClosing.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "unexpectedFeedClosed",
+    clientSync._processUnexpectedFeedClosed.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "badServerMessage",
+    clientSync._processBadServerMessage.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "badClientMessage",
+    clientSync._processBadClientMessage.bind(clientSync)
+  );
+  clientSync._sessionWrapper.on(
+    "transportError",
+    clientSync._processTransportError.bind(clientSync)
+  );
 
   return clientSync;
 }
@@ -668,7 +665,7 @@ function feedSyncFactory(clientSync, name, args) {
 protoClientSync.state = function state() {
   dbgClient("State requested");
 
-  return this._session.state();
+  return this._sessionWrapper.state();
 };
 
 /**
@@ -704,7 +701,7 @@ protoClientSync.connect = function connect() {
 protoClientSync.disconnect = function disconnect() {
   dbgClient("Disconnect requested");
 
-  this._session.disconnect(); // No error - requested
+  this._sessionWrapper.disconnect(); // No error - requested
 };
 
 /**
@@ -717,7 +714,7 @@ protoClientSync.disconnect = function disconnect() {
 protoClientSync.id = function id() {
   dbgClient("Client id requested");
 
-  return this._session.id();
+  return this._sessionWrapper.id();
 };
 
 /**
@@ -748,7 +745,7 @@ protoClientSync.action = function action(name, args, callback) {
   // Invoke the action
   // Could throw an error, so done before the timeout is created
   // Session fires all action callbacks with error on disconnect
-  this._session.action(name, args, (err, actionData) => {
+  this._sessionWrapper.action(name, args, (err, actionData) => {
     // Timer not set if actionTimeoutMs === 0
     if (timer || this._options.actionTimeoutMs === 0) {
       dbgClient(
@@ -836,7 +833,7 @@ protoClientSync._processConnecting = function _processConnecting() {
   dbgClient("Observed session connecting event");
 
   this.emit("connecting");
-  this._lastSessionState = "connecting";
+  this._lastSessionWrapperState = "connecting";
 };
 
 /**
@@ -862,7 +859,7 @@ protoClientSync._processConnect = function _processConnect() {
     this._considerFeedState(feedName, feedArgs); // Will open
   });
 
-  this._lastSessionState = "connected";
+  this._lastSessionWrapperState = "connected";
 };
 
 /**
@@ -924,7 +921,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   });
 
   // Failure on connecting - retries
-  if (this._lastSessionState === "connecting") {
+  if (this._lastSessionWrapperState === "connecting") {
     // Schedule a connection retry on TIMEOUT or DISCONNECT but not HANDSHAKE_REJECTED
     if (err && !_startsWith(err.message, "HANDSHAKE_REJECTED")) {
       // Only schedule if configured and below the configured retry threshold
@@ -950,14 +947,14 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   }
 
   // Failure on connected - reconnects
-  if (this._lastSessionState === "connected") {
+  if (this._lastSessionWrapperState === "connected") {
     // Reconnect if this was a transport issue, not a call to disconnect()
     if (err && _startsWith(err.message, "FAILURE") && this._options.reconnect) {
       this.connect(); // Resets connection retry counts
     }
   }
 
-  this._lastSessionState = "disconnected";
+  this._lastSessionWrapperState = "disconnected";
 };
 
 /**
@@ -1141,14 +1138,14 @@ protoClientSync._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
   appFeed._desiredState = "open"; // eslint-disable-line no-param-reassign
 
   // If not connected, emit close(DISCONNECTED) (new reason for closure) and stop
-  if (this._session.state() !== "connected") {
+  if (this._sessionWrapper.state() !== "connected") {
     appFeed._emitClose(new Error("DISCONNECTED: The client is not connected."));
     return;
   }
 
   // Act according to the server feed state and perform the appropriate emission(s)
   // You know your last emission was closed, otherwise you couldn't desire open
-  const serverFeedState = this._session.feedState(
+  const serverFeedState = this._sessionWrapper.feedState(
     appFeed._feedName,
     appFeed._feedArgs
   );
@@ -1160,7 +1157,7 @@ protoClientSync._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
   } else if (serverFeedState === "open") {
     appFeed._emitOpening();
     appFeed._emitOpen(
-      this._session.feedData(appFeed._feedName, appFeed._feedArgs)
+      this._sessionWrapper.feedData(appFeed._feedName, appFeed._feedArgs)
     );
   } else if (serverFeedState === "closing") {
     appFeed._emitOpening();
@@ -1196,9 +1193,9 @@ protoClientSync._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
 
   // If the session is connected, consider closing the server feed if it's open
   // Otherwise wait
-  const sessionState = this._session.state();
+  const sessionState = this._sessionWrapper.state();
   if (sessionState === "connected") {
-    const serverFeedState = this._session.feedState(
+    const serverFeedState = this._sessionWrapper.feedState(
       appFeed._feedName,
       appFeed._feedArgs
     );
@@ -1287,7 +1284,7 @@ protoClientSync._appFeedData = function _appFeedData(appFeed) {
     throw new Error("INVALID_FEED_STATE: The feed object is not open.");
   }
 
-  return this._session.feedData(appFeed._feedName, appFeed._feedArgs);
+  return this._sessionWrapper.feedData(appFeed._feedName, appFeed._feedArgs);
 };
 
 /**
@@ -1489,7 +1486,7 @@ protoClientSync._considerFeedState = function _reconsiderFeed(
   }
 
   // Get the actual state of the feed
-  const actualState = this._session.feedState(feedName, feedArgs);
+  const actualState = this._sessionWrapper.feedState(feedName, feedArgs);
 
   // Get the desired state of the feed
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -1533,7 +1530,7 @@ protoClientSync._considerFeedState = function _reconsiderFeed(
   // Close the feed?
   if (actualState === "open" && desiredState === "closed") {
     this._informServerFeedClosing(feedName, feedArgs);
-    this._session.feedClose(feedName, feedArgs, () => {
+    this._sessionWrapper.feedClose(feedName, feedArgs, () => {
       // The session returns success on successful server response AND disconnect
       // If server returned success, then inform feeds with no error
       // If client disconnected, then inform feeds with error
@@ -1585,7 +1582,7 @@ protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
   let timer;
 
   // Open the feed
-  this._session.feedOpen(feedName, feedArgs, (err, feedData) => {
+  this._sessionWrapper.feedOpen(feedName, feedArgs, (err, feedData) => {
     if (timer) {
       clearTimeout(timer);
     }
@@ -1626,7 +1623,7 @@ protoClientSync._connectTimeoutCancel = function _connectTimeoutCancel() {
 protoClientSync._connect = function _connect() {
   // Connect the session - could fail, so before the timeout is set
   // If it works, you know you were disconnected
-  this._session.connect();
+  this._sessionWrapper.connect();
 
   // Success
 
@@ -1636,10 +1633,10 @@ protoClientSync._connect = function _connect() {
     dbgClient("Connection timeout timer created");
     this._connectTimeoutTimer = setTimeout(() => {
       dbgClient("Connection timeout timer fired");
-      this._session.disconnect(
+      this._sessionWrapper.disconnect(
         new Error("TIMEOUT: The connection attempt timed out.")
       );
-      // Error is routed to the session disconnect event
+      // Error is routed to the session disconnect event handler
     }, this._options.connectTimeoutMs);
   }
 };
