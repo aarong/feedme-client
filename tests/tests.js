@@ -207,8 +207,10 @@ describe("The connectTimeoutMs option", () => {
     const clientListener = harness.createClientListener();
 
     // Begin connection attempt
+    harness.transport.connect.and.callFake(() => {
+      harness.transport.state.and.returnValue("connecting");
+    });
     harness.client.connect();
-    harness.transport.state.and.returnValue("connecting");
     await harness.transport.emit("connecting");
 
     // Advance to immediately before the timeout and verify that
@@ -1350,8 +1352,10 @@ describe("The client.connect() function", () => {
         feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
         feedWantedOpen.desireOpen();
         feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        harness.transport.connect.and.callFake(() => {
+          harness.transport.state.and.returnValue("connecting");
+        });
         harness.client.connect();
-        harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
       });
 
@@ -1616,8 +1620,10 @@ describe("The client.connect() function", () => {
         feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
         feedWantedOpen.desireOpen();
         feedWantedClosed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+        harness.transport.connect.and.callFake(() => {
+          harness.transport.state.and.returnValue("connecting");
+        });
         harness.client.connect();
-        harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
       });
 
@@ -1989,8 +1995,10 @@ describe("The client.connect() function", () => {
         harness = harnessFactory({ connectTimeoutMs });
         feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
         feedWantedOpen.desireOpen();
+        harness.transport.connect.and.callFake(() => {
+          harness.transport.state.and.returnValue("connecting");
+        });
         harness.client.connect();
-        harness.transport.state.and.returnValue("connecting");
         await harness.transport.emit("connecting");
       });
 
@@ -11954,34 +11962,34 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
   });
 });
 
-// it("...", async () => {
-//   jasmine.clock().install();
-//   const transport = emitter({
-//     connect: jasmine.createSpy(),
-//     disconnect: jasmine.createSpy(),
-//     state: jasmine.createSpy(),
-//     send: jasmine.createSpy(),
-//     on: jasmine.createSpy()
-//   });
-//   transport.state.and.returnValue("disconnected");
-//   const client = feedmeClient({
-//     transport,
-//     connectTimeoutMs: 100
-//   });
+it("...", async () => {
+  jasmine.clock().install();
+  const transport = emitter({
+    connect: jasmine.createSpy(),
+    disconnect: jasmine.createSpy(),
+    state: jasmine.createSpy(),
+    send: jasmine.createSpy(),
+    on: jasmine.createSpy()
+  });
+  transport.state.and.returnValue("disconnected");
+  const client = feedmeClient({
+    transport,
+    connectTimeoutMs: 100
+  });
 
-//   client.connect();
+  client.connect();
 
-//   transport.state.and.returnValue("connecting");
-//   transport.emit("connecting");
+  transport.state.and.returnValue("connecting");
+  transport.emit("connecting");
 
-//   await delay(DEFER_MS);
+  await delay(DEFER_MS);
 
-//   transport.state.and.returnValue("disconnected");
-//   transport.emit("disconnect");
+  transport.state.and.returnValue("disconnected");
+  transport.emit("disconnect");
 
-//   // disconnect event still queued at the session level
+  // disconnect event still queued at the session level
 
-//   jasmine.clock().tick(100);
+  jasmine.clock().tick(100);
 
-//   jasmine.clock().uninstall();
-// });
+  jasmine.clock().uninstall();
+});

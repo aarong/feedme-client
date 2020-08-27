@@ -574,7 +574,7 @@ function feedSyncFactory(clientSync, name, args) {
    * @private
    * @type {string} "open", "opening", or "close"
    */
-  feed._lastEmission = "close";
+  feed._lastStateEmission = "close";
 
   /**
    * The last error passed with the close emission. Null if close was
@@ -701,7 +701,7 @@ protoClientSync.connect = function connect() {
 protoClientSync.disconnect = function disconnect() {
   dbgClient("Disconnect requested");
 
-  this._sessionWrapper.disconnect(); // No error - requested
+  this._sessionWrapper.disconnect(); // No error arg - requested
 };
 
 /**
@@ -907,7 +907,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   //  - If server feed is opening, fired via session.feedOpen() callback
   //  - If server feed is open, fired via session unexpectedFeedClosing/Close events
   //  - If server feed is closing, fired via session.feedClose() callback
-  //  - If server feed is closed (previous REJECTED) the session has no way to inform
+  //  - If server feed is closed (intentional or REJECTED) the session has no way to inform
   //    And the client has no way to determine which feeds those are
   //    So all feeds are informed here, and duplicate events are already filtered
   //    out by the feed objects.
@@ -938,9 +938,13 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
         this._connectRetryCount += 1;
         dbgClient("Connection retry timer created");
         this._connectRetryTimer = setTimeout(() => {
+          // No need to verify that the session state is currently disconnected
+          // The transport is required to remain disconnected when it loses a connection
+          // and the session therefore behaves in the same manner
+          // And an application call to client.connect() would clear this timer synchronously
           dbgClient("Connect retry timer fired");
           this._connectRetryTimer = null;
-          this._connect(); // Not .connect(), as that resets the retry counts
+          this._connect(); // Not .connect(), as that resets the retry count
         }, retryMs);
       }
     }
@@ -949,6 +953,9 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   // Failure on connected - reconnects
   if (this._lastSessionWrapperState === "connected") {
     // Reconnect if this was a transport issue, not a call to disconnect()
+    // No need to verify that the session state is currently disconnected
+    // The transport is required to remain disconnected when it loses a connection
+    // and the session therefore behaves in the same manner
     if (err && _startsWith(err.message, "FAILURE") && this._options.reconnect) {
       this.connect(); // Resets connection retry counts
     }
@@ -1193,8 +1200,7 @@ protoClientSync._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
 
   // If the session is connected, consider closing the server feed if it's open
   // Otherwise wait
-  const sessionState = this._sessionWrapper.state();
-  if (sessionState === "connected") {
+  if (this._sessionWrapper.state() === "connected") {
     const serverFeedState = this._sessionWrapper.feedState(
       appFeed._feedName,
       appFeed._feedArgs
@@ -1229,10 +1235,99 @@ protoClientSync._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
 protoClientSync._appFeedState = function _appFeedState(appFeed) {
   dbgClient("Feed state requested");
 
-  if (appFeed._lastEmission === "close") {
+  // You cannot generally determine the current feed state from its last state emission
+  // The session may be disconnected and its disconnect event still deferred
+  // In that case, you would not be able to retrieve feed data and the feed
+  // state should be reported as closed to the application
+
+  // if (appFeed.desiredState() === "closed") {
+  //   return "closed";
+  // }
+
+  // if (this._sessionWrapper.state() !== "connected") {
+  //   return "closed";
+  // }
+
+  // const serverFeedState = this._sessionWrapper.feedState(
+  //   appFeed._feedName,
+  //   appFeed._feedArgs
+  // );
+
+  // if (serverFeedState === "opening" || serverFeedState === "closing") {
+  //   return "opening";
+  // }
+  // return serverFeedState; // open or closed
+
+  // If the server feed is closing and the feed object is desired open, then
+  // there are two possiblities:
+  // - Either the feed was desired closed and then open again, in which case it
+  // will be reopened by the client and the feed state should be reported as
+  // opening.
+  // - Or the session received an action revelation with an invalid delta or hash
+  // and is still closing the feed, in which case the feed state should be
+  // reported as closed.
+
+  // How can you determine one situation from the other?
+
+  // You cannot rely on anything at the client level, such as
+  // appFeed.lastStateEmission, because unexpectedFeedClosing event by the
+  // session may have been deferred.
+  // And all you can tell from the session is that it is closing the feed
+
+  // One option would be to align feed state events more closely with session events
+
+  // One option would be to NOT emit a feed opening event when a feed is desired
+  // open and the server feed is closing
+  // That way, if the server feed is closing, the app feed state is closed
+  // Instead, you would emit feed opening when the _consider begins actually opening the feed
+
+  // Can I simplify my overall approach to this by aligning app feed state and
+  // emissions directly with session feed state and emissions?
+  // Maybe even get rid of appFeed._serverFeedX?
+
+  /*
+
+  Potential approach:
+
+  Note that your _inform functions notify all feeds, which react accoding to their needs
+    But feeds desired closed exit immediately
+    Ideally you could collapse the _inform and _server function sets
+
+  When the app calls feed.desireOpen()
+    Remember there could be deferred events
+    If disconnected, emit close (reason change)
+    If the session feed is closed, emit nothing and _consider
+    If the session feed is opening, emit opening and wait
+    If the session feed is open, emit opening and open
+    If the session feed is closing, emit nothing
+
+  When the app calls feed.desireClosed()
+    Emit close (reason has changed if it already was closed)
+    If server feed was open, _consider
+
+  On call to _consider
+    If session feed is closed and desired open
+      Emit feed opening on all feeds desired open
+      Try to open the feed
+        If it times out, emit close on all feeds desired open
+        If you get a success response, emit open on all feeds desired open
+        If you get a failure response, emit close on all feeds desired open
+    If session feed is open and desired closed
+      Emit nothing on any feeds
+      Try to close the feed
+        Don't emit anything?
+          Feeds
+
+  On disconnect
+
+  On unexpectedFeedClosing/Closed
+  
+  */
+
+  if (appFeed._lastStateEmission === "close") {
     return "closed";
   }
-  return appFeed._lastEmission; // opening or open
+  return appFeed._lastStateEmission; // opening or open
 };
 
 /**
@@ -1474,14 +1569,14 @@ protoClientSync._informServerActionRevelation = function _informServerActionReve
  * @param {string} feedName
  * @param {Object} feedArgs
  */
-protoClientSync._considerFeedState = function _reconsiderFeed(
+protoClientSync._considerFeedState = function _considerFeedState(
   feedName,
   feedArgs
 ) {
   dbgClient("Considering feed state");
 
   // Do nothing if the session is not connected
-  if (this.state() !== "connected") {
+  if (this._sessionWrapper.state() !== "connected") {
     return;
   }
 
@@ -1506,6 +1601,7 @@ protoClientSync._considerFeedState = function _reconsiderFeed(
       feedName,
       feedArgs,
       () => {
+        // Timeout callback
         dbgClient("Feed open request timed out");
         const err = new Error(
           "TIMEOUT: The server did not respond to feed open request within the allocated time."
@@ -1513,7 +1609,7 @@ protoClientSync._considerFeedState = function _reconsiderFeed(
         this._informServerFeedClosed(feedName, feedArgs, err);
       },
       err => {
-        // Response callback - server feed is actionable
+        // Response callback
         if (err) {
           dbgClient("Feed open request returned error");
           this._informServerFeedClosed(feedName, feedArgs, err);
@@ -1532,13 +1628,16 @@ protoClientSync._considerFeedState = function _reconsiderFeed(
     this._informServerFeedClosing(feedName, feedArgs);
     this._sessionWrapper.feedClose(feedName, feedArgs, () => {
       // The session returns success on successful server response AND disconnect
-      // If server returned success, then inform feeds with no error
-      // If client disconnected, then inform feeds with error
-      if (this.state() === "connected") {
-        dbgClient("Server feed closed due to disconnect");
+      // - If server returned success, then inform feeds with no error
+      // - If client disconnected, then inform feeds with error
+      // In the latter case, the session calls back to feedClose before emitting
+      // disconnect, which is where the client attempts reconnect, so you are
+      // assured that the session state will still be disconnected here
+      if (this._sessionWrapper.state() === "connected") {
+        dbgClient("Server feed closed due to FeedCloseResponse");
         this._informServerFeedClosed(feedName, feedArgs);
       } else {
-        dbgClient("Server feed closed due to CloseResponse");
+        dbgClient("Server feed closed due to disconnect");
         this._informServerFeedClosed(
           feedName,
           feedArgs,
@@ -1621,22 +1720,31 @@ protoClientSync._connectTimeoutCancel = function _connectTimeoutCancel() {
  * @throws {Error} Passed through from session.connect()
  */
 protoClientSync._connect = function _connect() {
+  dbgClient("Attempting to connect the session");
+
   // Connect the session - could fail, so before the timeout is set
-  // If it works, you know you were disconnected
   this._sessionWrapper.connect();
 
   // Success
 
+  // Transport state could be connecting, connected, or disconnected
+  // Session state could be connecting or disconnected
+
   // Set a timeout for the connection attempt?
-  if (this._options.connectTimeoutMs > 0) {
+  if (
+    this._sessionWrapper.state() !== "disconnected" &&
+    this._options.connectTimeoutMs > 0
+  ) {
     // The timeout is cleared on session connect/disconnect event
     dbgClient("Connection timeout timer created");
     this._connectTimeoutTimer = setTimeout(() => {
       dbgClient("Connection timeout timer fired");
-      this._sessionWrapper.disconnect(
-        new Error("TIMEOUT: The connection attempt timed out.")
-      );
-      // Error is routed to the session disconnect event handler
+      if (this._sessionWrapper.state() !== "disconnected") {
+        this._sessionWrapper.disconnect(
+          new Error("TIMEOUT: The connection attempt timed out.")
+        );
+        // Error is routed to the session disconnect event handler
+      }
     }, this._options.connectTimeoutMs);
   }
 };
@@ -1747,20 +1855,20 @@ protoFeedSync._serverFeedClosed = function _serverFeedClosed(err) {
   }
 
   // Desired state is open
-  if (this._lastEmission === "close") {
+  if (this._lastStateEmission === "close") {
     // Emit only if the reason for closing (the error) has changed
     const errCode = err.message.split(":")[0];
     const lastCode = this._lastCloseError.message.split(":")[0];
     if (errCode !== lastCode) {
       this._emitClose(err);
     }
-  } else if (this._lastEmission === "opening") {
+  } else if (this._lastStateEmission === "opening") {
     if (!err) {
       // Closure had been requested and feed will be reopened - don't cycle state
     } else {
       this._emitClose(err);
     }
-  } else if (this._lastEmission === "open") {
+  } else if (this._lastStateEmission === "open") {
     // Shouldn't happen, as last emission becomes close on unexpectedFeedClosing (can't test)
     this._emitClose(err);
   }
@@ -1781,11 +1889,11 @@ protoFeedSync._serverFeedOpening = function _serverFeedOpening() {
   }
 
   // Desired state is open
-  if (this._lastEmission === "close") {
+  if (this._lastStateEmission === "close") {
     this._emitOpening();
-  } else if (this._lastEmission === "opening") {
+  } else if (this._lastStateEmission === "opening") {
     // Closure had been requested and feed is being reopened - don't cycle state
-  } else if (this._lastEmission === "open") {
+  } else if (this._lastStateEmission === "open") {
     this._emitOpening(); // Shouldn't happen
   }
 };
@@ -1805,13 +1913,13 @@ protoFeedSync._serverFeedOpen = function _serverFeedOpen() {
   }
 
   // Desired state is open
-  if (this._lastEmission === "close") {
+  if (this._lastStateEmission === "close") {
     // Happens after feed open timeouts
     this._emitOpening();
     this._emitOpen();
-  } else if (this._lastEmission === "opening") {
+  } else if (this._lastStateEmission === "opening") {
     this._emitOpen();
-  } else if (this._lastEmission === "open") {
+  } else if (this._lastStateEmission === "open") {
     this._emitOpen(); // Shouldn't happen, but relay new feed data (can't test)
   }
 };
@@ -1839,13 +1947,13 @@ protoFeedSync._serverFeedClosing = function _serverFeedClosing(err) {
   }
 
   // Desired state is open
-  if (this._lastEmission === "close") {
+  if (this._lastStateEmission === "close") {
     // The server feed was open. If this is due to an intentional
     // closure or unexpectedFeedClosing the last emission would have been open
     this._emitClose(err); // Should not happen (can't test)
-  } else if (this._lastEmission === "opening") {
+  } else if (this._lastStateEmission === "opening") {
     this._emitClose(err); // Should not happen (can't test)
-  } else if (this._lastEmission === "open") {
+  } else if (this._lastStateEmission === "open") {
     this._emitClose(err);
   }
 };
@@ -1896,7 +2004,7 @@ protoFeedSync._serverActionRevelation = function _serverActionRevelation(
 protoFeedSync._emitClose = function _emitClose(err) {
   dbgFeed("Emitting close");
 
-  this._lastEmission = "close";
+  this._lastStateEmission = "close";
   this._lastCloseError = err || null;
   if (err) {
     this.emit("close", err);
@@ -1914,7 +2022,7 @@ protoFeedSync._emitClose = function _emitClose(err) {
 protoFeedSync._emitOpening = function _emitOpening() {
   dbgFeed("Emitting opening");
 
-  this._lastEmission = "opening";
+  this._lastStateEmission = "opening";
   this._lastCloseError = null;
   this.emit("opening");
 };
@@ -1929,7 +2037,7 @@ protoFeedSync._emitOpening = function _emitOpening() {
 protoFeedSync._emitOpen = function _emitOpen() {
   dbgFeed("Emitting open");
 
-  this._lastEmission = "open";
+  this._lastStateEmission = "open";
   this._lastCloseError = null;
   this.emit("open");
 };

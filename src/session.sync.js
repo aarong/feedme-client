@@ -921,13 +921,8 @@ proto._processViolationResponse = function _processViolationResponse(msg) {
 proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
   dbg("Received HandshakeResponse message");
 
-  // Transport state is not guaranteed in event handlers -- ensure not already disconnected
-  if (this._transportWrapper.state() === "disconnected") {
-    return; // stop
-  }
-
   // Is a handshake response expected?
-  if (this.state() !== "connecting") {
+  if (this._clientId !== null) {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected HandshakeResponse.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
@@ -939,6 +934,11 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
     this._clientId = msg.ClientId;
     this.emit("connect");
   } else {
+    // Transport state is not guaranteed in event handlers - ensure not already disconnected
+    if (this._transportWrapper.state() !== "connected") {
+      return; // stop
+    }
+
     // Disconnect event fired via the transport, which is required to relay the error argument
     this._transportWrapper.disconnect(
       new Error("HANDSHAKE_REJECTED: The server rejected the handshake.")
