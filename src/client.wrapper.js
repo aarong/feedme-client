@@ -1,6 +1,6 @@
 import check from "check-types";
 import emitter from "component-emitter";
-import queueMicrotask from "queue-microtask";
+import defer from "./defer";
 
 /**
  * Wrapper for ClientSync objects that defers and queues all event emissons and
@@ -43,9 +43,7 @@ function clientWrapperFactory(clientSync) {
   ];
   evts.forEach(evt => {
     clientWrapper._clientSync.on(evt, (...args) => {
-      queueMicrotask(() => {
-        clientWrapper.emit(evt, ...args);
-      });
+      defer(clientWrapper.emit.bind(clientWrapper), evt, ...args);
     });
   });
 
@@ -128,9 +126,7 @@ function feedWrapperFactory(feedSync) {
   const evts = ["opening", "open", "close", "action"];
   evts.forEach(evt => {
     feedWrapper._feedSync.on(evt, (...eargs) => {
-      queueMicrotask(() => {
-        feedWrapper.emit(evt, ...eargs);
-      });
+      defer(feedWrapper.emit.bind(feedWrapper), evt, ...eargs);
     });
   });
 
@@ -224,14 +220,10 @@ clientWrapperProto.action = function action(...args) {
     // Callback responses must be deferred explicitly as microtasks
     promise = undefined;
     resolve = actionData => {
-      queueMicrotask(() => {
-        callback(undefined, actionData);
-      });
+      defer(callback, undefined, actionData);
     };
     reject = err => {
-      queueMicrotask(() => {
-        callback(err);
-      });
+      defer(callback, err);
     };
   } else {
     // Promise responses are deferred implicitly as microtasks

@@ -382,9 +382,19 @@ function clientSyncFactory(options) {
    * @memberof ClientSync
    * @instance
    * @private
-   * @type {array}
+   * @type {Array}
    */
   clientSync._reopenTimers = [];
+
+  /**
+   * Boolean indicators set to true when the client has asked the session to
+   * close a feed. Missing means not requested. Indexed by feed serial.
+   * @memberof ClientSync
+   * @instance
+   * @private
+   * @type {Object}
+   */
+  clientSync._feedCloseRequested = {};
 
   // Listen for session events
   clientSync._sessionWrapper.on(
@@ -1235,99 +1245,30 @@ protoClientSync._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
 protoClientSync._appFeedState = function _appFeedState(appFeed) {
   dbgClient("Feed state requested");
 
-  // You cannot generally determine the current feed state from its last state emission
-  // The session may be disconnected and its disconnect event still deferred
-  // In that case, you would not be able to retrieve feed data and the feed
-  // state should be reported as closed to the application
-
-  // if (appFeed.desiredState() === "closed") {
-  //   return "closed";
-  // }
-
-  // if (this._sessionWrapper.state() !== "connected") {
-  //   return "closed";
-  // }
-
-  // const serverFeedState = this._sessionWrapper.feedState(
-  //   appFeed._feedName,
-  //   appFeed._feedArgs
-  // );
-
-  // if (serverFeedState === "opening" || serverFeedState === "closing") {
-  //   return "opening";
-  // }
-  // return serverFeedState; // open or closed
-
-  // If the server feed is closing and the feed object is desired open, then
-  // there are two possiblities:
-  // - Either the feed was desired closed and then open again, in which case it
-  // will be reopened by the client and the feed state should be reported as
-  // opening.
-  // - Or the session received an action revelation with an invalid delta or hash
-  // and is still closing the feed, in which case the feed state should be
-  // reported as closed.
-
-  // How can you determine one situation from the other?
-
-  // You cannot rely on anything at the client level, such as
-  // appFeed.lastStateEmission, because unexpectedFeedClosing event by the
-  // session may have been deferred.
-  // And all you can tell from the session is that it is closing the feed
-
-  // One option would be to align feed state events more closely with session events
-
-  // One option would be to NOT emit a feed opening event when a feed is desired
-  // open and the server feed is closing
-  // That way, if the server feed is closing, the app feed state is closed
-  // Instead, you would emit feed opening when the _consider begins actually opening the feed
-
-  // Can I simplify my overall approach to this by aligning app feed state and
-  // emissions directly with session feed state and emissions?
-  // Maybe even get rid of appFeed._serverFeedX?
-
-  /*
-
-  Potential approach:
-
-  Note that your _inform functions notify all feeds, which react accoding to their needs
-    But feeds desired closed exit immediately
-    Ideally you could collapse the _inform and _server function sets
-
-  When the app calls feed.desireOpen()
-    Remember there could be deferred events
-    If disconnected, emit close (reason change)
-    If the session feed is closed, emit nothing and _consider
-    If the session feed is opening, emit opening and wait
-    If the session feed is open, emit opening and open
-    If the session feed is closing, emit nothing
-
-  When the app calls feed.desireClosed()
-    Emit close (reason has changed if it already was closed)
-    If server feed was open, _consider
-
-  On call to _consider
-    If session feed is closed and desired open
-      Emit feed opening on all feeds desired open
-      Try to open the feed
-        If it times out, emit close on all feeds desired open
-        If you get a success response, emit open on all feeds desired open
-        If you get a failure response, emit close on all feeds desired open
-    If session feed is open and desired closed
-      Emit nothing on any feeds
-      Try to close the feed
-        Don't emit anything?
-          Feeds
-
-  On disconnect
-
-  On unexpectedFeedClosing/Closed
-  
-  */
-
-  if (appFeed._lastStateEmission === "close") {
+  if (appFeed.desiredState() === "closed") {
     return "closed";
   }
-  return appFeed._lastStateEmission; // opening or open
+
+  if (this._sessionWrapper.state() !== "connected") {
+    return "closed";
+  }
+
+  const serverFeedState = this._sessionWrapper.feedState(
+    appFeed._feedName,
+    appFeed._feedArgs
+  );
+
+  if (serverFeedState === "closing") {
+    const feedSerial = feedSerializer.serialize(
+      appFeed._feedName,
+      appFeed._feedArgs
+    );
+    if (this._feedCloseRequested[feedSerial]) {
+      return "opening";
+    }
+    return "closed";
+  }
+  return serverFeedState; // opening, open, or closed
 };
 
 /**
@@ -1625,6 +1566,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
 
   // Close the feed?
   if (actualState === "open" && desiredState === "closed") {
+    this._feedCloseRequested[feedSerial] = true;
     this._informServerFeedClosing(feedName, feedArgs);
     this._sessionWrapper.feedClose(feedName, feedArgs, () => {
       // The session returns success on successful server response AND disconnect
@@ -1633,6 +1575,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
       // In the latter case, the session calls back to feedClose before emitting
       // disconnect, which is where the client attempts reconnect, so you are
       // assured that the session state will still be disconnected here
+      delete this._feedCloseRequested[feedSerial];
       if (this._sessionWrapper.state() === "connected") {
         dbgClient("Server feed closed due to FeedCloseResponse");
         this._informServerFeedClosed(feedName, feedArgs);

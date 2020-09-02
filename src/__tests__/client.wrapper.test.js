@@ -1058,3 +1058,115 @@ describe("Emissions, callbacks, and promise settlement should order correctly", 
     ]);
   });
 });
+
+// Deferral ordering
+
+it("On disconnect, any outstanding action callbacks should be invoked before disconnect event", async () => {
+  let underlyingActionCb;
+  const underlying = emitter({
+    action: (an, aa, cb) => {
+      underlyingActionCb = cb;
+    }
+  });
+  const wrapper = clientWrapper(underlying);
+
+  const order = [];
+
+  const disconnectListener = jest.fn(() => {
+    order.push("disconnect");
+  });
+  wrapper.on("disconnect", disconnectListener);
+
+  const actionCb = jest.fn(() => {
+    order.push("callback");
+  });
+
+  wrapper.action("some_action", { action: "args" }, actionCb);
+
+  underlyingActionCb();
+  underlying.emit("disconnect", new Error("FAILURE: ..."));
+
+  expect(actionCb.mock.calls.length).toBe(0);
+  expect(disconnectListener.mock.calls.length).toBe(0);
+
+  await Promise.resolve();
+
+  expect(actionCb.mock.calls.length).toBe(1);
+  expect(disconnectListener.mock.calls.length).toBe(1);
+
+  expect(order).toEqual(["callback", "disconnect"]);
+});
+
+it("On disconnect, any outstanding action rejections should be invoked before disconnect event", async () => {
+  let underlyingActionCb;
+  const underlying = emitter({
+    action: (an, aa, cb) => {
+      underlyingActionCb = cb;
+    }
+  });
+  const wrapper = clientWrapper(underlying);
+
+  const order = [];
+
+  const disconnectListener = jest.fn(() => {
+    order.push("disconnect");
+  });
+  wrapper.on("disconnect", disconnectListener);
+
+  const actionSettle = jest.fn(() => {
+    order.push("settle");
+  });
+
+  wrapper.action("some_action", { action: "args" }).then(actionSettle);
+
+  underlyingActionCb();
+  underlying.emit("disconnect", new Error("FAILURE: ..."));
+
+  expect(actionSettle.mock.calls.length).toBe(0);
+  expect(disconnectListener.mock.calls.length).toBe(0);
+
+  await Promise.resolve();
+
+  expect(actionSettle.mock.calls.length).toBe(1);
+  expect(disconnectListener.mock.calls.length).toBe(1);
+
+  expect(order).toEqual(["settle", "disconnect"]);
+});
+
+it("On disconnect, any feed close events should be invoked before disconnect event", async () => {
+  let underlyingFeed;
+  const underlying = emitter({
+    feed: () => {
+      underlyingFeed = emitter({});
+      return underlyingFeed;
+    }
+  });
+  const wrapper = clientWrapper(underlying);
+
+  const order = [];
+
+  const disconnectListener = jest.fn(() => {
+    order.push("disconnect");
+  });
+  wrapper.on("disconnect", disconnectListener);
+
+  const feed = wrapper.feed("some_feed", { feed: "args" });
+
+  const closeListener = jest.fn(() => {
+    order.push("close");
+  });
+  feed.on("close", closeListener);
+
+  underlyingFeed.emit("close", new Error("DISCONNECTED: ..."));
+  underlying.emit("disconnect", new Error("FAILURE: ..."));
+
+  expect(closeListener.mock.calls.length).toBe(0);
+  expect(disconnectListener.mock.calls.length).toBe(0);
+
+  await Promise.resolve();
+
+  expect(closeListener.mock.calls.length).toBe(1);
+  expect(disconnectListener.mock.calls.length).toBe(1);
+
+  expect(order).toEqual(["close", "disconnect"]);
+});

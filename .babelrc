@@ -1,4 +1,4 @@
-// Transpile for current Node environment by default (Jest)
+// Transpile for current Node environment by default (Jest, babel-node)
 {
   "presets": ["@babel/preset-env"]
 }

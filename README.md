@@ -305,6 +305,9 @@ Usage: `client.action(actionName, actionArgs, callback)`
 Invokes an an action on the server. The client state must be `connected`.
 Returns nothing.
 
+If the transport encounters an immediate problem transmitting a message to the
+server then the client state may synchronously become `disconnected`.
+
 Arguments:
 
 - `actionName` - Required string. The name of the action being invoked.
@@ -353,7 +356,8 @@ Errors called back:
 
   The client disconnected from the server before it received a response. The
   disconnect may have resulted from a call to `client.disconnect()` or due to a
-  transport problem.
+  transport problem. The action callback will always be invoked before the
+  client disconnect event is emitted.
 
 - `err.message === "REJECTED: ..."`
 
@@ -368,6 +372,9 @@ Usage: `client.action(actionName, actionArgs)`
 Invokes an an action on the server. The client state must be `connected`.
 Returns a promise that resolves if the action succeeds and rejects if the action
 fails.
+
+If the transport encounters an immediate problem transmitting a message to the
+server then the client state may synchronously become `disconnected`.
 
 Arguments:
 
@@ -397,7 +404,8 @@ Errors returned via promise rejection:
 
   The client disconnected from the server before it received a response. The
   disconnect may have resulted from a call to `client.disconnect()` or due to a
-  transport problem.
+  transport problem. The action promise will always be rejected before the
+  client disconnect event is emitted.
 
 - `err.message === "REJECTED: ..."`
 
@@ -693,7 +701,9 @@ an `Error` object (`err`) as an argument. The following errors are possible:
 - `err.message === "DISCONNECTED: ..."`
 
   The client is not connected to the server. If a connection is later
-  established, the feed object will emit as appropriate.
+  established, the feed object will emit as appropriate. If the server has just
+  disconnected, then the feed close event will always be emitted before the
+  client disconnect event.
 
 - `err.message === "TERMINATED: ..."`
 

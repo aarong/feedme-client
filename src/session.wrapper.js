@@ -1,6 +1,6 @@
 import check from "check-types";
 import emitter from "component-emitter";
-import queueMicrotask from "queue-microtask";
+import defer from "./defer";
 
 /**
  * Wrapper for SessionSync objects that defers and queues all event emissons and
@@ -46,9 +46,7 @@ export default function sessionWrapperFactory(sessionSync) {
   ];
   evts.forEach(evt => {
     sessionWrapper._sessionSync.on(evt, (...args) => {
-      queueMicrotask(() => {
-        sessionWrapper.emit(evt, ...args);
-      });
+      defer(sessionWrapper.emit.bind(sessionWrapper), evt, ...args);
     });
   });
 
@@ -199,9 +197,7 @@ proto.action = function action(actionName, actionArgs, callback) {
   }
 
   this._sessionSync.action(actionName, actionArgs, (...args) => {
-    queueMicrotask(() => {
-      callback(...args);
-    });
+    defer(callback, ...args);
   });
 };
 
@@ -218,9 +214,7 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, callback) {
   }
 
   this._sessionSync.feedOpen(feedName, feedArgs, (...args) => {
-    queueMicrotask(() => {
-      callback(...args);
-    });
+    defer(callback, ...args);
   });
 };
 
@@ -237,8 +231,6 @@ proto.feedClose = function feedClose(feedName, feedArgs, callback) {
   }
 
   this._sessionSync.feedClose(feedName, feedArgs, (...args) => {
-    queueMicrotask(() => {
-      callback(...args);
-    });
+    defer(callback, ...args);
   });
 };

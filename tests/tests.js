@@ -199,7 +199,7 @@ describe("The connectTimeoutMs option", () => {
     jasmine.clock().install();
   });
 
-  it("if greater than zero, should time out appropriately", async () => {
+  it("if synchronously connecting and connectTimeoutMs greater than zero, should time out appropriately - transport is connecting on timeout", async () => {
     const opts = {
       connectTimeoutMs: 1000
     };
@@ -257,7 +257,43 @@ describe("The connectTimeoutMs option", () => {
     expect(clientListener.transportError.calls.count()).toBe(0);
   });
 
-  it("if zero, should never time out", async () => {
+  it("if synchronously connecting and connectTimeoutMs greater than zero, should time out appropriately - transport is disconnected on timeout", async () => {
+    const opts = {
+      connectTimeoutMs: 1000
+    };
+    const harness = harnessFactory(opts);
+
+    // Begin connection attempt
+    harness.transport.connect.and.callFake(() => {
+      harness.transport.state.and.returnValue("connecting");
+    });
+    harness.client.connect();
+    await harness.transport.emit("connecting");
+
+    // Advance to immediately before the timeout and verify that
+    // transport.disconnect() was not called
+    harness.transport.spyClear();
+    jasmine.clock().tick(opts.connectTimeoutMs - 1);
+    expect(harness.transport.connect.calls.count()).toBe(0);
+    expect(harness.transport.send.calls.count()).toBe(0);
+    expect(harness.transport.disconnect.calls.count()).toBe(0);
+    expect(harness.transport.state.calls.count()).toBe(0);
+
+    harness.transport.state.and.returnValue("disconnected"); // Event not yet received
+
+    // Advance to immediately after the timeout and ensure that
+    // transport.disconnect() was not called
+    harness.transport.spyClear();
+    jasmine.clock().tick(1);
+    expect(harness.transport.connect.calls.count()).toBe(0);
+    expect(harness.transport.send.calls.count()).toBe(0);
+    expect(harness.transport.disconnect.calls.count()).toBe(0);
+    for (let i = 0; i < harness.transport.state.calls.count(); i += 1) {
+      expect(harness.transport.state.calls.argsFor(i).length).toBe(0);
+    }
+  });
+
+  it("if synchronously connecting and connectTimeoutMs is  zero, should never time out", async () => {
     const opts = {
       connectTimeoutMs: 0
     };
@@ -268,6 +304,72 @@ describe("The connectTimeoutMs option", () => {
     harness.client.connect();
     harness.transport.state.and.returnValue("connecting");
     await harness.transport.emit("connecting");
+
+    // Advance to the end of time and verify that transport.disconnect() was not called
+    harness.transport.spyClear();
+    jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
+    expect(harness.transport.connect.calls.count()).toBe(0);
+    expect(harness.transport.send.calls.count()).toBe(0);
+    expect(harness.transport.disconnect.calls.count()).toBe(0);
+    expect(harness.transport.state.calls.count()).toBe(0);
+
+    // Ensure that the disconnect event was not emitted
+    clientListener.spyClear();
+    expect(clientListener.connecting.calls.count()).toBe(0);
+    expect(clientListener.connect.calls.count()).toBe(0);
+    expect(clientListener.disconnect.calls.count()).toBe(0);
+    expect(clientListener.badServerMessage.calls.count()).toBe(0);
+    expect(clientListener.badClientMessage.calls.count()).toBe(0);
+    expect(clientListener.transportError.calls.count()).toBe(0);
+  });
+
+  it("if synchronously connected, should never time out", async () => {
+    const opts = {
+      connectTimeoutMs: 0
+    };
+    const harness = harnessFactory(opts);
+    const clientListener = harness.createClientListener();
+
+    // Transport synchronously becomes connected
+    harness.transport.connect.and.callFake(() => {
+      harness.transport.state.and.returnValue("connected");
+    });
+
+    // Begin connection attempt
+    harness.client.connect();
+
+    // Advance to the end of time and verify that transport.disconnect() was not called
+    harness.transport.spyClear();
+    jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
+    expect(harness.transport.connect.calls.count()).toBe(0);
+    expect(harness.transport.send.calls.count()).toBe(0);
+    expect(harness.transport.disconnect.calls.count()).toBe(0);
+    expect(harness.transport.state.calls.count()).toBe(0);
+
+    // Ensure that the disconnect event was not emitted
+    clientListener.spyClear();
+    expect(clientListener.connecting.calls.count()).toBe(0);
+    expect(clientListener.connect.calls.count()).toBe(0);
+    expect(clientListener.disconnect.calls.count()).toBe(0);
+    expect(clientListener.badServerMessage.calls.count()).toBe(0);
+    expect(clientListener.badClientMessage.calls.count()).toBe(0);
+    expect(clientListener.transportError.calls.count()).toBe(0);
+  });
+
+  it("if synchronously disconnected, should never time out", async () => {
+    const opts = {
+      connectTimeoutMs: 0
+    };
+    const harness = harnessFactory(opts);
+    const clientListener = harness.createClientListener();
+
+    // Transport synchronously becomes disconnected
+    harness.transport.connect.and.callFake(() => {
+      harness.transport.state.and.returnValue("disconnected");
+    });
+
+    // Begin connection attempt
+    harness.client.connect();
 
     // Advance to the end of time and verify that transport.disconnect() was not called
     harness.transport.spyClear();
@@ -2067,7 +2169,22 @@ describe("The client.connect() function", () => {
         // Connection retries are tested alongside configuration
       });
 
-      it("if due to handshake rejection, should be appropriate", async () => {
+      it("if due to inability to send Handshake message, should be appropriate", async () => {
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Client sees transport disconnected state during connect event
+        harness.transport.state.and.returnValue("disconnected");
+        await harness.transport.emit("connect");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+      });
+
+      it("if due to handshake rejection and transport still connected, should be appropriate", async () => {
         // Reset transport spies
         harness.transport.spyClear();
 
@@ -2118,6 +2235,49 @@ describe("The client.connect() function", () => {
         expect(harness.transport.state.calls.count() >= 0).toBe(true);
 
         // Absence of connection retry are tested alongside configuration
+      });
+
+      it("if due to handshake rejection and transport no longer connected, should be appropriate", async () => {
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Have the transport connect so the client submits a handshake
+        harness.transport.state.and.returnValue("connected");
+        await harness.transport.emit("connect");
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0).length).toBe(1);
+        expect(harness.transport.send.calls.argsFor(0)[0]).toBe(
+          JSON.stringify({
+            MessageType: "Handshake",
+            Versions: ["0.1"]
+          })
+        );
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
+
+        // Reset transport spies
+        harness.transport.spyClear();
+
+        // Transport disconnected but disconnect event not emitted
+        harness.transport.state.and.returnValue("disconnected");
+
+        // Have the transport handshake failure
+        await harness.transport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "HandshakeResponse",
+            Success: false
+          })
+        ); // The client will call transport.disconnect()
+
+        // Check all transport calls
+        expect(harness.transport.connect.calls.count()).toBe(0);
+        expect(harness.transport.disconnect.calls.count()).toBe(0);
+        expect(harness.transport.send.calls.count()).toBe(0);
+        expect(harness.transport.state.calls.count() >= 0).toBe(true);
       });
     });
   });
@@ -2619,7 +2779,7 @@ describe("The client.action() function", () => {
       const harness = harnessFactory();
       await harness.connectClient();
       expect(harness.client.action("SomeAction", {})).toEqual(
-        jasmine.any(Promise)
+        jasmine.any(Object) // Can't use Promise - polyfilled on browsers
       );
     });
   });
@@ -2880,36 +3040,6 @@ describe("The client.action() function", () => {
       expect(cb.calls.argsFor(0)[1]).toEqual({ Action: "Data" });
     });
 
-    it("should operate correctly on disconnect", async () => {
-      const harness = harnessFactory();
-      await harness.connectClient();
-
-      // Reset the transport so you can get the callback
-      harness.transport.spyClear();
-
-      // Create callbacks and invoke an action
-      const cb = jasmine.createSpy();
-      harness.client.action("SomeAction", { Action: "Arg" }, cb);
-
-      // Check callbacks
-      expect(cb.calls.count()).toBe(0);
-
-      // Have the client disconnect (requested in this case)
-      harness.transport.disconnect.and.callFake(() => {
-        harness.transport.state.and.returnValue("disconnected");
-      });
-      harness.client.disconnect();
-      await harness.transport.emit("disconnect");
-
-      // Check callbacks
-      expect(cb.calls.count()).toBe(1);
-      expect(cb.calls.argsFor(0).length).toBe(1);
-      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
-      expect(cb.calls.argsFor(0)[0].message).toBe(
-        "DISCONNECTED: The transport disconnected."
-      );
-    });
-
     it("should operate correctly on reject", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
@@ -2951,6 +3081,49 @@ describe("The client.action() function", () => {
       expect(cb.calls.argsFor(0)[0].serverErrorData).toEqual({
         Server: "Data"
       });
+    });
+
+    it("should operate correctly on disconnect, with action callback before disconnect event", async () => {
+      const harness = harnessFactory();
+      await harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      const order = [];
+
+      // Create callback and monitor callback/disconnect order
+      const cb = jasmine.createSpy();
+      cb.and.callFake(() => {
+        order.push("callback");
+      });
+      harness.client.on("disconnect", () => {
+        order.push("disconnect");
+      });
+
+      // Invoke an action
+      harness.client.action("SomeAction", { Action: "Arg" }, cb);
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+
+      // Have the client disconnect (requested in this case)
+      harness.transport.disconnect.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+      });
+      harness.client.disconnect();
+      await harness.transport.emit("disconnect");
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
+
+      // Check that callbacks were invoked before disconnect event was emitted
+      expect(order).toEqual(["callback", "disconnect"]);
     });
   });
 
@@ -3074,19 +3247,26 @@ describe("The client.action() function", () => {
         });
     });
 
-    it("should operate correctly on disconnect", done => {
+    it("should operate correctly on disconnect, with promise settlement before disconnect event", done => {
       const harness = harnessFactory();
+
+      // Track promise settlement / disconnect event execution order
+      const order = [];
+      harness.client.on("disconnect", () => {
+        order.push("disconnect");
+      });
+
+      const catchHandler = jasmine.createSpy();
+      catchHandler.and.callFake(() => {
+        order.push("settle");
+      });
 
       harness
         .connectClient()
         .then(() => {
-          harness.client.action("SomeAction", { Action: "Arg" }).catch(err => {
-            expect(err).toEqual(jasmine.any(Error));
-            expect(err.message).toBe(
-              "DISCONNECTED: The transport disconnected."
-            );
-            done();
-          });
+          harness.client
+            .action("SomeAction", { Action: "Arg" })
+            .catch(catchHandler);
         })
         .then(async () => {
           // Have the client disconnect (requested in this case)
@@ -3096,6 +3276,18 @@ describe("The client.action() function", () => {
           });
           harness.client.disconnect();
           await harness.transport.emit("disconnect");
+        })
+        .then(() => {
+          expect(catchHandler.calls.count()).toBe(1);
+          expect(catchHandler.calls.argsFor(0).length).toBe(1);
+          expect(catchHandler.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+          expect(catchHandler.calls.argsFor(0)[0].message).toBe(
+            "DISCONNECTED: The transport disconnected."
+          );
+
+          // Check that promise was settled before disconnect event
+          expect(order).toEqual(["settle", "disconnect"]);
+          done();
         });
     });
   });
@@ -3177,10 +3369,84 @@ describe("The feed.desireOpen() function", () => {
     });
   });
 
-  describe("if disconnected", () => {
+  describe("if disconnected - already observed transport disconnect event", () => {
     let harness;
     beforeEach(() => {
       harness = harnessFactory();
+    });
+
+    it("state functions", () => {
+      const feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      // Check state functions
+      expect(feed.desiredState()).toBe("closed");
+      expect(feed.state()).toBe("closed");
+      expect(() => {
+        feed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+
+      // Desire open
+      feed.desireOpen();
+
+      // Check state functions
+      expect(feed.desiredState()).toBe("open");
+      expect(feed.state()).toBe("closed");
+      expect(() => {
+        feed.data();
+      }).toThrow(new Error("INVALID_FEED_STATE: The feed object is not open."));
+    });
+
+    it("events", async () => {
+      const feedWantedOpen = harness.client.feed("SomeFeed", { Feed: "Arg" });
+      const feedWantedClosed = harness.client.feed("SomeFeed", {
+        Feed: "Arg"
+      });
+      const feedWantedOpenListener = harness.createFeedListener(feedWantedOpen);
+      const feedWantedClosedListener = harness.createFeedListener(
+        feedWantedClosed
+      );
+
+      feedWantedOpen.desireOpen();
+
+      await delay(DEFER_MS); // Flush events
+
+      expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.open.calls.count()).toBe(0);
+      expect(feedWantedOpenListener.close.calls.count()).toBe(1);
+      expect(feedWantedOpenListener.close.calls.argsFor(0).length).toBe(1);
+      expect(feedWantedOpenListener.close.calls.argsFor(0)[0]).toEqual(
+        jasmine.any(Error)
+      );
+      expect(feedWantedOpenListener.close.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The client is not connected."
+      );
+      expect(feedWantedOpenListener.action.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.open.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.close.calls.count()).toBe(0);
+      expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+    });
+
+    it("transport calls", () => {
+      const feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
+
+      harness.transport.spyClear();
+
+      feed.desireOpen();
+
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+  });
+
+  describe("if disconnected - transport disconnect event not yet observed", () => {
+    let harness;
+    beforeEach(async () => {
+      harness = harnessFactory();
+      await harness.connectClient();
+      harness.transport.state.and.returnValue("disconnected"); // No event yet
     });
 
     it("state functions", () => {
@@ -3576,6 +3842,8 @@ describe("The feed.desireOpen() function", () => {
         });
 
         it("events", async () => {
+          // Ensure that feed close event is fired before client disconnect event
+
           const feedWantedOpen = harness.client.feed("SomeFeed", {
             Feed: "Arg"
           });
@@ -3610,6 +3878,15 @@ describe("The feed.desireOpen() function", () => {
           feedWantedOpenListener.spyClear();
           feedWantedClosedListener.spyClear();
 
+          // Track close/disconnect ordering
+          const order = [];
+          harness.client.on("disconnect", () => {
+            order.push("disconnect");
+          });
+          feedWantedOpen.on("close", () => {
+            order.push("close");
+          });
+
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
@@ -3630,6 +3907,9 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Check that close fired before disconnect
+          expect(order).toEqual(["close", "disconnect"]);
         });
 
         it("transport calls", async () => {
@@ -3985,6 +4265,8 @@ describe("The feed.desireOpen() function", () => {
         });
 
         it("events", async () => {
+          // Ensure that feed close event is fired before client disconnect event
+
           const feedWantedOpen = harness.client.feed("SomeFeed", {
             Feed: "Arg"
           });
@@ -4019,6 +4301,15 @@ describe("The feed.desireOpen() function", () => {
           feedWantedOpenListener.spyClear();
           feedWantedClosedListener.spyClear();
 
+          // Track close/disconnect ordering
+          const order = [];
+          harness.client.on("disconnect", () => {
+            order.push("disconnect");
+          });
+          feedWantedOpen.on("close", () => {
+            order.push("close");
+          });
+
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
@@ -4039,6 +4330,9 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Check that close fired before disconnect
+          expect(order).toEqual(["close", "disconnect"]);
         });
 
         it("transport calls", async () => {
@@ -4525,7 +4819,7 @@ describe("The feed.desireOpen() function", () => {
         });
       });
 
-      describe("if client disconnects before the server responds to the ealier FeedClose", () => {
+      describe("if the server responds to earlier FeedClose with success and client disconnects before the server responds to subsequent FeedOpen", () => {
         it("state functions", async () => {
           // Desire feed open
           const feed = harness.client.feed("SomeFeed", { Feed: "Arg" });
@@ -4575,6 +4869,8 @@ describe("The feed.desireOpen() function", () => {
         });
 
         it("events", async () => {
+          // Ensure that feed close event is fired before client disconnect event
+
           // Create feed listeners
           const feedWantedOpen = harness.client.feed("SomeFeed", {
             Feed: "Arg"
@@ -4632,9 +4928,14 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
 
-          // Reset listeners
-          feedWantedOpenListener.spyClear();
-          feedWantedClosedListener.spyClear();
+          // Track close/disconnect ordering
+          const order = [];
+          harness.client.on("disconnect", () => {
+            order.push("disconnect");
+          });
+          feedWantedOpen.on("close", () => {
+            order.push("close");
+          });
 
           // Have the transport disconnect
           harness.transport.state.and.returnValue("disconnected");
@@ -4656,6 +4957,9 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Check that close fired before disconnect
+          expect(order).toEqual(["close", "disconnect"]);
         });
 
         it("transport calls", async () => {
@@ -5156,6 +5460,8 @@ describe("The feed.desireOpen() function", () => {
         });
 
         it("events", async () => {
+          // Ensure that feed close events are fired before client disconnect event
+
           // Create feed listeners
           const feedWantedOpen = harness.client.feed("SomeFeed", {
             Feed: "Arg"
@@ -5203,6 +5509,18 @@ describe("The feed.desireOpen() function", () => {
           feedWantedOpenListener.spyClear();
           feedWantedClosedListener.spyClear();
 
+          // Track close/disconnect ordering
+          const order = [];
+          harness.client.on("disconnect", () => {
+            order.push("disconnect");
+          });
+          feedWantedOpen.on("close", () => {
+            order.push("close");
+          });
+          feedAlreadyWantedOpen.on("close", () => {
+            order.push("close");
+          });
+
           // Have the client disconnect
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
@@ -5237,9 +5555,8 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
 
-          // Reset listeners
-          feedWantedOpenListener.spyClear();
-          feedWantedClosedListener.spyClear();
+          // Check that close fired before disconnect
+          expect(order).toEqual(["close", "close", "disconnect"]);
         });
 
         it("transport calls", async () => {
@@ -5683,6 +6000,8 @@ describe("The feed.desireOpen() function", () => {
         });
 
         it("events", async () => {
+          // Ensure that feed close events are fired before client disconnect event
+
           // Create feed listeners
           const feedWantedOpen = harness.client.feed("SomeFeed", {
             Feed: "Arg"
@@ -5727,6 +6046,18 @@ describe("The feed.desireOpen() function", () => {
           feedWantedOpenListener.spyClear();
           feedWantedClosedListener.spyClear();
 
+          // Track close/disconnect ordering
+          const order = [];
+          harness.client.on("disconnect", () => {
+            order.push("disconnect");
+          });
+          feedWantedOpen.on("close", () => {
+            order.push("close");
+          });
+          feedAlreadyWantedOpen.on("close", () => {
+            order.push("close");
+          });
+
           // Have the transport disconnect from the server
           harness.transport.state.and.returnValue("disconnected");
           await harness.transport.emit("disconnect", new Error("FAILURE: ..."));
@@ -5760,6 +6091,9 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Check that close fired before disconnect
+          expect(order).toEqual(["close", "close", "disconnect"]);
         });
 
         it("transport calls", async () => {
@@ -6429,7 +6763,7 @@ describe("The feed.desireOpen() function", () => {
         });
       });
 
-      describe("if client disconnects before the server responds to the ealier FeedClose", () => {
+      describe("if the server responds to earlier FeedClose with success and the client disconnects before the server responds to subsequent FeedOpen", () => {
         it("state functions", async () => {
           // Desire feed open
           const feedWantedOpen = harness.client.feed("SomeFeed", {
@@ -6502,6 +6836,8 @@ describe("The feed.desireOpen() function", () => {
         });
 
         it("events", async () => {
+          // Ensure that feed close events are fired before client disconnect event
+
           // Create feed listeners
           const feedWantedOpen = harness.client.feed("SomeFeed", {
             Feed: "Arg"
@@ -6545,6 +6881,18 @@ describe("The feed.desireOpen() function", () => {
           feedAlreadyWantedOpenListener.spyClear();
           feedWantedOpenListener.spyClear();
           feedWantedClosedListener.spyClear();
+
+          // Track close/disconnect ordering
+          const order = [];
+          harness.client.on("disconnect", () => {
+            order.push("disconnect");
+          });
+          feedWantedOpen.on("close", () => {
+            order.push("close");
+          });
+          feedAlreadyWantedOpen.on("close", () => {
+            order.push("close");
+          });
 
           // Have the server return success to the earlier FeedClose
           // Client will send FeedOpen message
@@ -6609,6 +6957,9 @@ describe("The feed.desireOpen() function", () => {
           expect(feedWantedClosedListener.open.calls.count()).toBe(0);
           expect(feedWantedClosedListener.close.calls.count()).toBe(0);
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
+
+          // Check that close fired before disconnect
+          expect(order).toEqual(["close", "close", "disconnect"]);
         });
 
         it("transport calls", async () => {
@@ -11962,34 +12313,34 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
   });
 });
 
-it("...", async () => {
-  jasmine.clock().install();
-  const transport = emitter({
-    connect: jasmine.createSpy(),
-    disconnect: jasmine.createSpy(),
-    state: jasmine.createSpy(),
-    send: jasmine.createSpy(),
-    on: jasmine.createSpy()
-  });
-  transport.state.and.returnValue("disconnected");
-  const client = feedmeClient({
-    transport,
-    connectTimeoutMs: 100
-  });
+// it("...", async () => {
+//   jasmine.clock().install();
+//   const transport = emitter({
+//     connect: jasmine.createSpy(),
+//     disconnect: jasmine.createSpy(),
+//     state: jasmine.createSpy(),
+//     send: jasmine.createSpy(),
+//     on: jasmine.createSpy()
+//   });
+//   transport.state.and.returnValue("disconnected");
+//   const client = feedmeClient({
+//     transport,
+//     connectTimeoutMs: 100
+//   });
 
-  client.connect();
+//   client.connect();
 
-  transport.state.and.returnValue("connecting");
-  transport.emit("connecting");
+//   transport.state.and.returnValue("connecting");
+//   transport.emit("connecting");
 
-  await delay(DEFER_MS);
+//   await delay(DEFER_MS);
 
-  transport.state.and.returnValue("disconnected");
-  transport.emit("disconnect");
+//   transport.state.and.returnValue("disconnected");
+//   transport.emit("disconnect");
 
-  // disconnect event still queued at the session level
+//   // disconnect event still queued at the session level
 
-  jasmine.clock().tick(100);
+//   jasmine.clock().tick(100);
 
-  jasmine.clock().uninstall();
-});
+//   jasmine.clock().uninstall();
+// });

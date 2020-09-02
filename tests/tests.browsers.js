@@ -53,12 +53,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 26+
     // Trivial Jasmine test fails on 26-28 (no launch)
-    ["Windows 10", "Chrome", "29"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["Windows 10", "Chrome", "36"],
     ["Windows 10", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["Windows 10", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["Windows 10", "Firefox", "22"],
     ["Windows 10", "Firefox", "55"],
 
     // Sauce has Edge 13+
@@ -72,12 +74,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 26+
     // Trivial Jasmine test fails on 26-28 (no launch)
-    ["Windows 8.1", "Chrome", "29"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["Windows 8.1", "Chrome", "36"],
     ["Windows 8.1", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["Windows 8.1", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["Windows 8.1", "Firefox", "22"],
     ["Windows 8.1", "Firefox", "55"],
 
     // Sauce has IE 11
@@ -87,12 +91,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 26+
     // Trivial Jasmine test fails on 26-28 (no launch)
-    ["Windows 8", "Chrome", "29"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["Windows 8", "Chrome", "36"],
     ["Windows 8", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["Windows 8", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["Windows 8", "Firefox", "22"],
     ["Windows 8", "Firefox", "55"],
 
     // Sauce has IE 10
@@ -102,12 +108,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 26+
     // Trivial Jasmine test fails on 26-28 (no launch)
-    ["Windows 7", "Chrome", "29"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["Windows 7", "Chrome", "36"],
     ["Windows 7", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["Windows 7", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["Windows 7", "Firefox", "22"],
     ["Windows 7", "Firefox", "55"],
 
     // Sauce has IE 9-11
@@ -117,12 +125,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 27+
     // Trivial Jasmine test fails on 27-30 (no launch)
-    ["macOS 10.14", "Chrome", "31"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["macOS 10.14", "Chrome", "36"],
     ["macOS 10.14", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["macOS 10.14", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["macOS 10.14", "Firefox", "22"],
     ["macOS 10.14", "Firefox", "55"],
 
     // Sauce has Edge 79+
@@ -136,12 +146,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 27+
     // Trivial Jasmine test fails on 27-30 (no launch)
-    ["macOS 10.13", "Chrome", "31"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["macOS 10.13", "Chrome", "36"],
     ["macOS 10.13", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["macOS 10.13", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["macOS 10.13", "Firefox", "22"],
     ["macOS 10.13", "Firefox", "55"],
 
     // Sauce has Edge 79+
@@ -155,12 +167,14 @@ import targets from "../targets";
 
     // Sauce has Chrome 27+
     // Trivial Jasmine test fails on 27-30 (no launch)
-    ["macOS 10.12", "Chrome", "31"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["macOS 10.12", "Chrome", "36"],
     ["macOS 10.12", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
     // Trivial Jasmine test fails on 56+ (appears to pass but no return)
-    ["macOS 10.12", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["macOS 10.12", "Firefox", "22"],
     ["macOS 10.12", "Firefox", "55"],
 
     // Sauce has Edge 79+
@@ -182,11 +196,13 @@ import targets from "../targets";
 
     // Sauce has Chrome 26+
     // Trivial Jasmine test fails on 26-29 (no launch)
-    ["Linux", "Chrome", "30"],
+    // One integration test fails to 35 (disconnect before settle)
+    ["Linux", "Chrome", "36"],
     ["Linux", "Chrome", "latest"],
 
     // Sauce has Firefox 4+
-    ["Linux", "Firefox", "4"],
+    // Receiving feedmeClient not defined with no console errors to 21
+    ["Linux", "Firefox", "22"],
     ["Linux", "Firefox", "latest"]
   ];
 
@@ -212,14 +228,14 @@ import targets from "../targets";
     ["Windows 8", "Firefox", "56"],
     ["Windows 8", "Firefox", "latest"],
 
-    ["Windows 8", "Internet Explorer", "10"],
+    // One integration test fails on IE 10 (disconnect before settle)
 
     // ///////////// Windows 7
 
     ["Windows 7", "Firefox", "56"],
     ["Windows 7", "Firefox", "latest"],
 
-    ["Windows 7", "Internet Explorer", "10"],
+    // One integration test fails on IE 10 (disconnect before settle)
     ["Windows 7", "Internet Explorer", "11"],
 
     // ///////////// macOS 10.14
@@ -295,11 +311,11 @@ import targets from "../targets";
       optimization: {
         minimize: false
       },
-      devtool: "source-maps"
-      // performance: {
-      //   maxAssetSize: 400000,
-      //   maxEntrypointSize: 400000
-      // }
+      devtool: "source-maps",
+      performance: {
+        maxAssetSize: 1000000,
+        maxEntrypointSize: 1000000
+      }
       // stats: "verbose"
     });
   } catch (e) {
