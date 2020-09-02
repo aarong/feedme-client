@@ -251,6 +251,13 @@ describe("The sessionWrapper.feedData() function", () => {
 });
 
 describe("The sessionWrapper.action() function", () => {
+  it("should throw on non-function argument", () => {
+    const wrapper = sessionWrapper(emitter({}));
+    expect(() => {
+      wrapper.action("some_action", { action: "args" }, 123);
+    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
+  });
+
   it("should call the underlying with the correct args", () => {
     const mockFn = jest.fn();
     const wrapper = sessionWrapper(
@@ -389,6 +396,13 @@ describe("The sessionWrapper.action() function", () => {
 });
 
 describe("The sessionWrapper.feedOpen() function", () => {
+  it("should throw on non-function argument", () => {
+    const wrapper = sessionWrapper(emitter({}));
+    expect(() => {
+      wrapper.feedOpen("some_feed", { feed: "args" }, 123);
+    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
+  });
+
   it("should call the underlying with the correct args", () => {
     const mockFn = jest.fn();
     const wrapper = sessionWrapper(
@@ -527,6 +541,13 @@ describe("The sessionWrapper.feedOpen() function", () => {
 });
 
 describe("The sessionWrapper.feedClose() function", () => {
+  it("should throw on non-function argument", () => {
+    const wrapper = sessionWrapper(emitter({}));
+    expect(() => {
+      wrapper.feedClose("some_feed", { feed: "args" }, 123);
+    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
+  });
+
   it("should call the underlying with the correct args", () => {
     const mockFn = jest.fn();
     const wrapper = sessionWrapper(

@@ -174,6 +174,13 @@ describe("The clientWrapper.id() function", () => {
 
 describe("The clientWrapper.action() function", () => {
   describe("callback style", () => {
+    it("should throw if passed an invalid callback", () => {
+      const wrapper = clientWrapper(emitter({}));
+      expect(() => {
+        wrapper.action("some_action", { action: "args" }, 123); // Bad callback
+      }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
+    });
+
     it("should call the underlying with the correct args", () => {
       const mockFn = jest.fn();
       const wrapper = clientWrapper(

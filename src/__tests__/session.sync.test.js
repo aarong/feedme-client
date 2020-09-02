@@ -505,12 +505,23 @@ describe("The .disconnect() function", () => {
 
     // Transport
 
-    it("should call transport.disconnect()", () => {
+    it("should call transport.disconnect() - no error", () => {
       harness.transportWrapper.mockClear();
       harness.session.disconnect();
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(1);
       expect(harness.transportWrapper.disconnect.mock.calls[0].length).toBe(0);
+      expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+    });
+
+    it("should call transport.disconnect() - with error", () => {
+      harness.transportWrapper.mockClear();
+      const err = new Error("SOME_ERROR: ...");
+      harness.session.disconnect(err);
+      expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(1);
+      expect(harness.transportWrapper.disconnect.mock.calls[0].length).toBe(1);
+      expect(harness.transportWrapper.disconnect.mock.calls[0][0]).toBe(err);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
     });
 
@@ -2220,7 +2231,7 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
-  describe("can run successfully", () => {
+  describe("can run successfully - with MD5", () => {
     // Mock an open feed
     beforeEach(() => {
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
@@ -2279,6 +2290,113 @@ describe("The ActionRevelation processor", () => {
     it("should do nothing on the transport", () => {
       harness.transportWrapper.mockClear();
       receiveRevelation();
+      expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+    });
+
+    // Callbacks - N/A
+  });
+
+  describe("can run successfully - without MD5", () => {
+    // Mock an open feed
+    beforeEach(() => {
+      harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
+      harness.feedOpenSuccess("myFeed", { arg: "val" }, {});
+    });
+
+    // Events
+
+    it("should emit action(an, ad, fn, fa, nd, od)", () => {
+      const sessionListener = harness.createSessionListener();
+
+      harness.transportWrapper.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionRevelation",
+          ActionName: "myAction",
+          ActionData: { some: "info" },
+          FeedName: "myFeed",
+          FeedArgs: { arg: "val" },
+          FeedDeltas: [
+            { Operation: "Set", Path: [], Value: { member: "myval" } }
+          ]
+        })
+      );
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(1);
+      expect(sessionListener.actionRevelation.mock.calls[0].length).toBe(6);
+      expect(sessionListener.actionRevelation.mock.calls[0][0]).toBe(
+        msg.FeedName
+      );
+      expect(sessionListener.actionRevelation.mock.calls[0][1]).toEqual(
+        msg.FeedArgs
+      );
+      expect(sessionListener.actionRevelation.mock.calls[0][2]).toBe(
+        msg.ActionName
+      );
+      expect(sessionListener.actionRevelation.mock.calls[0][3]).toEqual(
+        msg.ActionData
+      );
+      expect(sessionListener.actionRevelation.mock.calls[0][4]).toEqual({
+        member: "myval"
+      });
+      expect(sessionListener.actionRevelation.mock.calls[0][5]).toEqual({});
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+    });
+
+    // State
+
+    it("should update ._feedData", () => {
+      const feedSerial = feedSerializer.serialize("myFeed", {
+        arg: "val"
+      });
+      const newState = harness.getSessionState();
+      newState._feedData[feedSerial] = { member: "myval" };
+
+      harness.transportWrapper.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionRevelation",
+          ActionName: "myAction",
+          ActionData: { some: "info" },
+          FeedName: "myFeed",
+          FeedArgs: { arg: "val" },
+          FeedDeltas: [
+            { Operation: "Set", Path: [], Value: { member: "myval" } }
+          ]
+        })
+      );
+
+      expect(harness.session).toHaveState(newState);
+    });
+
+    // Transport
+
+    it("should do nothing on the transport", () => {
+      harness.transportWrapper.mockClear();
+
+      harness.transportWrapper.emit(
+        "message",
+        JSON.stringify({
+          MessageType: "ActionRevelation",
+          ActionName: "myAction",
+          ActionData: { some: "info" },
+          FeedName: "myFeed",
+          FeedArgs: { arg: "val" },
+          FeedDeltas: [
+            { Operation: "Set", Path: [], Value: { member: "myval" } }
+          ]
+        })
+      );
+
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
@@ -2556,7 +2674,7 @@ describe("the feedState() function", () => {
     }).toThrow(new Error("INVALID_STATE: Not connected."));
   });
 
-  it("should return correctly through a feed open/close cycle", () => {
+  it("should return correctly through a feed open/terminated/close cycle", () => {
     const feedSerial = feedSerializer.serialize("myFeed", { arg: "val" });
     harness.connectSession();
     expect(harness.session.feedState("myFeed", { arg: "val" })).toBe("closed");
@@ -2567,9 +2685,10 @@ describe("the feedState() function", () => {
     harness.session._feedStates[feedSerial] = "open";
     harness.session._feedData[feedSerial] = {};
     expect(harness.session.feedState("myFeed", { arg: "val" })).toBe("open");
-    harness.session._feedCloseCallbacks[feedSerial] = () => {};
-    harness.session._feedStates[feedSerial] = "closing";
+    harness.session._feedStates[feedSerial] = "terminated";
     expect(harness.session.feedState("myFeed", { arg: "val" })).toBe("closing");
+    harness.session._feedStates[feedSerial] = "closed";
+    expect(harness.session.feedState("myFeed", { arg: "val" })).toBe("closed");
   });
 });
 

@@ -881,7 +881,7 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
       validateFeedCloseResponse.check(val, false);
     } else if (val.MessageType === "ActionRevelation") {
       validateActionRevelation.check(val, false);
-    } else if (val.MessageType === "FeedTermination") {
+    } else {
       validateFeedTermination.check(val, false);
     }
   } catch (e) {

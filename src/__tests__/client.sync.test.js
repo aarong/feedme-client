@@ -1130,7 +1130,7 @@ describe("The client.action() function", () => {
         expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
       });
 
-      it("if not already timed out, should call callback() with result", () => {
+      it("if not already timed out and success, should call callback() with result", () => {
         const cb = jest.fn();
         harness.client.action("myAction", { arg: "val" }, cb);
         const sessionCb = harness.sessionWrapper.action.mock.calls[0][2];
@@ -1141,6 +1141,19 @@ describe("The client.action() function", () => {
         expect(cb.mock.calls[0].length).toBe(2);
         expect(cb.mock.calls[0][0]).toBe(undefined);
         expect(cb.mock.calls[0][1]).toEqual({ action: "data" });
+      });
+
+      it("if not already timed out and failure, should call callback() with result", () => {
+        const cb = jest.fn();
+        harness.client.action("myAction", { arg: "val" }, cb);
+        const sessionCb = harness.sessionWrapper.action.mock.calls[0][2];
+
+        const err = new Error("SOME_ERROR: ...");
+        sessionCb(err);
+
+        expect(cb.mock.calls.length).toBe(1);
+        expect(cb.mock.calls[0].length).toBe(1);
+        expect(cb.mock.calls[0][0]).toBe(err);
       });
 
       it("if already timed out, should not call callback()", () => {
@@ -5037,7 +5050,7 @@ describe("The client._considerFeedState() function", () => {
   });
 
   describe("the feed close response callback, when fired", () => {
-    describe("if a feed object is desired open", () => {
+    describe("if a feed object is desired open - session still conencted", () => {
       it("should emit nothing (opening already emitted)", () => {
         const harness = harnessFactory();
         harness.client.connect();
@@ -5174,7 +5187,7 @@ describe("The client._considerFeedState() function", () => {
       });
     });
 
-    describe("if no feed object is desired open", () => {
+    describe("if no feed object is desired open - session still connected", () => {
       it("should emit nothing (close already emitted)", () => {
         const harness = harnessFactory();
         harness.client.connect();
@@ -5264,6 +5277,269 @@ describe("The client._considerFeedState() function", () => {
         harness.sessionWrapper.mockClear();
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         cb2(); // Feed close success
+        expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
+        for (
+          let i = 0;
+          i < harness.sessionWrapper.state.mock.calls.length;
+          i += 1
+        ) {
+          expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
+        }
+        expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
+          true
+        ); // Permit calls
+        for (
+          let i = 0;
+          i < harness.sessionWrapper.feedState.mock.calls.length;
+          i += 1
+        ) {
+          expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
+          expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
+            "someFeed"
+          );
+          expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
+            arg: "val"
+          });
+        }
+      });
+    });
+
+    describe("if a feed object is desired open - session disconencted", () => {
+      it("should emit close", () => {
+        const harness = harnessFactory();
+        harness.client.connect();
+        harness.sessionWrapper.emit("connecting");
+        harness.sessionWrapper.emit("connect");
+        harness.sessionWrapper.state.mockReturnValue("connected");
+
+        // Mock an open feed
+        const feed = harness.client.feed("someFeed", { arg: "val" });
+        harness.sessionWrapper.feedState.mockReturnValue("closed");
+        harness.sessionWrapper.mockClear();
+        feed.desireOpen();
+        const cb1 = harness.sessionWrapper.feedOpen.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("open");
+        cb1(undefined, { feed: "data" });
+
+        // Begin closing the feed and then desire open while closing
+        harness.sessionWrapper.mockClear();
+        feed.desireClosed();
+        const cb2 = harness.sessionWrapper.feedClose.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("closing");
+        feed.desireOpen();
+
+        const feedListener = harness.createFeedListener(feed);
+        harness.sessionWrapper.state.mockReturnValue("disconnected");
+        cb2(); // Feed close success
+
+        expect(feedListener.opening.mock.calls.length).toBe(0);
+        expect(feedListener.open.mock.calls.length).toBe(0);
+        expect(feedListener.close.mock.calls.length).toBe(1);
+        expect(feedListener.close.mock.calls[0].length).toBe(1);
+        expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
+        expect(feedListener.close.mock.calls[0][0].message).toBe(
+          "DISCONNECTED: The transport disconnected."
+        );
+        expect(feedListener.action.mock.calls.length).toBe(0);
+      });
+
+      it("should update the state appropriately", () => {
+        const harness = harnessFactory();
+        harness.client.connect();
+        harness.sessionWrapper.emit("connecting");
+        harness.sessionWrapper.emit("connect");
+        harness.sessionWrapper.state.mockReturnValue("connected");
+
+        // Mock an open feed
+        const feed = harness.client.feed("someFeed", { arg: "val" });
+        harness.sessionWrapper.feedState.mockReturnValue("closed");
+        harness.sessionWrapper.mockClear();
+        feed.desireOpen();
+        const cb1 = harness.sessionWrapper.feedOpen.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("open");
+        cb1(undefined, { feed: "data" });
+
+        // Begin closing the feed and then desire open while closing
+        harness.sessionWrapper.mockClear();
+        feed.desireClosed();
+        const cb2 = harness.sessionWrapper.feedClose.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("closing");
+        feed.desireOpen();
+
+        const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
+        const newState = harness.getClientState();
+        newState._sessionWrapperState = "disconnected";
+        delete newState._feedCloseRequested[feedSerial];
+        newState._appFeedStates[feedSerial][0]._lastStateEmission = "close";
+
+        harness.sessionWrapper.state.mockReturnValue("disconnected");
+        cb2(); // Feed close success
+
+        expect(harness.client).toHaveState(newState);
+      });
+
+      it("should do nothing on the session", () => {
+        const harness = harnessFactory();
+        harness.client.connect();
+        harness.sessionWrapper.emit("connecting");
+        harness.sessionWrapper.emit("connect");
+        harness.sessionWrapper.state.mockReturnValue("connected");
+
+        // Mock an open feed
+        const feed = harness.client.feed("someFeed", { arg: "val" });
+        harness.sessionWrapper.feedState.mockReturnValue("closed");
+        harness.sessionWrapper.mockClear();
+        feed.desireOpen();
+        const cb1 = harness.sessionWrapper.feedOpen.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("open");
+        cb1(undefined, { feed: "data" });
+
+        // Begin closing the feed and then desire open while closing
+        harness.sessionWrapper.mockClear();
+        feed.desireClosed();
+        const cb2 = harness.sessionWrapper.feedClose.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("closing");
+        feed.desireOpen();
+
+        harness.sessionWrapper.mockClear();
+        harness.sessionWrapper.state.mockReturnValue("disconnected");
+        cb2(); // Feed close success
+
+        expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
+        expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
+        for (
+          let i = 0;
+          i < harness.sessionWrapper.state.mock.calls.length;
+          i += 1
+        ) {
+          expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
+        }
+        expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
+          true
+        ); // Permit calls
+        for (
+          let i = 0;
+          i < harness.sessionWrapper.feedState.mock.calls.length;
+          i += 1
+        ) {
+          expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
+          expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
+            "someFeed"
+          );
+          expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
+            arg: "val"
+          });
+        }
+      });
+    });
+
+    describe("if no feed object is desired open - session disconnected", () => {
+      it("should emit nothing", () => {
+        const harness = harnessFactory();
+        harness.client.connect();
+        harness.sessionWrapper.emit("connecting");
+        harness.sessionWrapper.emit("connect");
+        harness.sessionWrapper.state.mockReturnValue("connected");
+
+        // Mock an open feed
+        const feed = harness.client.feed("someFeed", { arg: "val" });
+        harness.sessionWrapper.feedState.mockReturnValue("closed");
+        harness.sessionWrapper.mockClear();
+        feed.desireOpen();
+        const cb1 = harness.sessionWrapper.feedOpen.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("open");
+        cb1(undefined, { feed: "data" });
+
+        // Begin closing the feed
+        harness.sessionWrapper.mockClear();
+        feed.desireClosed();
+        const cb2 = harness.sessionWrapper.feedClose.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("closing");
+
+        const feedListener = harness.createFeedListener(feed);
+
+        harness.sessionWrapper.state.mockReturnValue("disconnected");
+        cb2(); // Feed close success
+
+        expect(feedListener.opening.mock.calls.length).toBe(0);
+        expect(feedListener.open.mock.calls.length).toBe(0);
+        expect(feedListener.close.mock.calls.length).toBe(0);
+        expect(feedListener.action.mock.calls.length).toBe(0);
+      });
+
+      it("should update the state appropriately", () => {
+        const harness = harnessFactory();
+        harness.client.connect();
+        harness.sessionWrapper.emit("connecting");
+        harness.sessionWrapper.emit("connect");
+        harness.sessionWrapper.state.mockReturnValue("connected");
+
+        // Mock an open feed
+        const feed = harness.client.feed("someFeed", { arg: "val" });
+        harness.sessionWrapper.feedState.mockReturnValue("closed");
+        harness.sessionWrapper.mockClear();
+        feed.desireOpen();
+        const cb1 = harness.sessionWrapper.feedOpen.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("open");
+        cb1(undefined, { feed: "data" });
+
+        // Begin closing the feed
+        harness.sessionWrapper.mockClear();
+        feed.desireClosed();
+        const cb2 = harness.sessionWrapper.feedClose.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("closing");
+
+        const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
+        const newState = harness.getClientState();
+        newState._sessionWrapperState = "disconnected";
+        delete newState._feedCloseRequested[feedSerial];
+
+        harness.sessionWrapper.state.mockReturnValue("disconnected");
+        cb2(); // Feed close success
+
+        expect(harness.client).toHaveState(newState);
+      });
+
+      it("should do nothing on the session", () => {
+        const harness = harnessFactory();
+        harness.client.connect();
+        harness.sessionWrapper.emit("connecting");
+        harness.sessionWrapper.emit("connect");
+        harness.sessionWrapper.state.mockReturnValue("connected");
+
+        // Mock an open feed
+        const feed = harness.client.feed("someFeed", { arg: "val" });
+        harness.sessionWrapper.feedState.mockReturnValue("closed");
+        harness.sessionWrapper.mockClear();
+        feed.desireOpen();
+        const cb1 = harness.sessionWrapper.feedOpen.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("open");
+        cb1(undefined, { feed: "data" });
+
+        // Begin closing the feed
+        harness.sessionWrapper.mockClear();
+        feed.desireClosed();
+        const cb2 = harness.sessionWrapper.feedClose.mock.calls[0][2];
+        harness.sessionWrapper.feedState.mockReturnValue("closing");
+
+        harness.sessionWrapper.mockClear();
+
+        harness.sessionWrapper.state.mockReturnValue("disconnected");
+        cb2(); // Feed close success
+
         expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
         expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
         expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);

@@ -837,7 +837,7 @@ describe("the disconnect() function", () => {
     const listener = jest.fn();
     wrapper.on("transportError", listener);
 
-    expect(wrapper.disconnect()).toBeUndefined();
+    expect(wrapper.disconnect(new Error("SOME_ERROR"))).toBeUndefined();
 
     await Promise.resolve(); // Execute queued microtasks
 
@@ -1321,7 +1321,7 @@ describe("the transport 'message' event", () => {
     expect(messageListener.mock.calls.length).toBe(0);
   });
 
-  it("if the previous state emission was connect and extraneous argument, it should asynchronously emit transportError", async () => {
+  it("if the previous state emission was connect and invalid number of arguments, it should asynchronously emit transportError", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -1350,6 +1350,40 @@ describe("the transport 'message' event", () => {
     expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(transportErrorListener.mock.calls[0][0].message).toBe(
       "BAD_EVENT_ARGUMENT: Received an invalid number of arguments with a 'message' event."
+    );
+
+    expect(messageListener.mock.calls.length).toBe(0);
+  });
+
+  it("if the previous state emission was connect and non-string argument, it should asynchronously emit transportError", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+    wrapper.connect();
+    transport.state = () => "connecting";
+    transport.emit("connecting");
+    transport.state = () => "connected";
+    transport.emit("connect");
+    const transportErrorListener = jest.fn();
+    wrapper.on("transportError", transportErrorListener);
+    const messageListener = jest.fn();
+    wrapper.on("message", messageListener);
+    transport.emit("message", 123); // Bad arg type
+
+    expect(transportErrorListener.mock.calls.length).toBe(0);
+    expect(messageListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(transportErrorListener.mock.calls.length).toBe(1);
+    expect(transportErrorListener.mock.calls[0].length).toBe(1);
+    expect(transportErrorListener.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(transportErrorListener.mock.calls[0][0].message).toBe(
+      "BAD_EVENT_ARGUMENT: Received a non-string argument with a 'message' event."
     );
 
     expect(messageListener.mock.calls.length).toBe(0);

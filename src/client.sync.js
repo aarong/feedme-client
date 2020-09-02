@@ -184,100 +184,88 @@ function clientSyncFactory(options) {
   }
 
   // Check options.connectTimeoutMs (if specified)
-  if ("connectTimeoutMs" in options) {
-    if (
-      !check.integer(options.connectTimeoutMs) ||
-      check.negative(options.connectTimeoutMs)
-    ) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.connectTimeoutMs.");
-    }
+  if (
+    "connectTimeoutMs" in options &&
+    (!check.integer(options.connectTimeoutMs) ||
+      check.negative(options.connectTimeoutMs))
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.connectTimeoutMs.");
   }
 
   // Check options.connectRetryMs (if specified)
-  if ("connectRetryMs" in options) {
-    if (!check.integer(options.connectRetryMs)) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryMs.");
-    }
+  if ("connectRetryMs" in options && !check.integer(options.connectRetryMs)) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryMs.");
   }
 
   // Check options.connectRetryBackoffMs (if specified)
-  if ("connectRetryBackoffMs" in options) {
-    if (
-      !check.integer(options.connectRetryBackoffMs) ||
-      check.negative(options.connectRetryBackoffMs)
-    ) {
-      throw new Error(
-        "INVALID_ARGUMENT: Invalid options.connectRetryBackoffMs."
-      );
-    }
+  if (
+    "connectRetryBackoffMs" in options &&
+    (!check.integer(options.connectRetryBackoffMs) ||
+      check.negative(options.connectRetryBackoffMs))
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryBackoffMs.");
   }
 
   // Check options.connectRetryMaxMs (if specified)
-  if ("connectRetryMaxMs" in options) {
-    if (
-      !check.integer(options.connectRetryMaxMs) ||
+  if (
+    "connectRetryMaxMs" in options &&
+    (!check.integer(options.connectRetryMaxMs) ||
       check.negative(options.connectRetryMaxMs) ||
       (options.connectRetryMs &&
-        options.connectRetryMaxMs < options.connectRetryMs)
-    ) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxMs.");
-    }
+        options.connectRetryMaxMs < options.connectRetryMs))
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxMs.");
   }
 
   // Check options.connectRetryMaxAttempts (if specified)
-  if ("connectRetryMaxAttempts" in options) {
-    if (
-      !check.integer(options.connectRetryMaxAttempts) ||
-      check.negative(options.connectRetryMaxAttempts)
-    ) {
-      throw new Error(
-        "INVALID_ARGUMENT: Invalid options.connectRetryMaxAttempts."
-      );
-    }
+  if (
+    "connectRetryMaxAttempts" in options &&
+    (!check.integer(options.connectRetryMaxAttempts) ||
+      check.negative(options.connectRetryMaxAttempts))
+  ) {
+    throw new Error(
+      "INVALID_ARGUMENT: Invalid options.connectRetryMaxAttempts."
+    );
   }
 
   // Check options.actionTimeoutMs (if specified)
-  if ("actionTimeoutMs" in options) {
-    if (
-      !check.integer(options.actionTimeoutMs) ||
-      check.negative(options.actionTimeoutMs)
-    ) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.actionTimeoutMs.");
-    }
+  if (
+    "actionTimeoutMs" in options &&
+    (!check.integer(options.actionTimeoutMs) ||
+      check.negative(options.actionTimeoutMs))
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.actionTimeoutMs.");
   }
 
   // Check options.feedTimeoutMs (if specified)
-  if ("feedTimeoutMs" in options) {
-    if (
-      !check.integer(options.feedTimeoutMs) ||
-      check.negative(options.feedTimeoutMs)
-    ) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.feedTimeoutMs.");
-    }
+  if (
+    "feedTimeoutMs" in options &&
+    (!check.integer(options.feedTimeoutMs) ||
+      check.negative(options.feedTimeoutMs))
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.feedTimeoutMs.");
   }
 
   // Check options.reconnect (if specified)
-  if ("reconnect" in options) {
-    if (!check.boolean(options.reconnect)) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.reconnect.");
-    }
+  if ("reconnect" in options && !check.boolean(options.reconnect)) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.reconnect.");
   }
 
   // Check options.reopenMaxAttempts (if specified)
-  if ("reopenMaxAttempts" in options) {
-    if (!check.integer(options.reopenMaxAttempts)) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.reopenMaxAttempts.");
-    }
+  if (
+    "reopenMaxAttempts" in options &&
+    !check.integer(options.reopenMaxAttempts)
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.reopenMaxAttempts.");
   }
 
   // Check options.reopenTrailingMs (if specified)
-  if ("reopenTrailingMs" in options) {
-    if (
-      !check.integer(options.reopenTrailingMs) ||
-      check.negative(options.reopenTrailingMs)
-    ) {
-      throw new Error("INVALID_ARGUMENT: Invalid options.reopenTrailingMs.");
-    }
+  if (
+    "reopenTrailingMs" in options &&
+    (!check.integer(options.reopenTrailingMs) ||
+      check.negative(options.reopenTrailingMs))
+  ) {
+    throw new Error("INVALID_ARGUMENT: Invalid options.reopenTrailingMs.");
   }
 
   // Success
@@ -767,7 +755,7 @@ protoClientSync.action = function action(name, args, callback) {
       if (err) {
         callback(err);
       } else {
-        callback(err, actionData);
+        callback(undefined, actionData);
       }
     } else {
       dbgClient(
@@ -1176,8 +1164,8 @@ protoClientSync._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
     appFeed._emitOpen(
       this._sessionWrapper.feedData(appFeed._feedName, appFeed._feedArgs)
     );
-  } else if (serverFeedState === "closing") {
-    appFeed._emitOpening();
+  } else {
+    appFeed._emitOpening(); // Server feed is closing
   }
 };
 
@@ -1649,9 +1637,7 @@ protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
  * @private
  */
 protoClientSync._connectTimeoutCancel = function _connectTimeoutCancel() {
-  if (this._connectTimeoutTimer) {
-    clearTimeout(this._connectTimeoutTimer);
-  }
+  clearTimeout(this._connectTimeoutTimer); // May not be present
   this._connectTimeoutTimer = null;
 };
 
@@ -1811,8 +1797,8 @@ protoFeedSync._serverFeedClosed = function _serverFeedClosed(err) {
     } else {
       this._emitClose(err);
     }
-  } else if (this._lastStateEmission === "open") {
-    // Shouldn't happen, as last emission becomes close on unexpectedFeedClosing (can't test)
+  } else {
+    // Last emission should not be opening, as last emission becomes close on unexpectedFeedClosing (can't test)
     this._emitClose(err);
   }
 };
@@ -1836,7 +1822,7 @@ protoFeedSync._serverFeedOpening = function _serverFeedOpening() {
     this._emitOpening();
   } else if (this._lastStateEmission === "opening") {
     // Closure had been requested and feed is being reopened - don't cycle state
-  } else if (this._lastStateEmission === "open") {
+  } else {
     this._emitOpening(); // Shouldn't happen
   }
 };
@@ -1856,14 +1842,13 @@ protoFeedSync._serverFeedOpen = function _serverFeedOpen() {
   }
 
   // Desired state is open
+  // Last emission should never be open
   if (this._lastStateEmission === "close") {
     // Happens after feed open timeouts
     this._emitOpening();
     this._emitOpen();
-  } else if (this._lastStateEmission === "opening") {
+  } else {
     this._emitOpen();
-  } else if (this._lastStateEmission === "open") {
-    this._emitOpen(); // Shouldn't happen, but relay new feed data (can't test)
   }
 };
 
@@ -1896,7 +1881,7 @@ protoFeedSync._serverFeedClosing = function _serverFeedClosing(err) {
     this._emitClose(err); // Should not happen (can't test)
   } else if (this._lastStateEmission === "opening") {
     this._emitClose(err); // Should not happen (can't test)
-  } else if (this._lastStateEmission === "open") {
+  } else {
     this._emitClose(err);
   }
 };

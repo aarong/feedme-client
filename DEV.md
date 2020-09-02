@@ -107,20 +107,28 @@ property of an error object breaks sourcemaps in the browser.
 
 ### Source Files
 
-- `session.js` contains server-facing functionality. It enables a
-  straightforward compliant conversation with the server.
+- `transport.wrapper.js` ensures that the transport object behaves as required
+  and that tranport events are always deferred.
 
-- `client.js` contains app-facing functionality. It provides an enhanced
-  experience over `session.js` with configurability and feed objects.
+- `session.sync.js` contains server-facing functionality. It enables a
+  straightforward compliant conversation with the server and invokes callbacks
+  and event handlers synchronously.
 
-- `feed.js` contains app-facing feed object functionality. Generally routes
-  function calls to `client.js`.
+- `session.wrapper.js` adds a deferral layer on top of `session.sync.js` so that
+  event handlers and callbacks are always invoked asynchronously.
+
+- `client.sync.js` contains app-facing functionality. It provides an enhanced
+  experience over `session.js` with configurability and feed objects, and
+  invokes callbacks and event handlers synchronously.
+
+- `client.wrapper.js` adds a deferral layer on top of `client.sync.js` so that
+  event handlers and callbacks are always invoked asynchronously. Also adds a
+  promise API over `client.action()`.
 
 - `config.js` contains hard-coded configuration, mainly default options.
 
 - `main.js` is the common entrypoint for the module. It takes a transport object
-  from the outside, injects it into a session, injects that into a client, and
-  returns the client.
+  from the outside and returns a usable client.
 
 - `main.node.js` is the entrypoint for Node module transpilation. It injects
   `source-map-support`.
@@ -128,7 +136,7 @@ property of an error object breaks sourcemaps in the browser.
 - `main.browser.js` is the entrypoint for browser transpilation. No special
   functionality.
 
-- `transportwrapper.js` ensures that the transport object behaves as required.
+- `defer.js` provides a common deferral mechanism for the three wrapper objects.
 
 ## Target Node and NPM Versions
 
