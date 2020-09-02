@@ -976,3 +976,50 @@ it("On disconnect, any outstanding feedClose callbacks should be invoked before 
 
   expect(order).toEqual(["callback", "disconnect"]);
 });
+
+it("On disconnect, any action callbacks should be invoked before any feed callbacks and disconnect event", async () => {
+  let underlyingActionCb;
+  let underlyingFeedCloseCb;
+  const underlying = emitter({
+    action: (an, aa, cb) => {
+      underlyingActionCb = cb;
+    },
+    feedClose: (fn, fa, cb) => {
+      underlyingFeedCloseCb = cb;
+    }
+  });
+  const wrapper = sessionWrapper(underlying);
+
+  const order = [];
+
+  const disconnectListener = jest.fn(() => {
+    order.push("disconnect");
+  });
+  wrapper.on("disconnect", disconnectListener);
+
+  const actionCb = jest.fn(() => {
+    order.push("action");
+  });
+  wrapper.action("some_action", { action: "args" }, actionCb);
+
+  const feedCloseCb = jest.fn(() => {
+    order.push("feed");
+  });
+  wrapper.feedClose("some_feed", { feed: "args" }, feedCloseCb);
+
+  underlyingActionCb();
+  underlyingFeedCloseCb();
+  underlying.emit("disconnect", new Error("FAILURE: ..."));
+
+  expect(actionCb.mock.calls.length).toBe(0);
+  expect(feedCloseCb.mock.calls.length).toBe(0);
+  expect(disconnectListener.mock.calls.length).toBe(0);
+
+  await Promise.resolve();
+
+  expect(actionCb.mock.calls.length).toBe(1);
+  expect(feedCloseCb.mock.calls.length).toBe(1);
+  expect(disconnectListener.mock.calls.length).toBe(1);
+
+  expect(order).toEqual(["action", "feed", "disconnect"]);
+});

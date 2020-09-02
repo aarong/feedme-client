@@ -356,8 +356,9 @@ Errors called back:
 
   The client disconnected from the server before it received a response. The
   disconnect may have resulted from a call to `client.disconnect()` or due to a
-  transport problem. The action callback will always be invoked before the
-  client disconnect event is emitted.
+  transport problem. The action callback will always be invoked before any feed
+  close events are emitted, after which the client disconnect event will be
+  emitted.
 
 - `err.message === "REJECTED: ..."`
 
@@ -404,8 +405,9 @@ Errors returned via promise rejection:
 
   The client disconnected from the server before it received a response. The
   disconnect may have resulted from a call to `client.disconnect()` or due to a
-  transport problem. The action promise will always be rejected before the
-  client disconnect event is emitted.
+  transport problem. The action promise will always be settled before any feed
+  close events are emitted, after which the client disconnect event will be
+  emitted.
 
 - `err.message === "REJECTED: ..."`
 
@@ -575,6 +577,9 @@ A feed object's desired state persists through the connection cycle. If a feed
 is desired `open` and the client disconnects and reconnects, the library will
 attempt to reopen the server feed. Returns nothing.
 
+If the transport encounters an immediate problem transmitting a message to the
+server then the client state may synchronously become `disconnected`.
+
 Errors thrown:
 
 - `err.message === "INVALID_FEED_STATE: ..."`
@@ -588,6 +593,9 @@ Errors thrown:
 ##### feed.desireClosed()
 
 Sets the feed object's desired state to `closed`. Returns nothing.
+
+If the transport encounters an immediate problem transmitting a message to the
+server then the client state may synchronously become `disconnected`.
 
 Errors thrown:
 
@@ -702,8 +710,9 @@ an `Error` object (`err`) as an argument. The following errors are possible:
 
   The client is not connected to the server. If a connection is later
   established, the feed object will emit as appropriate. If the server has just
-  disconnected, then the feed close event will always be emitted before the
-  client disconnect event.
+  disconnected, then the feed close event will always be emitted after any
+  outstanding action callbacks/promises have been invoked/settled, but before
+  the client disconnect event.
 
 - `err.message === "TERMINATED: ..."`
 

@@ -401,7 +401,7 @@ import targets from "../targets";
         mode === "sauce-automatic-hanging"
           ? saucePlatformsHanging
           : saucePlatforms,
-      maxDuration: 60, // Seconds/platform; kill hanging tests quickly or they won't all run before global timeout
+      maxDuration: 90, // Seconds/platform; kill hanging tests quickly or they won't all run before global timeout
       "tunnel-identifier": sauceTunnelId
     }
   });

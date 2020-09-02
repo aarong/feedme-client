@@ -3083,7 +3083,7 @@ describe("The client.action() function", () => {
       });
     });
 
-    it("should operate correctly on disconnect, with action callback before disconnect event", async () => {
+    it("should operate correctly on disconnect, with action callback before feed close event before disconnect event", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
 
@@ -3095,10 +3095,15 @@ describe("The client.action() function", () => {
       // Create callback and monitor callback/disconnect order
       const cb = jasmine.createSpy();
       cb.and.callFake(() => {
-        order.push("callback");
+        order.push("action callback");
       });
       harness.client.on("disconnect", () => {
-        order.push("disconnect");
+        order.push("client disconnect");
+      });
+      const feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+      feed.desireOpen();
+      feed.on("close", () => {
+        order.push("feed close");
       });
 
       // Invoke an action
@@ -3123,7 +3128,11 @@ describe("The client.action() function", () => {
       );
 
       // Check that callbacks were invoked before disconnect event was emitted
-      expect(order).toEqual(["callback", "disconnect"]);
+      expect(order).toEqual([
+        "action callback",
+        "feed close",
+        "client disconnect"
+      ]);
     });
   });
 
@@ -3247,23 +3256,28 @@ describe("The client.action() function", () => {
         });
     });
 
-    it("should operate correctly on disconnect, with promise settlement before disconnect event", done => {
+    it("should operate correctly on disconnect, with promise settlement before feed close event before disconnect event", done => {
       const harness = harnessFactory();
 
-      // Track promise settlement / disconnect event execution order
       const order = [];
       harness.client.on("disconnect", () => {
-        order.push("disconnect");
+        order.push("client disconnect");
       });
 
       const catchHandler = jasmine.createSpy();
       catchHandler.and.callFake(() => {
-        order.push("settle");
+        order.push("action settle");
       });
 
       harness
         .connectClient()
         .then(() => {
+          const feed = harness.client.feed("SomeFeed", { Feed: "Args" });
+          feed.desireOpen();
+          feed.on("close", () => {
+            order.push("feed close");
+          });
+
           harness.client
             .action("SomeAction", { Action: "Arg" })
             .catch(catchHandler);
@@ -3286,7 +3300,11 @@ describe("The client.action() function", () => {
           );
 
           // Check that promise was settled before disconnect event
-          expect(order).toEqual(["settle", "disconnect"]);
+          expect(order).toEqual([
+            "action settle",
+            "feed close",
+            "client disconnect"
+          ]);
           done();
         });
     });
@@ -12312,35 +12330,3 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
     // Callbacks - N/A
   });
 });
-
-// it("...", async () => {
-//   jasmine.clock().install();
-//   const transport = emitter({
-//     connect: jasmine.createSpy(),
-//     disconnect: jasmine.createSpy(),
-//     state: jasmine.createSpy(),
-//     send: jasmine.createSpy(),
-//     on: jasmine.createSpy()
-//   });
-//   transport.state.and.returnValue("disconnected");
-//   const client = feedmeClient({
-//     transport,
-//     connectTimeoutMs: 100
-//   });
-
-//   client.connect();
-
-//   transport.state.and.returnValue("connecting");
-//   transport.emit("connecting");
-
-//   await delay(DEFER_MS);
-
-//   transport.state.and.returnValue("disconnected");
-//   transport.emit("disconnect");
-
-//   // disconnect event still queued at the session level
-
-//   jasmine.clock().tick(100);
-
-//   jasmine.clock().uninstall();
-// });
