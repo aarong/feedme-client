@@ -72,13 +72,13 @@ export default function sessionSyncFactory(transportWrapper) {
   sessionSync._transportWrapper = transportWrapper;
 
   /**
-   * Server-assigned client id. Null until after a handshake.
+   * Flag indicating whether a successful handshake has been completed.
    * @memberof SessionSync
    * @instance
    * @private
-   * @type {?string}
+   * @type {boolean}
    */
-  sessionSync._clientId = null;
+  sessionSync._handshakeComplete = false;
 
   /**
    * Feed state, as per the spec:
@@ -404,7 +404,7 @@ proto.state = function state() {
   dbg("State requested");
 
   const transportState = this._transportWrapper.state();
-  if (transportState === "connected" && this._clientId === null) {
+  if (transportState === "connected" && !this._handshakeComplete) {
     return "connecting";
   }
   return transportState;
@@ -454,24 +454,6 @@ proto.disconnect = function disconnect(err) {
   } else {
     this._transportWrapper.disconnect();
   }
-};
-
-/**
- * Returns the client id assigned by the server.
- * @memberof SessionSync
- * @instance
- * @returns {string}
- * @throws {Error} "INVALID_STATE: ..."
- */
-proto.id = function id() {
-  dbg("Client id requested");
-
-  // Transport connected and handshake complete?
-  if (this.state() !== "connected") {
-    throw new Error("INVALID_STATE: Not connected.");
-  }
-
-  return this._clientId;
 };
 
 /**
@@ -800,7 +782,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
   const feedCloseCallbacks = this._feedCloseCallbacks;
 
   // Reset session state
-  this._clientId = null;
+  this._handshakeComplete = false;
   this._nextActionCallbackId = 1;
   this._actionCallbacks = {};
   this._feedStates = {};
@@ -922,7 +904,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
   dbg("Received HandshakeResponse message");
 
   // Is a handshake response expected?
-  if (this._clientId !== null) {
+  if (this._handshakeComplete) {
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected HandshakeResponse.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
@@ -931,7 +913,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
   // Was the handshake successful?
   if (msg.Success) {
-    this._clientId = msg.ClientId;
+    this._handshakeComplete = true;
     this.emit("connect");
   } else {
     // Transport state is not guaranteed in event handlers - ensure not already disconnected

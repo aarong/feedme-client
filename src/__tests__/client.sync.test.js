@@ -6562,23 +6562,6 @@ describe("The client.state() function", () => {
   });
 });
 
-describe("The client.id() function", () => {
-  // Errors - passed through from session
-
-  // Success
-
-  it("should return the session client id", () => {
-    const harness = harnessFactory();
-    harness.client.connect();
-    harness.sessionWrapper.emit("connecting");
-    harness.sessionWrapper.emit("connect");
-    harness.sessionWrapper.state.mockReturnValue("connected");
-
-    harness.sessionWrapper.id.mockReturnValue("SOME_ID");
-    expect(harness.client.id()).toBe("SOME_ID");
-  });
-});
-
 describe("The feed.desiredState() and client._appFeedDesiredState() functions", () => {
   // Errors
 

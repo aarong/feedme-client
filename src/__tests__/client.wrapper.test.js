@@ -133,45 +133,6 @@ describe("The clientWrapper.disconnect() function", () => {
   });
 });
 
-describe("The clientWrapper.id() function", () => {
-  it("should call the underlying with the correct args", () => {
-    const mockFn = jest.fn();
-    const wrapper = clientWrapper(
-      emitter({
-        id: mockFn
-      })
-    );
-    wrapper.id("some", "args");
-    expect(mockFn.mock.calls.length).toBe(1);
-    expect(mockFn.mock.calls[0].length).toBe(2);
-    expect(mockFn.mock.calls[0][0]).toBe("some");
-    expect(mockFn.mock.calls[0][1]).toBe("args");
-  });
-
-  it("should relay error if the underlying throws", () => {
-    const err = new Error("SOME_ERROR");
-    const wrapper = clientWrapper(
-      emitter({
-        id: () => {
-          throw err;
-        }
-      })
-    );
-    expect(() => {
-      wrapper.id();
-    }).toThrow(err);
-  });
-
-  it("should relay return value if the underlying succeeds", () => {
-    const wrapper = clientWrapper(
-      emitter({
-        id: () => "some_value"
-      })
-    );
-    expect(wrapper.id()).toBe("some_value");
-  });
-});
-
 describe("The clientWrapper.action() function", () => {
   describe("callback style", () => {
     it("should throw if passed an invalid callback", () => {

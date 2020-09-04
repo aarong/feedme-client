@@ -38,7 +38,7 @@ verifying no change (errors, events, state, transport calls, return values).
 
 State: Session members
     ._transportWrapper (check transport state)
-    ._clientId
+    ._handshakeComplete
     ._feedStates
     ._actionCallbacks
     ._nextActionCallbackId
@@ -134,8 +134,7 @@ harnessProto.connectSession = function connectSession() {
     JSON.stringify({
       MessageType: "HandshakeResponse",
       Success: true,
-      Version: "0.1",
-      ClientId: "ABC"
+      Version: "0.1"
     })
   );
   this.transportWrapper.mockClear();
@@ -198,7 +197,7 @@ harnessProto.getSessionState = function getSessionState() {
   const state = {};
   state._transportWrapper = sess._transportWrapper; // Object reference
   state._transportWrapperState = sess._transportWrapper.state(); // String
-  state._clientId = sess._clientId;
+  state._handshakeComplete = sess._handshakeComplete;
 
   state._feedStates = {};
   _.each(sess._feedStates, (val, key) => {
@@ -256,12 +255,14 @@ expect.extend({
       };
     }
 
-    // Check ._clientId
-    if (receivedSession._clientId !== expectedState._clientId) {
+    // Check ._handshakeComplete
+    if (
+      receivedSession._handshakeComplete !== expectedState._handshakeComplete
+    ) {
       return {
         pass: false,
         message() {
-          return `expected to have ._clientId = "${expectedState._clientId}" but got "${receivedSession._clientId}"`; // prettier-ignore
+          return `expected to have ._handshakeComplete = "${expectedState._handshakeComplete}" but got "${receivedSession._handshakeComplete}"`; // prettier-ignore
         }
       };
     }
@@ -368,7 +369,7 @@ describe("The factory function", () => {
       expect(harness.session).toHaveState({
         _transportWrapper: harness.transportWrapper,
         _transportWrapperState: "disconnected",
-        _clientId: null,
+        _handshakeComplete: false,
         _feedStates: {},
         _actionCallbacks: {},
         _nextActionCallbackId: 1,
@@ -1166,7 +1167,7 @@ describe("The transport disconnect(err) event", () => {
       // Should establish full state fist
       const newState = harness.getSessionState();
       newState._transportWrapperState = "disconnected";
-      newState._clientId = null;
+      newState._handshakeComplete = false;
       newState._nextActionCallbackId = 1;
       newState._actionCallbacks = {};
       newState._feedOpenCallbacks = {};
@@ -1367,8 +1368,7 @@ describe("The HandshakeResponse processor", () => {
   const msgSuccess = {
     MessageType: "HandshakeResponse",
     Success: true,
-    Version: "0.1",
-    ClientId: "abc"
+    Version: "0.1"
   };
   const msgFailure = {
     MessageType: "HandshakeResponse",
@@ -1434,10 +1434,10 @@ describe("The HandshakeResponse processor", () => {
 
     // State
 
-    it("should set ._clientId", () => {
+    it("should set ._handshakeComplete", () => {
       connectAndSendHandshake();
       const newState = harness.getSessionState();
-      newState._clientId = "abc";
+      newState._handshakeComplete = true;
       receiveSuccess();
 
       expect(harness.session).toHaveState(newState);
@@ -2615,37 +2615,11 @@ describe("the state() function", () => {
     expect(harness.session.state()).toBe("connecting");
     harness.transportWrapper.state.mockReturnValue("connected");
     expect(harness.session.state()).toBe("connecting"); // Pre-handshake
-    harness.session._clientId = "abcde";
+    harness.session._handshakeComplete = true;
     expect(harness.session.state()).toBe("connected");
     harness.transportWrapper.state.mockReturnValue("disconnected");
-    harness.session._clientId = null;
+    harness.session._handshakeComplete = false;
     expect(harness.session.state()).toBe("disconnected");
-  });
-});
-
-describe("the id() function", () => {
-  it("should throw/return correctly through transport connect and handshake cycle", () => {
-    const harness = harnessFactory();
-    expect(() => {
-      harness.session.id();
-    }).toThrow(new Error("INVALID_STATE: Not connected."));
-    harness.transportWrapper.state.mockReturnValue("connecting");
-    expect(() => {
-      harness.session.id();
-    }).toThrow(new Error("INVALID_STATE: Not connected."));
-    harness.transportWrapper.state.mockReturnValue("connected");
-    expect(harness.session.state()).toBe("connecting"); // Pre-handshake
-    expect(() => {
-      harness.session.id();
-    }).toThrow(new Error("INVALID_STATE: Not connected."));
-    harness.session._clientId = "abcde";
-    expect(harness.session.state()).toBe("connected");
-    expect(harness.session.id()).toBe("abcde");
-    harness.transportWrapper.state.mockReturnValue("disconnected");
-    harness.session._clientId = null;
-    expect(() => {
-      harness.session.id();
-    }).toThrow(new Error("INVALID_STATE: Not connected."));
   });
 });
 

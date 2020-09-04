@@ -179,8 +179,7 @@ harnessProto.connectClient = async function connectClient() {
     JSON.stringify({
       MessageType: "HandshakeResponse",
       Success: true,
-      Version: "0.1",
-      ClientId: "SOME_CLIENT_ID"
+      Version: "0.1"
     })
   );
 
@@ -1299,7 +1298,6 @@ For each operation, check
   - Error and return values
   - Client and feed state function return values/errors
       client.state()
-      client.id()
       feed.desiredState()
       feed.state()
       feed.data()
@@ -1355,9 +1353,6 @@ describe("The client.connect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("disconnected");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -1376,9 +1371,6 @@ describe("The client.connect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("connecting");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -1399,14 +1391,12 @@ describe("The client.connect() function", () => {
         JSON.stringify({
           MessageType: "HandshakeResponse",
           Success: true,
-          Version: "0.1",
-          ClientId: "SOME_CLIENT_ID"
+          Version: "0.1"
         })
       );
 
       // Check all state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("opening");
       expect(() => {
@@ -1432,7 +1422,6 @@ describe("The client.connect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("open");
       expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
@@ -1477,9 +1466,6 @@ describe("The client.connect() function", () => {
 
         // Check all state functions
         expect(harness.client.state()).toBe("disconnected");
-        expect(() => {
-          harness.client.id();
-        }).toThrow(new Error("INVALID_STATE: Not connected."));
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("closed");
         expect(() => {
@@ -1506,9 +1492,6 @@ describe("The client.connect() function", () => {
 
         // Check all state functions
         expect(harness.client.state()).toBe("disconnected");
-        expect(() => {
-          harness.client.id();
-        }).toThrow(new Error("INVALID_STATE: Not connected."));
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("closed");
         expect(() => {
@@ -1532,9 +1515,6 @@ describe("The client.connect() function", () => {
 
         // Check all state functions
         expect(harness.client.state()).toBe("disconnected");
-        expect(() => {
-          harness.client.id();
-        }).toThrow(new Error("INVALID_STATE: Not connected."));
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("closed");
         expect(() => {
@@ -1575,9 +1555,6 @@ describe("The client.connect() function", () => {
 
         // Check all state functions
         expect(harness.client.state()).toBe("disconnected");
-        expect(() => {
-          harness.client.id();
-        }).toThrow(new Error("INVALID_STATE: Not connected."));
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("closed");
         expect(() => {
@@ -1653,8 +1630,7 @@ describe("The client.connect() function", () => {
         JSON.stringify({
           MessageType: "HandshakeResponse",
           Success: true,
-          Version: "0.1",
-          ClientId: "SOME_CLIENT_ID"
+          Version: "0.1"
         })
       );
 
@@ -1975,8 +1951,7 @@ describe("The client.connect() function", () => {
           JSON.stringify({
             MessageType: "HandshakeResponse",
             Success: true,
-            Version: "0.1",
-            ClientId: "SOME_CLIENT_ID"
+            Version: "0.1"
           })
         );
 
@@ -2075,8 +2050,7 @@ describe("The client.connect() function", () => {
           JSON.stringify({
             MessageType: "HandshakeResponse",
             Success: true,
-            Version: "0.1",
-            ClientId: "SOME_CLIENT_ID"
+            Version: "0.1"
           })
         );
 
@@ -2335,9 +2309,6 @@ describe("The client.disconnect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("connecting");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -2358,9 +2329,6 @@ describe("The client.disconnect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("disconnected");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -2391,9 +2359,6 @@ describe("The client.disconnect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("connecting");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -2414,9 +2379,6 @@ describe("The client.disconnect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("disconnected");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -2441,7 +2403,6 @@ describe("The client.disconnect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("opening");
       expect(() => {
@@ -2462,9 +2423,6 @@ describe("The client.disconnect() function", () => {
 
       // Check all state functions
       expect(harness.client.state()).toBe("disconnected");
-      expect(() => {
-        harness.client.id();
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -9953,10 +9911,6 @@ describe("The client.state() function", () => {
   // No errors
 });
 
-describe("The client.id() function", () => {
-  // INVALID_STATE tested through the connection cycle above
-});
-
 describe("The feed.desiredState() function", () => {
   it("should throw if destroyed", () => {
     const harness = harnessFactory();
@@ -10120,7 +10074,6 @@ describe("if the transport unexpectedly disconnects", () => {
   it("should update state functions", async () => {
     // Check state functions
     expect(harness.client.state()).toBe("connected");
-    expect(harness.client.id()).toBe("SOME_CLIENT_ID");
     expect(feedDesiredClosed.desiredState()).toBe("closed");
     expect(feedDesiredClosed.state()).toBe("closed");
     expect(() => {
@@ -10151,9 +10104,6 @@ describe("if the transport unexpectedly disconnects", () => {
 
     // Check state functions
     expect(harness.client.state()).toBe("disconnected");
-    expect(() => {
-      harness.client.id();
-    }).toThrow(new Error("INVALID_STATE: Not connected."));
     expect(feedDesiredClosed.desiredState()).toBe("closed");
     expect(feedDesiredClosed.state()).toBe("closed");
     expect(() => {
@@ -10401,8 +10351,7 @@ describe("sequentially invalid server messages", () => {
         JSON.stringify({
           MessageType: "HandshakeResponse",
           Success: true,
-          Version: "0.1",
-          ClientId: "SOME_CLIENT_ID"
+          Version: "0.1"
         })
       );
 
@@ -11202,7 +11151,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
       it("state functions", async () => {
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("open");
         expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
@@ -11235,7 +11183,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
 
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("closed");
         expect(() => {
@@ -11364,7 +11311,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
       it("state functions", async () => {
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("open");
         expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
@@ -11398,7 +11344,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
 
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("closed");
         expect(() => {
@@ -11527,7 +11472,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
       it("state functions", async () => {
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("open");
         expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
@@ -11561,7 +11505,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
 
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feedWantedOpen.desiredState()).toBe("open");
         expect(feedWantedOpen.state()).toBe("open");
         expect(feedWantedOpen.data()).toEqual({ Feed: "Data2" });
@@ -11821,7 +11764,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
       it("state functions", async () => {
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feed.desiredState()).toBe("closed");
         expect(feed.state()).toBe("closed");
         expect(() => {
@@ -11852,7 +11794,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
 
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feed.desiredState()).toBe("closed");
         expect(feed.state()).toBe("closed");
         expect(() => {
@@ -11945,7 +11886,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
       it("state functions", async () => {
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feed.desiredState()).toBe("closed");
         expect(feed.state()).toBe("closed");
         expect(() => {
@@ -11976,7 +11916,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
 
         // Check state functions
         expect(harness.client.state()).toBe("connected");
-        expect(harness.client.id()).toBe("SOME_CLIENT_ID");
         expect(feed.desiredState()).toBe("closed");
         expect(feed.state()).toBe("closed");
         expect(() => {
@@ -12100,7 +12039,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
     it("state functions", async () => {
       // Check state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("open");
       expect(feedWantedOpen.data()).toEqual({ Feed: "Data" });
@@ -12124,7 +12062,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
 
       // Check state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feedWantedOpen.desiredState()).toBe("open");
       expect(feedWantedOpen.state()).toBe("closed");
       expect(() => {
@@ -12240,7 +12177,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
     it("state functions", async () => {
       // Check state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feed.desiredState()).toBe("closed");
       expect(feed.state()).toBe("closed");
       expect(() => {
@@ -12261,7 +12197,6 @@ describe("Structurally/sequentially valid FeedTermination message", () => {
 
       // Check state functions
       expect(harness.client.state()).toBe("connected");
-      expect(harness.client.id()).toBe("SOME_CLIENT_ID");
       expect(feed.desiredState()).toBe("closed");
       expect(feed.state()).toBe("closed");
       expect(() => {

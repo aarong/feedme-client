@@ -703,19 +703,6 @@ protoClientSync.disconnect = function disconnect() {
 };
 
 /**
- * Pass-through to session.id()
- * @memberof ClientSync
- * @instance
- * @returns {string}
- * @throws {Error} Passed through from session
- */
-protoClientSync.id = function id() {
-  dbgClient("Client id requested");
-
-  return this._sessionWrapper.id();
-};
-
-/**
  * Pass-through to session.action() plus timeout functionality.
  * Arguments are checked at the session level and errors are cascaded, except
  * callback is verified because a function is always passed to the session.

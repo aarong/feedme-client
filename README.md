@@ -30,7 +30,6 @@ Library contributors and transport developers should see the
       - [client.state()](#clientstate)
       - [client.connect()](#clientconnect)
       - [client.disconnect()](#clientdisconnect)
-      - [client.id()](#clientid)
       - [client.action(...) - Callback Style](#clientaction---callback-style)
       - [client.action(...) - Promise Style](#clientaction---promise-style)
       - [client.feed(...)](#clientfeed)
@@ -286,17 +285,6 @@ Errors thrown:
 - `err.message === "INVALID_STATE: ..."`
 
   The client state is not `connecting` or `connected`.
-
-##### client.id()
-
-Returns the `string` client id assigned by the server during the handshake. The
-client state must be `connected`.
-
-Errors thrown:
-
-- `err.message === "INVALID_STATE: ..."`
-
-  The client state is not `connected`.
 
 ##### client.action(...) - Callback Style
 

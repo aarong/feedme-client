@@ -176,13 +176,11 @@ export default function sessionWrapperFactory(sessionSync) {
  * @instance
  */
 
-["state", "connect", "disconnect", "id", "feedState", "feedData"].forEach(
-  method => {
-    proto[method] = function callMethod(...args) {
-      return this._sessionSync[method](...args);
-    };
-  }
-);
+["state", "connect", "disconnect", "feedState", "feedData"].forEach(method => {
+  proto[method] = function callMethod(...args) {
+    return this._sessionSync[method](...args);
+  };
+});
 
 /**
  * Routed to SessionSync and callbacks are deferred.

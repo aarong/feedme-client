@@ -189,7 +189,7 @@ function feedWrapperFactory(feedSync) {
  * @instance
  */
 
-["state", "connect", "disconnect", "id"].forEach(method => {
+["state", "connect", "disconnect"].forEach(method => {
   clientWrapperProto[method] = function callMethod(...args) {
     return this._clientSync[method](...args);
   };

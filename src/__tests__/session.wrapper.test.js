@@ -133,45 +133,6 @@ describe("The sessionWrapper.disconnect() function", () => {
   });
 });
 
-describe("The sessionWrapper.id() function", () => {
-  it("should call the underlying with the correct args", () => {
-    const mockFn = jest.fn();
-    const wrapper = sessionWrapper(
-      emitter({
-        id: mockFn
-      })
-    );
-    wrapper.id("some", "args");
-    expect(mockFn.mock.calls.length).toBe(1);
-    expect(mockFn.mock.calls[0].length).toBe(2);
-    expect(mockFn.mock.calls[0][0]).toBe("some");
-    expect(mockFn.mock.calls[0][1]).toBe("args");
-  });
-
-  it("should relay error if the underlying throws", () => {
-    const err = new Error("SOME_ERROR");
-    const wrapper = sessionWrapper(
-      emitter({
-        id: () => {
-          throw err;
-        }
-      })
-    );
-    expect(() => {
-      wrapper.id();
-    }).toThrow(err);
-  });
-
-  it("should relay return value if the underlying succeeds", () => {
-    const wrapper = sessionWrapper(
-      emitter({
-        id: () => "some_value"
-      })
-    );
-    expect(wrapper.id()).toBe("some_value");
-  });
-});
-
 describe("The sessionWrapper.feedState() function", () => {
   it("should call the underlying with the correct args", () => {
     const mockFn = jest.fn();
