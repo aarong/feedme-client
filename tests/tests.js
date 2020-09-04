@@ -2704,13 +2704,6 @@ describe("The client.action() function", () => {
       }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
     });
 
-    it("should throw if not connected", () => {
-      const harness = harnessFactory();
-      expect(() => {
-        harness.client.action("SomeAction", {}, () => {});
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
-    });
-
     it("should return void on success", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
@@ -2729,13 +2722,6 @@ describe("The client.action() function", () => {
       );
     });
 
-    it("should throw if not connected", () => {
-      const harness = harnessFactory();
-      expect(() => {
-        harness.client.action("SomeAction", {});
-      }).toThrow(new Error("INVALID_STATE: Not connected."));
-    });
-
     it("should return promise on success", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
@@ -2752,7 +2738,20 @@ describe("The client.action() function", () => {
   // Transport calls
 
   describe("transport calls - callback style", () => {
-    it("should send an Action message on the transport", async () => {
+    it("if not connected should send an Action message on the transport", async () => {
+      const harness = harnessFactory();
+
+      // Invoke an action
+      harness.client.action("SomeAction", { Action: "Arg" }, () => {});
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+
+    it("if connected should send an Action message on the transport", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
 
@@ -2780,7 +2779,22 @@ describe("The client.action() function", () => {
   });
 
   describe("transport calls - promise style", () => {
-    it("should send an Action message on the transport", async () => {
+    it("if not connected should send an Action message on the transport", async () => {
+      const harness = harnessFactory();
+
+      // Invoke an action
+      harness.client.action("SomeAction", { Action: "Arg" }).catch(() => {
+        // Prevent unhandled rejection from failing test suite
+      });
+
+      // Check all transport calls
+      expect(harness.transport.connect.calls.count()).toBe(0);
+      expect(harness.transport.disconnect.calls.count()).toBe(0);
+      expect(harness.transport.send.calls.count()).toBe(0);
+      expect(harness.transport.state.calls.count() >= 0).toBe(true);
+    });
+
+    it("if connected should send an Action message on the transport", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
 
@@ -2810,6 +2824,27 @@ describe("The client.action() function", () => {
   // Callbacks
 
   describe("callbacks - callback style", () => {
+    it("should operate correctly if initially disconnected", async () => {
+      const harness = harnessFactory();
+
+      // Invoke an action
+      const cb = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb);
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(0);
+
+      await delay(DEFER_MS); // Flush callbacks
+
+      // Check callbacks
+      expect(cb.calls.count()).toBe(1);
+      expect(cb.calls.argsFor(0).length).toBe(1);
+      expect(cb.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: Not connected."
+      );
+    });
+
     it("should operate correctly through a timeout cycle to final success", async () => {
       const timeoutMs = 1000;
       const harness = harnessFactory({
@@ -3044,7 +3079,7 @@ describe("The client.action() function", () => {
       });
     });
 
-    it("should operate correctly on disconnect, with action callback before feed close event before disconnect event", async () => {
+    it("should operate correctly on post-send disconnect, with action callback before feed close event before disconnect event", async () => {
       const harness = harnessFactory();
       await harness.connectClient();
 
@@ -3098,6 +3133,19 @@ describe("The client.action() function", () => {
   });
 
   describe("callbacks - promise style", () => {
+    it("should operate correctly if initially disconnected", done => {
+      const harness = harnessFactory();
+
+      harness.client
+        .action("SomeAction", { Action: "Arg" })
+        .catch((...args) => {
+          expect(args.length).toBe(1);
+          expect(args[0]).toEqual(jasmine.any(Error));
+          expect(args[0].message).toBe("DISCONNECTED: Not connected.");
+          done();
+        });
+    });
+
     it("should operate correctly on action success", done => {
       const harness = harnessFactory();
       harness
@@ -3217,7 +3265,7 @@ describe("The client.action() function", () => {
         });
     });
 
-    it("should operate correctly on disconnect, with promise settlement before feed close event before disconnect event", done => {
+    it("should operate correctly on post-send disconnect, with promise settlement before feed close event before disconnect event", done => {
       const harness = harnessFactory();
 
       const order = [];

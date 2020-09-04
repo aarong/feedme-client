@@ -493,8 +493,12 @@ proto.action = function action(name, args, cb) {
   }
 
   // Transport connected and handshake complete?
+  // Treat invalid state as an operational error and thus call back, don't throw
+  // Applications should not have to check state for each action or wrap action
+  // calls in a try/catch block (keep error handling in one place)
   if (this.state() !== "connected") {
-    throw new Error("INVALID_STATE: Not connected.");
+    cb(new Error("DISCONNECTED: Not connected."));
+    return; // Stop
   }
 
   // Generate a unique callback id

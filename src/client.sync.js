@@ -720,7 +720,7 @@ protoClientSync.disconnect = function disconnect() {
 protoClientSync.action = function action(name, args, callback) {
   dbgClient("Action requested");
 
-  // Check callback
+  // Check callback (function always passed to session)
   if (!check.function(callback)) {
     throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }

@@ -570,15 +570,64 @@ describe("The .action() function", () => {
     }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
-  it("should throw an error if not connected", () => {
-    harness.session.disconnect();
-    harness.transportWrapper.state.mockReturnValue("disconnected");
-    expect(() => {
-      harness.session.action("myActionName", {}, () => {});
-    }).toThrow(new Error("INVALID_STATE: Not connected."));
+  describe("can return success - not connected", () => {
+    // Events
+
+    it("should emit no events", () => {
+      const harness2 = harnessFactory();
+      const sessionListener = harness.createSessionListener();
+      harness2.session.action("myAction", { arg: "val" }, () => {});
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+    });
+
+    // State
+
+    it("should not change the state", () => {
+      const harness2 = harnessFactory();
+      const newState = harness.getSessionState();
+      harness2.session.action("myAction", { arg: "val" }, () => {});
+      expect(harness.session).toHaveState(newState);
+    });
+
+    // Transport
+
+    it("should do nothing on the transport", () => {
+      const harness2 = harnessFactory();
+      harness2.session.action("myAction", { arg: "val" }, () => {});
+      expect(harness2.transportWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness2.transportWrapper.disconnect.mock.calls.length).toBe(0);
+      expect(harness2.transportWrapper.send.mock.calls.length).toBe(0);
+    });
+
+    // Callbacks
+
+    it("should call back DISCONNECTED error", () => {
+      const harness2 = harnessFactory();
+      const cb = jest.fn();
+      harness2.session.action("myAction", { arg: "val" }, cb);
+      expect(cb.mock.calls.length).toBe(1);
+      expect(cb.mock.calls[0].length).toBe(1);
+      expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
+      expect(cb.mock.calls[0][0].message).toBe("DISCONNECTED: Not connected.");
+    });
+
+    // Return value
+
+    it("should return nothing", () => {
+      expect(harness.session.action("myAction", {}, () => {})).toBeUndefined();
+    });
   });
 
-  describe("can return success", () => {
+  describe("can return success - connected", () => {
     // Events
 
     it("should emit no events", () => {

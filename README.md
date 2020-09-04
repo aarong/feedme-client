@@ -340,15 +340,17 @@ Errors called back:
   `options.actionTimeoutMs`. The library will discard any subsequent response
   from the server.
 
-- `err.message === "DISCONNECTED: ..."`
+* `err.message === "DISCONNECTED: ..."`
 
-  The client disconnected from the server before it received a response. The
-  disconnect may have resulted from a call to `client.disconnect()` or due to a
-  transport problem. The action callback will always be invoked before any feed
-  close events are emitted, after which the client disconnect event will be
-  emitted.
+  The client was not connected to the server at the time of the action
+  invocation or the client disconnected from the server before it received a
+  response. If the client was connected to the server at the time of the action
+  invocation, the subsequent disconnect may have resulted from a call to
+  `client.disconnect()` or due to a transport connectivity failure. In both
+  cases, the action callback will always be invoked before any feed close events
+  are emitted, after which the client disconnect event will be emitted.
 
-- `err.message === "REJECTED: ..."`
+* `err.message === "REJECTED: ..."`
 
   The server rejected the action request.The error details returned by the
   server are available in `err.serverErrorCode` (string) and
@@ -378,10 +380,6 @@ Errors thrown:
 
   There was a problem with one or more of the supplied arguments.
 
-- `err.message === "INVALID_STATE: ..."`
-
-  The client state is not `connected`.
-
 Errors returned via promise rejection:
 
 - `err.message === "TIMEOUT: ..."`
@@ -391,11 +389,13 @@ Errors returned via promise rejection:
 
 - `err.message === "DISCONNECTED: ..."`
 
-  The client disconnected from the server before it received a response. The
-  disconnect may have resulted from a call to `client.disconnect()` or due to a
-  transport problem. The action promise will always be settled before any feed
-  close events are emitted, after which the client disconnect event will be
-  emitted.
+  The client was not connected to the server at the time of the action
+  invocation or the client disconnected from the server before it received a
+  response. If the client was connected to the server at the time of the action
+  invocation, the subsequent disconnect may have resulted from a call to
+  `client.disconnect()` or due to a transport connectivity failure. In both
+  cases, the action promise will always be settled before any feed close events
+  are emitted, after which the client disconnect event will be emitted.
 
 - `err.message === "REJECTED: ..."`
 
