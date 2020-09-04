@@ -495,7 +495,7 @@ function clientSyncFactory(options) {
  * was called.
  * @callback feedOpenResponseCallback
  * @memberof ClientSync
- * @param {?Error}      err       Only present on error
+ * @param {?Error}    err       Only present on error
  * @param {?Object}   feedData  Only present on success
  */
 
@@ -1373,10 +1373,12 @@ protoClientSync._informServerFeedOpening = function _informServerFeedOpening(
  * @private
  * @param {string}  feedName
  * @param {Object}  feedArgs
+ * @param {Object}  feedData
  */
 protoClientSync._informServerFeedOpen = function _informServerFeedOpen(
   feedName,
-  feedArgs
+  feedArgs,
+  feedData
 ) {
   dbgClient("Informing server feed open");
 
@@ -1388,7 +1390,7 @@ protoClientSync._informServerFeedOpen = function _informServerFeedOpen(
 
   // Inform feed objects as appropriate
   _each(this._appFeeds[feedSerial], appFeed => {
-    appFeed._serverFeedOpen();
+    appFeed._serverFeedOpen(feedData);
   });
 };
 
@@ -1524,7 +1526,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
         );
         this._informServerFeedClosed(feedName, feedArgs, err);
       },
-      err => {
+      (err, feedData) => {
         // Response callback
         if (err) {
           dbgClient("Feed open request returned error");
@@ -1532,7 +1534,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
           // The error is either DISCONNECTED or REJECTED - don't _consider in either case
         } else {
           dbgClient("Feed open request returned success");
-          this._informServerFeedOpen(feedName, feedArgs);
+          this._informServerFeedOpen(feedName, feedArgs, feedData);
           this._considerFeedState(feedName, feedArgs); // Desired state may have changed
         }
       }
@@ -1820,8 +1822,9 @@ protoFeedSync._serverFeedOpening = function _serverFeedOpening() {
  * @memberof FeedSync
  * @instance
  * @private
+ * @param {Object} feedData
  */
-protoFeedSync._serverFeedOpen = function _serverFeedOpen() {
+protoFeedSync._serverFeedOpen = function _serverFeedOpen(feedData) {
   dbgFeed("Observed server feed open");
 
   // Do nothing if feed is desired closed
@@ -1834,9 +1837,9 @@ protoFeedSync._serverFeedOpen = function _serverFeedOpen() {
   if (this._lastStateEmission === "close") {
     // Happens after feed open timeouts
     this._emitOpening();
-    this._emitOpen();
+    this._emitOpen(feedData);
   } else {
-    this._emitOpen();
+    this._emitOpen(feedData);
   }
 };
 
@@ -1950,12 +1953,12 @@ protoFeedSync._emitOpening = function _emitOpening() {
  * @private
  * @param {Object} feedData
  */
-protoFeedSync._emitOpen = function _emitOpen() {
+protoFeedSync._emitOpen = function _emitOpen(feedData) {
   dbgFeed("Emitting open");
 
   this._lastStateEmission = "open";
   this._lastCloseError = null;
-  this.emit("open");
+  this.emit("open", feedData);
 };
 
 // Internal helper

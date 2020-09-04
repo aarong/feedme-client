@@ -1424,12 +1424,14 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       const feedListener = harness.createFeedListener(feed);
       harness.sessionWrapper.state.mockReturnValue("connected");
       harness.sessionWrapper.feedState.mockReturnValue("open");
+      harness.sessionWrapper.feedData.mockReturnValue({ feed: "data" });
       feed.desireOpen();
 
       expect(feedListener.opening.mock.calls.length).toBe(1);
       expect(feedListener.opening.mock.calls[0].length).toBe(0);
       expect(feedListener.open.mock.calls.length).toBe(1);
-      expect(feedListener.open.mock.calls[0].length).toBe(0);
+      expect(feedListener.open.mock.calls[0].length).toBe(1);
+      expect(feedListener.open.mock.calls[0][0]).toEqual({ feed: "data" });
       expect(feedListener.close.mock.calls.length).toBe(0);
       expect(feedListener.action.mock.calls.length).toBe(0);
     });
@@ -4149,11 +4151,12 @@ describe("The client._considerFeedState() function", () => {
 
     // Should emit opening, open on late success
     const feedListener3 = harness.createFeedListener(feed);
-    cb(undefined);
+    cb(undefined, { feed: "data" });
 
     expect(feedListener3.opening.mock.calls.length).toBe(1);
     expect(feedListener3.open.mock.calls.length).toBe(1);
-    expect(feedListener3.open.mock.calls[0].length).toBe(0);
+    expect(feedListener3.open.mock.calls[0].length).toBe(1);
+    expect(feedListener3.open.mock.calls[0][0]).toEqual({ feed: "data" });
     expect(feedListener3.close.mock.calls.length).toBe(0);
     expect(feedListener3.action.mock.calls.length).toBe(0);
   });
@@ -4231,11 +4234,12 @@ describe("The client._considerFeedState() function", () => {
     // Should emit open
     harness.sessionWrapper.feedState.mockReturnValue("open");
     const feedListener2 = harness.createFeedListener(feed);
-    cb(undefined);
+    cb(undefined, { feed: "data" });
 
     expect(feedListener2.opening.mock.calls.length).toBe(0);
     expect(feedListener2.open.mock.calls.length).toBe(1);
-    expect(feedListener2.open.mock.calls[0].length).toBe(0);
+    expect(feedListener2.open.mock.calls[0].length).toBe(1);
+    expect(feedListener2.open.mock.calls[0][0]).toEqual({ feed: "data" });
     expect(feedListener2.close.mock.calls.length).toBe(0);
     expect(feedListener2.action.mock.calls.length).toBe(0);
   });
@@ -4751,11 +4755,12 @@ describe("The client._considerFeedState() function", () => {
         const feedListener = harness.createFeedListener(feed);
         harness.sessionWrapper.feedState.mockReturnValue("open");
         harness.sessionWrapper.feedData.mockReturnValue({ feed: "data" });
-        cb(); // Success
+        cb(undefined, { feed: "data" }); // Success
 
         expect(feedListener.opening.mock.calls.length).toBe(0);
         expect(feedListener.open.mock.calls.length).toBe(1);
-        expect(feedListener.open.mock.calls[0].length).toBe(0);
+        expect(feedListener.open.mock.calls[0].length).toBe(1);
+        expect(feedListener.open.mock.calls[0][0]).toEqual({ feed: "data" });
         expect(feedListener.close.mock.calls.length).toBe(0);
         expect(feedListener.action.mock.calls.length).toBe(0);
       });
@@ -6256,7 +6261,8 @@ describe("The client._informServerFeedOpen() and feed._serverFeedOpen() function
     expect(feedListener.opening.mock.calls.length).toBe(1);
     expect(feedListener.opening.mock.calls[0].length).toBe(0);
     expect(feedListener.open.mock.calls.length).toBe(1);
-    expect(feedListener.open.mock.calls[0].length).toBe(0);
+    expect(feedListener.open.mock.calls[0].length).toBe(1);
+    expect(feedListener.open.mock.calls[0][0]).toEqual({ feed: "data" });
     expect(feedListener.close.mock.calls.length).toBe(0);
     expect(feedListener.action.mock.calls.length).toBe(0);
   });
@@ -6281,7 +6287,8 @@ describe("The client._informServerFeedOpen() and feed._serverFeedOpen() function
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
     expect(feedListener.open.mock.calls.length).toBe(1);
-    expect(feedListener.open.mock.calls[0].length).toBe(0);
+    expect(feedListener.open.mock.calls[0].length).toBe(1);
+    expect(feedListener.open.mock.calls[0][0]).toEqual({ feed: "data" });
     expect(feedListener.close.mock.calls.length).toBe(0);
     expect(feedListener.action.mock.calls.length).toBe(0);
   });

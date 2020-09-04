@@ -1678,7 +1678,10 @@ describe("The client.connect() function", () => {
       expect(clientListener.transportError.calls.count()).toBe(0);
       expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
       expect(feedWantedOpenListener.open.calls.count(1)).toBe(1);
-      expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+      expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+      expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+        Feed: "Data"
+      });
       expect(feedWantedOpenListener.close.calls.count()).toBe(0);
       expect(feedWantedOpenListener.action.calls.count()).toBe(0);
       expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -3582,7 +3585,10 @@ describe("The feed.desireOpen() function", () => {
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -4021,7 +4027,10 @@ describe("The feed.desireOpen() function", () => {
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -4502,7 +4511,10 @@ describe("The feed.desireOpen() function", () => {
           // Check events
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -5133,12 +5145,20 @@ describe("The feed.desireOpen() function", () => {
           expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(1);
           expect(
             feedAlreadyWantedOpenListener.open.calls.argsFor(0).length
-          ).toBe(0);
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.open.calls.argsFor(0)[0]
+          ).toEqual({
+            Feed: "Data"
+          });
           expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -5696,12 +5716,18 @@ describe("The feed.desireOpen() function", () => {
           expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(1);
           expect(
             feedAlreadyWantedOpenListener.open.calls.argsFor(0).length
-          ).toBe(0);
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.open.calls.argsFor(0)[0]
+          ).toEqual({ Feed: "Data" });
           expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -6173,7 +6199,10 @@ describe("The feed.desireOpen() function", () => {
         expect(feedWantedOpenListener.opening.calls.count()).toBe(1);
         expect(feedWantedOpenListener.opening.calls.argsFor(0).length).toBe(0);
         expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-        expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+        expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+        expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+          Feed: "Data"
+        });
         expect(feedWantedOpenListener.close.calls.count()).toBe(0);
         expect(feedWantedOpenListener.action.calls.count()).toBe(0);
         expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -6393,12 +6422,18 @@ describe("The feed.desireOpen() function", () => {
           expect(feedAlreadyWantedOpenListener.open.calls.count()).toBe(1);
           expect(
             feedAlreadyWantedOpenListener.open.calls.argsFor(0).length
-          ).toBe(0);
+          ).toBe(1);
+          expect(
+            feedAlreadyWantedOpenListener.open.calls.argsFor(0)[0]
+          ).toEqual({ Feed: "Data" });
           expect(feedAlreadyWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedAlreadyWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
           expect(feedWantedClosedListener.opening.calls.count()).toBe(0);
@@ -8771,7 +8806,10 @@ describe("The feed.desireClosed() function", () => {
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
 
@@ -9782,7 +9820,10 @@ describe("The feed.desireClosed() function", () => {
           expect(feedWantedClosedListener.action.calls.count()).toBe(0);
           expect(feedWantedOpenListener.opening.calls.count()).toBe(0);
           expect(feedWantedOpenListener.open.calls.count()).toBe(1);
-          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(0);
+          expect(feedWantedOpenListener.open.calls.argsFor(0).length).toBe(1);
+          expect(feedWantedOpenListener.open.calls.argsFor(0)[0]).toEqual({
+            Feed: "Data"
+          });
           expect(feedWantedOpenListener.close.calls.count()).toBe(0);
           expect(feedWantedOpenListener.action.calls.count()).toBe(0);
         });
