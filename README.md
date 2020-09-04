@@ -662,7 +662,11 @@ No arguments are passed to the listeners.
 
 Emitted when the actual feed object state changes from `opening` to `open`.
 
-No arguments are passed to the listeners.
+Arguments passed to the listeners:
+
+1. `feedData` (object)
+
+   The feed initial state of the feed data.
 
 ##### close
 
