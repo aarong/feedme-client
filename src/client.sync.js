@@ -304,7 +304,7 @@ function clientSyncFactory(options) {
    * @private
    * @type {string}
    */
-  clientSync._lastSessionWrapperState = "disconnected";
+  clientSync._lastSessionWrapperStateEmission = "disconnect";
 
   /**
    * Feed API objects. Destroyed objects are removed.
@@ -831,7 +831,7 @@ protoClientSync._processConnecting = function _processConnecting() {
   dbgClient("Observed session connecting event");
 
   this.emit("connecting");
-  this._lastSessionWrapperState = "connecting";
+  this._lastSessionWrapperStateEmission = "connecting";
 };
 
 /**
@@ -857,7 +857,7 @@ protoClientSync._processConnect = function _processConnect() {
     this._considerFeedState(feedName, feedArgs); // Will open
   });
 
-  this._lastSessionWrapperState = "connected";
+  this._lastSessionWrapperStateEmission = "connect";
 };
 
 /**
@@ -919,7 +919,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   });
 
   // Failure on connecting - retries
-  if (this._lastSessionWrapperState === "connecting") {
+  if (this._lastSessionWrapperStateEmission === "connecting") {
     // Schedule a connection retry on TIMEOUT or DISCONNECT but not HANDSHAKE_REJECTED
     if (err && !_startsWith(err.message, "HANDSHAKE_REJECTED")) {
       // Only schedule if configured and below the configured retry threshold
@@ -949,7 +949,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   }
 
   // Failure on connected - reconnects
-  if (this._lastSessionWrapperState === "connected") {
+  if (this._lastSessionWrapperStateEmission === "connect") {
     // Reconnect if this was a transport issue, not a call to disconnect()
     // No need to verify that the session state is currently disconnected
     // The transport is required to remain disconnected when it loses a connection
@@ -959,7 +959,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     }
   }
 
-  this._lastSessionWrapperState = "disconnected";
+  this._lastSessionWrapperStateEmission = "disconnect";
 };
 
 /**
@@ -1651,13 +1651,14 @@ protoClientSync._connectTimeoutCancel = function _connectTimeoutCancel() {
 protoClientSync._connect = function _connect() {
   dbgClient("Attempting to connect the session");
 
-  // Connect the session - could fail, so before the timeout is set
+  // Connect the session - could fail
   this._sessionWrapper.connect();
 
   // Success
 
   // Transport state could be connecting, connected, or disconnected
-  // Session state could be connecting or disconnected
+  // Session state could be connecting or disconnected, but not connected
+  // because the handshake is always sent asynchronously
 
   // Set a timeout for the connection attempt?
   if (

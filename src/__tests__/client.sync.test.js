@@ -51,21 +51,21 @@ verifying no change.
         Check return value
 
 State
-  client._sessionWrapper                = object
-  client._sessionWrapperState           = string
-  client._lastSessionWrapperState       = string
-  client._appFeeds[ser][i]              = object
-  client._appFeedClients[ser][i]        = object
-  client._appFeedNames[ser][i]          = string
-  client._appFeedArgs[ser][i]           = object
-  client._appFeedDesiredStates[ser][i]  = string
-  client._appFeedLastEmissions[ser][i]  = string
-  client._connectTimeoutTimer           = number
-  client._connectRetryTimer             = number
-  client._connectRetryCount             = number
-  client._reopenCounts                  = object
-  client._reopenTimers                  = array
-  client._feedCloseRequested            = object
+  client._sessionWrapper                  = object
+  client._sessionWrapperState             = string
+  client._lastSessionWrapperStateEmission = string
+  client._appFeeds[ser][i]                = object
+  client._appFeedClients[ser][i]          = object
+  client._appFeedNames[ser][i]            = string
+  client._appFeedArgs[ser][i]             = object
+  client._appFeedDesiredStates[ser][i]    = string
+  client._appFeedLastEmissions[ser][i]    = string
+  client._connectTimeoutTimer             = number
+  client._connectRetryTimer               = number
+  client._connectRetryCount               = number
+  client._reopenCounts                    = object
+  client._reopenTimers                    = array
+  client._feedCloseRequested              = object
 
 1. State-modifying functionality (app- and session-triggered)
     App-triggered
@@ -211,7 +211,7 @@ harnessProto.getClientState = function getClientState() {
   state._options = _.clone(this.client._options); // Object copy
   state._sessionWrapper = this.client._sessionWrapper; // Object reference
   state._sessionWrapperState = this.client._sessionWrapper.state(); // String
-  state._lastSessionWrapperState = this.client._lastSessionWrapperState; // String
+  state._lastSessionWrapperStateEmission = this.client._lastSessionWrapperStateEmission; // String
   state._appFeeds = {}; // _appFeeds[ser][i] = object reference
   state._appFeedStates = {}; // _appFeedStates[ser][i] = { _clientSync, ... }
   _.each(this.client._appFeeds, (val, ser) => {
@@ -275,15 +275,15 @@ expect.extend({
       };
     }
 
-    // Check ._lastSessionWrapperState
+    // Check ._lastSessionWrapperStateEmission
     if (
-      receivedClient._lastSessionWrapperState !==
-      expectedState._lastSessionWrapperState
+      receivedClient._lastSessionWrapperStateEmission !==
+      expectedState._lastSessionWrapperStateEmission
     ) {
       return {
         pass: false,
         message() {
-          return "expected ._lastSessionWrapperState to match, but they didn't";
+          return "expected ._lastSessionWrapperStateEmission to match, but they didn't";
         }
       };
     }
@@ -631,7 +631,7 @@ describe("The client() factory function", () => {
         },
         _sessionWrapper: harness.sessionWrapper,
         _sessionWrapperState: "disconnected",
-        _lastSessionWrapperState: "disconnected",
+        _lastSessionWrapperStateEmission: "disconnect",
         _appFeeds: {},
         _appFeedStates: {},
         _connectTimeoutTimer: null,
@@ -730,7 +730,7 @@ describe("The client.connect() function", () => {
       expect(harness.client).toHaveState(newState);
     });
 
-    it("should set a connect timeout if configured and post-connect session state is not connecting", () => {
+    it("should not set a connect timeout if configured and post-connect session state is disconnected", () => {
       const newState = harness.getClientState();
       newState._sessionWrapperState = "disconnected";
       harness.sessionWrapper.connect = jest.fn(() => {
@@ -806,7 +806,7 @@ describe("The client.connect() function", () => {
         harness.sessionWrapper.emit("connecting");
         const newState = harness.getClientState();
         newState._sessionWrapperState = "disconnected";
-        newState._lastSessionWrapperState = "disconnected"; // Since _processDisconnect() is done
+        newState._lastSessionWrapperStateEmission = "disconnect"; // Since _processDisconnect() is done
         newState._connectTimeoutTimer = null;
         newState._connectRetryTimer = 9999;
         newState._connectRetryCount = 1;
@@ -2285,10 +2285,10 @@ describe("The client._processConnecting() function", () => {
 
   // State
 
-  it("should update _lastSessionWrapperState to connecting", () => {
+  it("should update _lastSessionWrapperStateEmission to connecting", () => {
     harness.client.connect();
     const newState = harness.getClientState();
-    newState._lastSessionWrapperState = "connecting";
+    newState._lastSessionWrapperStateEmission = "connecting";
     harness.sessionWrapper.emit("connecting");
 
     expect(harness.client).toHaveState(newState);
@@ -2373,7 +2373,7 @@ describe("The client._processConnect() function", () => {
     const newState = harness.getClientState();
     newState._connectTimeoutTimer = null;
     newState._connectRetryCount = 0;
-    newState._lastSessionWrapperState = "connected";
+    newState._lastSessionWrapperStateEmission = "connect";
     harness.sessionWrapper.emit("connect");
 
     expect(harness.client).toHaveState(newState);
@@ -2499,7 +2499,7 @@ describe("The client._processDisconnect() function", () => {
     // Reset feed-reopen counts and timers - N/A (was connecting)
     // Set connect retry timer and update count - N/A (requested)
     // Update last session state
-    newState._lastSessionWrapperState = "disconnected";
+    newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit("disconnect");
 
     expect(harness.client).toHaveState(newState);
@@ -2519,7 +2519,7 @@ describe("The client._processDisconnect() function", () => {
     // Reset feed-reopen counts and timers - N/A (was connecting)
     // Set connect retry timer and update count - N/A (not on handshake fail)
     // Update last session state
-    newState._lastSessionWrapperState = "disconnected";
+    newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit("disconnect");
 
     expect(harness.client).toHaveState(newState);
@@ -2538,7 +2538,7 @@ describe("The client._processDisconnect() function", () => {
     newState._connectRetryTimer = 9999;
     newState._connectRetryCount = 1;
     // Update last session state
-    newState._lastSessionWrapperState = "disconnected";
+    newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit("disconnect");
 
     expect(harness.client).toHaveState(newState);
@@ -2560,7 +2560,7 @@ describe("The client._processDisconnect() function", () => {
     newState._connectRetryTimer = null;
     newState._connectRetryCount = 1;
     // Update last session state
-    newState._lastSessionWrapperState = "disconnected";
+    newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit("disconnect");
 
     expect(harness.client).toHaveState(newState);
@@ -2604,7 +2604,7 @@ describe("The client._processDisconnect() function", () => {
     // Update last session state
     const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
     newState._appFeedStates[feedSerial][0]._lastStateEmission = "close";
-    newState._lastSessionWrapperState = "disconnected";
+    newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit("disconnect");
 
     expect(harness.client).toHaveState(newState);
@@ -2647,7 +2647,7 @@ describe("The client._processDisconnect() function", () => {
     // Update last session state
     const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
     newState._appFeedStates[feedSerial][0]._lastStateEmission = "close";
-    newState._lastSessionWrapperState = "disconnected";
+    newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit("disconnect", new Error("FAILURE: ."));
 
     expect(harness.client).toHaveState(newState);
