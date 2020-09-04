@@ -294,7 +294,7 @@ Invokes an an action on the server. The client state must be `connected`.
 Returns nothing.
 
 If the transport encounters an immediate problem transmitting a message to the
-server then the client state may synchronously become `disconnected`.
+server then the client state will synchronously become `disconnected`.
 
 Arguments:
 
@@ -365,7 +365,7 @@ Returns a promise that resolves if the action succeeds and rejects if the action
 fails.
 
 If the transport encounters an immediate problem transmitting a message to the
-server then the client state may synchronously become `disconnected`.
+server then the client state will synchronously become `disconnected`.
 
 Arguments:
 
@@ -566,7 +566,8 @@ is desired `open` and the client disconnects and reconnects, the library will
 attempt to reopen the server feed. Returns nothing.
 
 If the transport encounters an immediate problem transmitting a message to the
-server then the client state may synchronously become `disconnected`.
+server then the client state will synchronously become `disconnected` and the
+feed state will synchronously become `closed`.
 
 Errors thrown:
 
@@ -583,7 +584,8 @@ Errors thrown:
 Sets the feed object's desired state to `closed`. Returns nothing.
 
 If the transport encounters an immediate problem transmitting a message to the
-server then the client state may synchronously become `disconnected`.
+server then the client state will synchronously become `disconnected` and the
+feed state will synchronously become `closed`.
 
 Errors thrown:
 

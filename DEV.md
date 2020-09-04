@@ -229,6 +229,10 @@ to function correctly with the library. The library aims to detect invalid
 behavior and emits a `transportError` event if the transport behaves
 unexpectedly.
 
+See the
+[Feedme WebSocket Transport](https://github.com/aarong/feedme-transport-ws) for
+a working example.
+
 ### Fundamentals
 
 Transport objects are always in one of three states: `disconnected`,
