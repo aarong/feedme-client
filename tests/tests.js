@@ -3130,6 +3130,47 @@ describe("The client.action() function", () => {
         "client disconnect"
       ]);
     });
+
+    it("should operate correctly if first action call triggers synchronous transport disconnect and then there is a second action call", async () => {
+      const harness = harnessFactory();
+      await harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Have the client disconnect synchronously on call to send
+      // The session will only call transport.send() on the first client.action()
+      harness.transport.send.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect", new Error("FAILURE: ..."));
+      });
+
+      // Invoke two actions
+      const cb1 = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb1);
+      const cb2 = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, cb2);
+
+      // Check callbacks
+      expect(cb1.calls.count()).toBe(0);
+      expect(cb2.calls.count()).toBe(0);
+
+      await delay(DEFER_MS); // Flush events and callbacks
+
+      // Check callbacks
+      expect(cb1.calls.count()).toBe(1);
+      expect(cb1.calls.argsFor(0).length).toBe(1);
+      expect(cb1.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb1.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
+      expect(cb2.calls.count()).toBe(1);
+      expect(cb2.calls.argsFor(0).length).toBe(1);
+      expect(cb2.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(cb2.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: Not connected."
+      );
+    });
   });
 
   describe("callbacks - promise style", () => {
@@ -3316,6 +3357,47 @@ describe("The client.action() function", () => {
           ]);
           done();
         });
+    });
+
+    it("should operate correctly if first action call triggers synchronous transport disconnect and then there is a second action call", async () => {
+      const harness = harnessFactory();
+      await harness.connectClient();
+
+      // Reset the transport so you can get the callback
+      harness.transport.spyClear();
+
+      // Have the client disconnect synchronously on call to send
+      // The session will only call transport.send() on the first client.action()
+      harness.transport.send.and.callFake(() => {
+        harness.transport.state.and.returnValue("disconnected");
+        harness.transport.emit("disconnect", new Error("FAILURE: ..."));
+      });
+
+      // Invoke two actions
+      const catchCb1 = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }).catch(catchCb1);
+      const catchCb2 = jasmine.createSpy();
+      harness.client.action("SomeAction", { Action: "Arg" }, catchCb2);
+
+      // Check callbacks
+      expect(catchCb1.calls.count()).toBe(0);
+      expect(catchCb2.calls.count()).toBe(0);
+
+      await delay(DEFER_MS); // Flush events and callbacks
+
+      // Check callbacks
+      expect(catchCb1.calls.count()).toBe(1);
+      expect(catchCb1.calls.argsFor(0).length).toBe(1);
+      expect(catchCb1.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(catchCb1.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: The transport disconnected."
+      );
+      expect(catchCb2.calls.count()).toBe(1);
+      expect(catchCb2.calls.argsFor(0).length).toBe(1);
+      expect(catchCb2.calls.argsFor(0)[0]).toEqual(jasmine.any(Error));
+      expect(catchCb2.calls.argsFor(0)[0].message).toBe(
+        "DISCONNECTED: Not connected."
+      );
     });
   });
 
