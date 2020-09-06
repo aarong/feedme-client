@@ -328,10 +328,6 @@ Errors thrown:
 
   There was a problem with one or more of the supplied arguments.
 
-- `err.message === "INVALID_STATE: ..."`
-
-  The client state is not `connected`.
-
 Errors called back:
 
 - `err.message === "TIMEOUT: ..."`
@@ -347,8 +343,9 @@ Errors called back:
   response. If the client was connected to the server at the time of the action
   invocation, the subsequent disconnect may have resulted from a call to
   `client.disconnect()` or due to a transport connectivity failure. In both
-  cases, the action callback will always be invoked before any feed close events
-  are emitted, after which the client disconnect event will be emitted.
+  cases, the action callback is invoked before any feed close events are
+  emitted, and feed close events are emitted before the client disconnect event
+  is emitted.
 
 * `err.message === "REJECTED: ..."`
 
@@ -394,8 +391,9 @@ Errors returned via promise rejection:
   response. If the client was connected to the server at the time of the action
   invocation, the subsequent disconnect may have resulted from a call to
   `client.disconnect()` or due to a transport connectivity failure. In both
-  cases, the action promise will always be settled before any feed close events
-  are emitted, after which the client disconnect event will be emitted.
+  cases, the action promise is rejected before any feed close events are
+  emitted, and feed close events are emitted before the client disconnect event
+  is emitted.
 
 - `err.message === "REJECTED: ..."`
 

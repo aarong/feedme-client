@@ -6,6 +6,14 @@ import delayOrig from "delay"; // eslint-disable-line import/no-extraneous-depen
 // Delay must use real timers, not fake timers
 const delay = delayOrig.createWithTimers({ clearTimeout, setTimeout });
 
+// Use fake timers
+beforeEach(() => {
+  jasmine.clock().install();
+});
+afterEach(() => {
+  jasmine.clock().uninstall();
+});
+
 /*
 
 Integration/functional tests for the built library are run on Node and in the
@@ -194,10 +202,6 @@ Ensure that initialization options behave as documented.
 */
 
 describe("The connectTimeoutMs option", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if synchronously connecting and connectTimeoutMs greater than zero, should time out appropriately - transport is connecting on timeout", async () => {
     const opts = {
       connectTimeoutMs: 1000
@@ -387,17 +391,9 @@ describe("The connectTimeoutMs option", () => {
     expect(clientListener.badClientMessage.calls.count()).toBe(0);
     expect(clientListener.transportError.calls.count()).toBe(0);
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The connectRetryMs option", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if greater than zero, should wait appropriately between connection retries", async () => {
     const opts = {
       connectRetryMs: 1000
@@ -578,17 +574,9 @@ describe("The connectRetryMs option", () => {
       expect(harness.transport.state.calls.argsFor(i).length).toBe(0);
     }
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The connectRetryBackoffMs and connectRetryMaxMs options", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("should back off as configured", async () => {
     const opts = {
       connectRetryMs: 1000,
@@ -634,17 +622,9 @@ describe("The connectRetryBackoffMs and connectRetryMaxMs options", () => {
       }
     }
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The connectRetryMaxAttempts option", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if greater than zero, should stop connection retries as configured", async () => {
     const opts = {
       connectRetryMs: 0,
@@ -713,17 +693,9 @@ describe("The connectRetryMaxAttempts option", () => {
       }
     }
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The actionTimeoutMs option", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if greater than zero, should timeout as configured", async () => {
     const opts = {
       actionTimeoutMs: 1000
@@ -770,17 +742,9 @@ describe("The actionTimeoutMs option", () => {
     jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
     expect(cb.calls.count()).toBe(0);
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The feedTimeoutMs option", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if greater than zero, should timeout as configured", async () => {
     const opts = {
       feedTimeoutMs: 1000
@@ -841,17 +805,9 @@ describe("The feedTimeoutMs option", () => {
     expect(feedListener.close.calls.count()).toBe(0);
     expect(feedListener.action.calls.count()).toBe(0);
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The reconnect option", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if true, should reconnect if the connection fails", async () => {
     const opts = {
       reconnect: true
@@ -891,17 +847,9 @@ describe("The reconnect option", () => {
       expect(harness.transport.state.calls.argsFor(i).length).toBe(0);
     }
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   it("if reopenMaxAttempts is negative, should always try to re-open the feed", async () => {
     const opts = {
       reopenMaxAttempts: -1
@@ -1278,10 +1226,6 @@ describe("The reopenMaxAttempts and reopenTrailingMs options", () => {
     expect(feedListener.close.calls.count()).toBe(0);
     expect(feedListener.action.calls.count()).toBe(0);
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 /*
@@ -1308,10 +1252,6 @@ For each operation, check
 */
 
 describe("The client.connect() function", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   // Errors and return values
 
   describe("throw and return", () => {
@@ -2260,17 +2200,9 @@ describe("The client.connect() function", () => {
   });
 
   // Callbacks - N/A
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The client.disconnect() function", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   // Errors and return values
 
   describe("throw and return", () => {
@@ -2682,17 +2614,9 @@ describe("The client.disconnect() function", () => {
   });
 
   // Callbacks - N/A
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The client.action() function", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   // Errors and return values
 
   describe("throw and return - callback style", () => {
@@ -3400,10 +3324,6 @@ describe("The client.action() function", () => {
       );
     });
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The client.feed() function", () => {
@@ -3446,10 +3366,6 @@ functions, events, and transport calls are then tested internally for each.
 */
 
 describe("The feed.desireOpen() function", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   describe("throw and return", () => {
     it("should throw if already desired open", () => {
       const harness = harnessFactory();
@@ -7162,17 +7078,9 @@ describe("The feed.desireOpen() function", () => {
       });
     });
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The feed.desireClosed() function", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   describe("throw and return", () => {
     it("should throw if already desired closed", () => {
       const harness = harnessFactory();
@@ -10022,10 +9930,6 @@ describe("The feed.desireClosed() function", () => {
       });
     });
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("The feed.destroy() function", () => {
@@ -10176,9 +10080,6 @@ describe("if the transport violates a library requirement", () => {
 });
 
 describe("if the transport unexpectedly disconnects", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
   let harness;
   let feedDesiredClosed;
   let feedClosed;
@@ -10409,10 +10310,6 @@ describe("if the transport unexpectedly disconnects", () => {
       "DISCONNECTED: The transport disconnected."
     );
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 /*
@@ -10500,10 +10397,6 @@ describe("structurally invalid server messages", () => {
 });
 
 describe("sequentially invalid server messages", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   describe("unexpected HandshakeResponse - before Handshake", () => {
     // Can't test, since Handshake is sent synchronously on transport connect
   });
@@ -11249,10 +11142,6 @@ describe("sequentially invalid server messages", () => {
 
     // Callbacks - N/A
   });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
-  });
 });
 
 describe("Structurally/sequentially valid ViolationResponse message", () => {
@@ -11290,10 +11179,6 @@ describe("Structurally/sequentially valid ViolationResponse message", () => {
 });
 
 describe("Structurally/sequentially valid ActionRevelation message", () => {
-  beforeEach(() => {
-    jasmine.clock().install();
-  });
-
   describe("if the server feed is open", () => {
     let harness;
     let feedWantedOpen;
@@ -12175,10 +12060,6 @@ describe("Structurally/sequentially valid ActionRevelation message", () => {
 
       // Callbacks - N/A
     });
-  });
-
-  afterEach(() => {
-    jasmine.clock().uninstall();
   });
 });
 
