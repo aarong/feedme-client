@@ -12,7 +12,7 @@ browser. Assume an in-scope feedmeClient() factory function.
 
 Test API promises in the user documentation, ensure that the library
 interacts appropriately with the transport, and ensure that messages
-sent via the transport abide by the Feedme spec.
+sent via the transport abide by the Feedme specification.
 
 Deferral:
 
