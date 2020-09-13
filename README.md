@@ -50,6 +50,7 @@ Library contributors and transport developers should see the
       - [feed.state()](#feedstate)
       - [feed.data()](#feeddata)
       - [feed.destroy()](#feeddestroy)
+      - [feed.destroyed()](#feeddestroyed)
     - [Feed Object Events](#feed-object-events)
       - [opening](#opening)
       - [open](#open)
@@ -645,6 +646,12 @@ Errors thrown:
 - `err.message === "DESTROYED: ..."`
 
   The feed object has already been destroyed.
+
+##### feed.destroyed()
+
+Returns a `boolean` indicating whether the feed has been destroyed.
+
+Errors thrown: None
 
 #### Feed Object Events
 

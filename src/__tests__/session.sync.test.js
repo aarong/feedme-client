@@ -618,6 +618,7 @@ describe("The .action() function", () => {
       expect(cb.mock.calls[0].length).toBe(1);
       expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(cb.mock.calls[0][0].message).toBe("DISCONNECTED: Not connected.");
+      expect(cb.mock.instances[0]).toBe(undefined);
     });
 
     // Return value

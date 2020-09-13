@@ -661,8 +661,6 @@ function feedSyncFactory(clientSync, name, args) {
  * @returns {string} Passed through from session.state()
  */
 protoClientSync.state = function state() {
-  dbgClient("State requested");
-
   return this._sessionWrapper.state();
 };
 
@@ -830,8 +828,11 @@ protoClientSync._processConnecting = function _processConnecting() {
 protoClientSync._processConnect = function _processConnect() {
   dbgClient("Observed session connect event");
 
-  // Session has returned a connection result - cancel timeout
-  this._connectTimeoutCancel();
+  // Session has returned a connection result - cancel timeout if present
+  if (this._connectTimeoutTimer) {
+    clearTimeout(this._connectTimeoutTimer);
+    this._connectTimeoutTimer = null;
+  }
 
   // The state was connecting and retries were being counted - reset
   // Timer is not set (we were connecting, not disconnected)
@@ -867,8 +868,11 @@ protoClientSync._processConnect = function _processConnect() {
 protoClientSync._processDisconnect = function _processDisconnect(err) {
   dbgClient("Observed session disconnect event");
 
-  // Session has returned a connection result - cancel timeout
-  this._connectTimeoutCancel();
+  // Session has returned a connection result - cancel timeout if present
+  if (this._connectTimeoutTimer) {
+    clearTimeout(this._connectTimeoutTimer);
+    this._connectTimeoutTimer = null;
+  }
 
   // You were connecting or connected, so no connect retry attempts are scheduled
 
@@ -1205,7 +1209,6 @@ protoClientSync._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
  * @returns {string} "open" or "closed"
  */
 protoClientSync._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
-  dbgClient("Desired feed state requested");
   return appFeed._desiredState;
 };
 
@@ -1218,8 +1221,6 @@ protoClientSync._appFeedDesiredState = function _appFeedDesiredState(appFeed) {
  * @returns {string} "open", "opening", or "closed"
  */
 protoClientSync._appFeedState = function _appFeedState(appFeed) {
-  dbgClient("Feed state requested");
-
   if (appFeed.desiredState() === "closed") {
     return "closed";
   }
@@ -1603,6 +1604,7 @@ protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
   // Open the feed
   this._sessionWrapper.feedOpen(feedName, feedArgs, (err, feedData) => {
     if (timer) {
+      dbgClient("Feed open timeout timer cleared");
       clearTimeout(timer);
     }
     callbackResponse(err, feedData);
@@ -1617,17 +1619,6 @@ protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
       callbackTimeout();
     }, this._options.feedTimeoutMs);
   }
-};
-
-/**
- * Cancel any connect timeout.
- * @memberof ClientSync
- * @instance
- * @private
- */
-protoClientSync._connectTimeoutCancel = function _connectTimeoutCancel() {
-  clearTimeout(this._connectTimeoutTimer); // May not be present
-  this._connectTimeoutTimer = null;
 };
 
 /**
@@ -1702,8 +1693,6 @@ protoFeedSync.desireClosed = function desireClosed() {
  * @throws {Error} "DESTROYED: ..."
  */
 protoFeedSync.desiredState = function desiredState() {
-  dbgFeed("Desired state requested");
-
   this._checkDestroyed();
   return this._clientSync._appFeedDesiredState(this);
 };
@@ -1716,8 +1705,6 @@ protoFeedSync.desiredState = function desiredState() {
  * @throws {Error} "DESTROYED: ..."
  */
 protoFeedSync.state = function state() {
-  dbgFeed("Actual state requested");
-
   this._checkDestroyed();
   return this._clientSync._appFeedState(this);
 };
@@ -1739,7 +1726,7 @@ protoFeedSync.data = function data() {
  * Destroys the feed object.
  * @memberof FeedSync
  * @instance
- * @throws {Error} "ALREADY_DESTROYED: ..."
+ * @throws {Error} "DESTROYED: ..."
  */
 protoFeedSync.destroy = function destroy() {
   dbgFeed("Destroy requested");
@@ -1747,6 +1734,16 @@ protoFeedSync.destroy = function destroy() {
   this._checkDestroyed();
   this._clientSync._appFeedDestroy(this);
   delete this._clientSync;
+};
+
+/**
+ * Returns an indication of whether the feed has been destroyed.
+ * @memberof FeedSync
+ * @instance
+ * @returns {boolean}
+ */
+protoFeedSync.destroyed = function destroyed() {
+  return !this._clientSync;
 };
 
 // These functions are called by the client on server feed state

@@ -201,6 +201,7 @@ describe("The clientWrapper.action() function", () => {
       expect(mockCb.mock.calls[0].length).toBe(2);
       expect(mockCb.mock.calls[0][0]).toBe(undefined);
       expect(mockCb.mock.calls[0][1]).toEqual({ action: "data" });
+      expect(mockCb.mock.instances[0]).toBe(undefined);
     });
 
     it("should callback async if underlying calls back success async", async () => {
@@ -228,6 +229,7 @@ describe("The clientWrapper.action() function", () => {
       expect(mockCb.mock.calls[0].length).toBe(2);
       expect(mockCb.mock.calls[0][0]).toBe(undefined);
       expect(mockCb.mock.calls[0][1]).toEqual({ action: "data" });
+      expect(mockCb.mock.instances[0]).toBe(undefined);
     });
 
     it("should callback async if underlying calls back failure sync", async () => {
@@ -249,6 +251,7 @@ describe("The clientWrapper.action() function", () => {
       expect(mockCb.mock.calls[0].length).toBe(1);
       expect(mockCb.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(mockCb.mock.calls[0][0].message).toBe("SOME_ERROR: ...");
+      expect(mockCb.mock.instances[0]).toBe(undefined);
     });
 
     it("should callback async if underlying calls back failure async", async () => {
@@ -276,6 +279,7 @@ describe("The clientWrapper.action() function", () => {
       expect(mockCb.mock.calls[0].length).toBe(1);
       expect(mockCb.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(mockCb.mock.calls[0][0].message).toBe("SOME_ERROR: ...");
+      expect(mockCb.mock.instances[0]).toBe(undefined);
     });
   });
 
@@ -727,6 +731,56 @@ describe("The feedWrapper.destroy() function", () => {
       })
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).destroy()).toBe(
+      "some_value"
+    );
+  });
+});
+
+describe("The feedWrapper.destroyed() function", () => {
+  it("should call the underlying with the correct args", () => {
+    const mockFn = jest.fn();
+    const wrapper = clientWrapper(
+      emitter({
+        feed: () =>
+          emitter({
+            destroyed: mockFn
+          })
+      })
+    );
+    wrapper.feed("some_feed", { feed: "args" }).destroyed("some", "args");
+    expect(mockFn.mock.calls.length).toBe(1);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0]).toBe("some");
+    expect(mockFn.mock.calls[0][1]).toBe("args");
+  });
+
+  it("should relay error if the underlying throws", () => {
+    const err = new Error("SOME_ERROR");
+    const wrapper = clientWrapper(
+      emitter({
+        feed: () =>
+          emitter({
+            destroyed: () => {
+              throw err;
+            }
+          })
+      })
+    );
+    expect(() => {
+      wrapper.feed("some_feed", { feed: "args" }).destroyed("some", "args");
+    }).toThrow(err);
+  });
+
+  it("should relay return value if the underlying succeeds", () => {
+    const wrapper = clientWrapper(
+      emitter({
+        feed: () =>
+          emitter({
+            destroyed: () => "some_value"
+          })
+      })
+    );
+    expect(wrapper.feed("some_feed", { feed: "args" }).destroyed()).toBe(
       "some_value"
     );
   });

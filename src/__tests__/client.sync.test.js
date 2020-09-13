@@ -103,6 +103,7 @@ State
     client._appFeedDesiredState() - feed.desiredState()
     client._appFeedState() - feed.state()
     client._appFeedData() - feed.data()
+    feed.destroyed()
       
 */
 
@@ -1141,6 +1142,7 @@ describe("The client.action() function", () => {
         expect(cb.mock.calls[0].length).toBe(2);
         expect(cb.mock.calls[0][0]).toBe(undefined);
         expect(cb.mock.calls[0][1]).toEqual({ action: "data" });
+        expect(cb.mock.instances[0]).toBe(undefined);
       });
 
       it("if not already timed out and failure, should call callback() with result", () => {
@@ -1154,6 +1156,7 @@ describe("The client.action() function", () => {
         expect(cb.mock.calls.length).toBe(1);
         expect(cb.mock.calls[0].length).toBe(1);
         expect(cb.mock.calls[0][0]).toBe(err);
+        expect(cb.mock.instances[0]).toBe(undefined);
       });
 
       it("if already timed out, should not call callback()", () => {
@@ -1219,6 +1222,7 @@ describe("The client.action() function", () => {
         expect(cb.mock.calls[0][0].message).toBe(
           "TIMEOUT: The server did not respond within the allocated time."
         );
+        expect(cb.mock.instances[0]).toBe(undefined);
       });
 
       it("should not call callback(TIMEOUT) if so configured", () => {
@@ -6848,5 +6852,19 @@ describe("The feed.data() and client._appFeedData() functions", () => {
 
     harness.sessionWrapper.feedData.mockReturnValue({ feed: "data" });
     expect(feed.data()).toEqual({ feed: "data" });
+  });
+});
+
+describe("The feed.destroyed() function", () => {
+  // Errors - N/A
+
+  // Success
+
+  it("should return correctly", () => {
+    const harness = harnessFactory();
+    const feed = harness.client.feed("someFeed", { arg: "val" });
+    expect(feed.destroyed()).toBe(false);
+    feed.destroy();
+    expect(feed.destroyed()).toBe(true);
   });
 });

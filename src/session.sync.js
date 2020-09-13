@@ -97,7 +97,7 @@ export default function sessionSyncFactory(transportWrapper) {
   /**
    * Callbacks for .action() calls awaiting a response from the server.
    * Indexed by internally-generated callback id, which is round-tripped to
-   * the server.
+   * the server. All callbacks are bound to the global object.
    * @memberof SessionSync
    * @instance
    * @private
@@ -401,8 +401,6 @@ export default function sessionSyncFactory(transportWrapper) {
  * @returns {string} 'disconnected', 'connecting', or 'connected'
  */
 proto.state = function state() {
-  dbg("State requested");
-
   const transportState = this._transportWrapper.state();
   if (transportState === "connected" && !this._handshakeComplete) {
     return "connecting";
@@ -469,7 +467,7 @@ proto.disconnect = function disconnect(err) {
  * @throws {Error} "INVALID_STATE: ..."
  */
 
-proto.action = function action(name, args, cb) {
+proto.action = function action(name, args, callback) {
   dbg("Action requested");
 
   // Check name
@@ -488,7 +486,7 @@ proto.action = function action(name, args, cb) {
   }
 
   // Check cb
-  if (!check.function(cb)) {
+  if (!check.function(callback)) {
     throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
@@ -497,7 +495,7 @@ proto.action = function action(name, args, cb) {
   // Applications should not have to check state for each action or wrap action
   // calls in a try/catch block (keep error handling in one place)
   if (this.state() !== "connected") {
-    cb(new Error("DISCONNECTED: Not connected."));
+    callback(new Error("DISCONNECTED: Not connected."));
     return; // Stop
   }
 
@@ -506,7 +504,7 @@ proto.action = function action(name, args, cb) {
   this._nextActionCallbackId += 1;
 
   // Save the callback function by its id
-  this._actionCallbacks[callbackId] = cb;
+  this._actionCallbacks[callbackId] = callback;
 
   // Message the server
   this._transportWrapper.send(

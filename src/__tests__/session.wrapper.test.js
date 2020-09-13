@@ -423,6 +423,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(2);
     expect(mockCb.mock.calls[0][0]).toBe(undefined);
     expect(mockCb.mock.calls[0][1]).toEqual({ feedOpen: "data" });
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 
   it("should callback async if underlying calls back success async", async () => {
@@ -450,6 +451,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(2);
     expect(mockCb.mock.calls[0][0]).toBe(undefined);
     expect(mockCb.mock.calls[0][1]).toEqual({ feedOpen: "data" });
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 
   it("should callback async if underlying calls back failure sync", async () => {
@@ -471,6 +473,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(1);
     expect(mockCb.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(mockCb.mock.calls[0][0].message).toBe("SOME_ERROR: ...");
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 
   it("should callback async if underlying calls back failure async", async () => {
@@ -498,6 +501,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(1);
     expect(mockCb.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(mockCb.mock.calls[0][0].message).toBe("SOME_ERROR: ...");
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 });
 
@@ -568,6 +572,7 @@ describe("The sessionWrapper.feedClose() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(2);
     expect(mockCb.mock.calls[0][0]).toBe(undefined);
     expect(mockCb.mock.calls[0][1]).toEqual({ feedClose: "data" });
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 
   it("should callback async if underlying calls back success async", async () => {
@@ -595,6 +600,7 @@ describe("The sessionWrapper.feedClose() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(2);
     expect(mockCb.mock.calls[0][0]).toBe(undefined);
     expect(mockCb.mock.calls[0][1]).toEqual({ feedClose: "data" });
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 
   it("should callback async if underlying calls back failure sync", async () => {
@@ -616,6 +622,7 @@ describe("The sessionWrapper.feedClose() function", () => {
     expect(mockCb.mock.calls[0].length).toBe(1);
     expect(mockCb.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(mockCb.mock.calls[0][0].message).toBe("SOME_ERROR: ...");
+    expect(mockCb.mock.instances[0]).toBe(undefined);
   });
 
   it("should callback async if underlying calls back failure async", async () => {

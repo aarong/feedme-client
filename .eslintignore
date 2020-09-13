@@ -1,0 +1,2 @@
+# .eslintignore file is only valid in project root
+tests/node.tmp.js

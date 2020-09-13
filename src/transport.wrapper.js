@@ -160,8 +160,6 @@ export default function transportWrapperFactory(transport) {
  * @throws {Error} "TRANSPORT_ERROR: ...""
  */
 proto.state = function state() {
-  dbg("State requested");
-
   // Try to get the state
   let transportState;
   let transportErr;

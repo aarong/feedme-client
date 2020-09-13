@@ -457,7 +457,7 @@ import targets from "../targets";
     const platformPassed =
       platformResult &&
       platformResult.failed === 0 &&
-      platformResult.passed > 100;
+      platformResult.passed > 0;
     // Display the platform name and result
     if (platformPassed) {
       console.log(`PASSED ${platformName} passed all tests`);

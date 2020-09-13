@@ -300,13 +300,21 @@ clientWrapperProto.feed = function feed(...args) {
  * @instance
  */
 
+/**
+ * Routed directly to FeedSync.
+ * @method destroyed
+ * @memberof FeedWrapper
+ * @instance
+ */
+
 [
   "desireOpen",
   "desireClosed",
   "desiredState",
   "state",
   "data",
-  "destroy"
+  "destroy",
+  "destroyed"
 ].forEach(method => {
   feedWrapperProto[method] = function callMethod(...args) {
     return this._feedSync[method](...args);

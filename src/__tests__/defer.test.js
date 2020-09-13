@@ -38,7 +38,7 @@ it("should correctly handle a callback invocation that throws an error", async (
   expect(cb.mock.calls.length).toBe(1);
   expect(cb.mock.calls[0].length).toBe(0);
 
-  // await delay(0); // Move past setTtimeout
+  // await delay(0); // Move past setTimeout
   // expect(uncaughtExceptionListener.mock.calls.length).toBe(1);
   // expect(uncaughtExceptionListener.mock.calls[0].length).toBe(1);
   // expect(uncaughtExceptionListener.mock.calls[0][0]).toBe(err);

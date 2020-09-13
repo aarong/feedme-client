@@ -16,7 +16,7 @@ const promise = Promise.resolve();
 export default function defer(cb, ...args) {
   promise
     .then(() => {
-      cb(...args); // Invoke with no arguments (then callback receives undefined)
+      cb(...args);
     })
     .catch(err => {
       setTimeout(() => {
