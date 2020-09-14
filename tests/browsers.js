@@ -263,13 +263,20 @@ import targets from "../targets";
     ["macOS 10.12", "Safari", "11"]
   ];
 
+  // Retrieve an array of test files
+  console.log("Retrieving array of test files...");
+  const files = await promisify(fs.readdir)(path.resolve(__dirname, "tests"));
+  const tests = files
+    .filter(file => _.endsWith(file, ".test.js"))
+    .map(file => path.resolve(__dirname, "tests", file));
+
   // Transpile and bundle the tests and drop in webroot
   // Webpack bundling required to insert promise polyfills and dependencies like component-emitter
   console.log("Transpiling and bundling tests...");
   let webpackStats;
   try {
     webpackStats = await promisify(webpack)({
-      entry: path.resolve(__dirname, "tests.js"),
+      entry: tests,
       mode: "production",
       module: {
         rules: [
