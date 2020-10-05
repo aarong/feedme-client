@@ -14,6 +14,7 @@ import transportWrapper from "./transport.wrapper";
  * ClientSync except a transport property is required rather than a session.
  *
  * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  * @returns {Client}
  */
 export default function feedmeClient(options) {
@@ -22,12 +23,8 @@ export default function feedmeClient(options) {
     throw new Error("INVALID_ARGUMENT: Invalid options argument.");
   }
 
-  // Check options.transport
-  if (!check.object(options.transport)) {
-    throw new Error("INVALID_ARGUMENT: Invalid options.transport.");
-  }
-
   // Create the client options object, initialize, and return
+  // Cascade all errors
   const clientOptions = _clone(options);
   delete clientOptions.transport;
   clientOptions.sessionWrapper = sessionWrapper(

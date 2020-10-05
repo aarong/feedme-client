@@ -7,12 +7,6 @@ describe("The main module", () => {
     }).toThrow(new Error("INVALID_ARGUMENT: Invalid options argument."));
   });
 
-  it("should throw on invalid options.transport", () => {
-    expect(() => {
-      main({ transport: 123 });
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid options.transport."));
-  });
-
   it("should otherwise return a client object", () => {
     expect(
       main({

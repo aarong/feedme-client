@@ -148,7 +148,7 @@ describe("The harness object", () => {
         Result: {
           Error: {
             name: "Error",
-            message: "INVALID_ARGUMENT: Invalid options.transport."
+            message: "INVALID_ARGUMENT: Transport is not an object."
           }
         }
       });

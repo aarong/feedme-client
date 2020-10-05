@@ -39,6 +39,7 @@ emitter(proto);
  * Factory function.
  * @param {Object} transport
  * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  * @returns {TransportWrapper}
  */
 export default function transportWrapperFactory(transport) {
@@ -46,9 +47,7 @@ export default function transportWrapperFactory(transport) {
 
   // Check that the transport is an object
   if (!check.object(transport)) {
-    throw new Error(
-      "INVALID_ARGUMENT: The supplied transport is not an object."
-    );
+    throw new Error("INVALID_ARGUMENT: Transport is not an object.");
   }
 
   // Check that the transport exposes the required API
@@ -60,18 +59,11 @@ export default function transportWrapperFactory(transport) {
     !check.function(transport.disconnect)
   ) {
     throw new Error(
-      "INVALID_ARGUMENT: The supplied transport does not implement the required API."
+      "INVALID_ARGUMENT: Transport does not implement the required API."
     );
   }
 
-  // Check that the transport state is disconnected
-  if (transport.state() !== "disconnected") {
-    throw new Error(
-      "INVALID_ARGUMENT: The supplied transport is not disconnected."
-    );
-  }
-
-  // Success
+  // Initialize the transport
   const transportWrapper = Object.create(proto);
 
   /**
@@ -83,7 +75,8 @@ export default function transportWrapperFactory(transport) {
    */
   transportWrapper._transport = transport;
 
-  /** Last transport state emission.
+  /**
+   * Last transport state emission.
    * @memberof TransportWrapper
    * @instance
    * @private
@@ -91,23 +84,39 @@ export default function transportWrapperFactory(transport) {
    */
   transportWrapper._lastStateEmission = "disconnect";
 
-  // Listen for transport events
-  transportWrapper._transport.on(
-    "connecting",
-    transportWrapper._processTransportConnecting.bind(transportWrapper)
-  );
-  transportWrapper._transport.on(
-    "connect",
-    transportWrapper._processTransportConnect.bind(transportWrapper)
-  );
-  transportWrapper._transport.on(
-    "message",
-    transportWrapper._processTransportMessage.bind(transportWrapper)
-  );
-  transportWrapper._transport.on(
-    "disconnect",
-    transportWrapper._processTransportDisconnect.bind(transportWrapper)
-  );
+  // Check that the transport state is disconnected
+  const transportState = transportWrapper.state(); // Cascade errors
+  if (transportState !== "disconnected") {
+    throw new Error(
+      `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state(). Must be 'disconnected' at initialization.`
+    );
+  }
+
+  // Try to listen for transport events
+  try {
+    transportWrapper._transport.on(
+      "connecting",
+      transportWrapper._processTransportConnecting.bind(transportWrapper)
+    );
+    transportWrapper._transport.on(
+      "connect",
+      transportWrapper._processTransportConnect.bind(transportWrapper)
+    );
+    transportWrapper._transport.on(
+      "message",
+      transportWrapper._processTransportMessage.bind(transportWrapper)
+    );
+    transportWrapper._transport.on(
+      "disconnect",
+      transportWrapper._processTransportDisconnect.bind(transportWrapper)
+    );
+  } catch (e) {
+    const throwErr = Error(
+      "TRANSPORT_ERROR: Transport threw an error on call to .on()."
+    );
+    throwErr.transportError = e;
+    throw throwErr;
+  }
 
   return transportWrapper;
 }
@@ -162,23 +171,19 @@ export default function transportWrapperFactory(transport) {
 proto.state = function state() {
   // Try to get the state
   let transportState;
-  let transportErr;
   try {
     transportState = this._transport.state();
   } catch (e) {
-    transportErr = e;
-  }
-
-  // Method should never throw an error
-  if (transportErr) {
     const emitErr = new Error(
       "INVALID_RESULT: Transport threw an error on call to state()."
     );
-    emitErr.transportError = transportErr;
+    emitErr.transportError = e;
     defer(this.emit.bind(this), "transportError", emitErr);
-    throw new Error(
-      "TRANSPORT_ERROR: The transport unexpectedly threw an error."
+    const throwErr = new Error(
+      "TRANSPORT_ERROR: Transport threw an error on call to state()."
     );
+    throwErr.transportError = e;
+    throw throwErr;
   }
 
   // Validate the state
@@ -189,12 +194,13 @@ proto.state = function state() {
     transportState !== "connected"
   ) {
     const emitErr = new Error(
-      `INVALID_RESULT: Transport returned invalid state '${transportState}' on a call to state().`
+      `INVALID_RESULT: Transport returned invalid state '${transportState}' on call to state().`
     );
     defer(this.emit.bind(this), "transportError", emitErr);
-    throw new Error(
-      "TRANSPORT_ERROR: The transport returned an invalid state."
+    const throwErr = new Error(
+      `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state().`
     );
+    throw throwErr;
   }
 
   // Return
@@ -204,7 +210,6 @@ proto.state = function state() {
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} "INVALID_CALL: ..."
  * @throws {Error} "TRANSPORT_ERROR: ..."
  * @throws {Error} "LIBRARY_ERROR: ..."
  */
@@ -212,7 +217,7 @@ proto.connect = function connect() {
   dbg("Connect requested");
 
   // Validate the library call
-  const state = this._transport.state();
+  const state = this.state(); // Cascade errors
   if (state !== "disconnected") {
     throw new Error(
       `LIBRARY_ERROR: Tried to call transport.connect() when state was '${state}'.`
@@ -224,15 +229,19 @@ proto.connect = function connect() {
     this._transport.connect();
   } catch (e) {
     const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on a call to connect() when state was '${state}'.`
+      `INVALID_RESULT: Transport threw an error on call to connect() when state was '${state}'.`
     );
     emitErr.transportError = e;
     defer(this.emit.bind(this), "transportError", emitErr);
-    throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
+    const throwErr = new Error(
+      `TRANSPORT_ERROR: Transport threw an error on call to connect() when state was '${state}'.`
+    );
+    throwErr.transportError = e;
+    throw throwErr;
   }
 
   // Transport state must be disconnected, connecting, or connected
-  const newState = this._transport.state();
+  const newState = this.state(); // Cascade errors
   if (
     newState !== "connected" &&
     newState !== "connecting" &&
@@ -251,7 +260,6 @@ proto.connect = function connect() {
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} "INVALID_CALL: ..."
  * @throws {Error} "TRANSPORT_ERROR: ..."
  * @throws {Error} "LIBRARY_ERROR: ..."
  */
@@ -259,7 +267,7 @@ proto.send = function send(msg) {
   dbg("Send requested");
 
   // Validate the library call
-  const state = this._transport.state();
+  const state = this.state(); // Cascade errors
   if (state !== "connected") {
     throw new Error(
       `LIBRARY_ERROR: Tried to call transport.send() when state was '${state}'.`
@@ -271,15 +279,19 @@ proto.send = function send(msg) {
     this._transport.send(msg);
   } catch (e) {
     const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on a call to send() when state was '${state}'.`
+      `INVALID_RESULT: Transport threw an error on call to send() when state was '${state}'.`
     );
     emitErr.transportError = e;
     defer(this.emit.bind(this), "transportError", emitErr);
-    throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
+    const throwErr = new Error(
+      `TRANSPORT_ERROR: Transport threw an error on call to send() when state was '${state}'.`
+    );
+    throwErr.transportError = e;
+    throw throwErr;
   }
 
   // Transport state must be connected or disconnected
-  const newState = this._transport.state();
+  const newState = this.state(); // Cascade errors
   if (newState !== "connected" && newState !== "disconnected") {
     const emitErr = new Error(
       `INVALID_RESULT: Transport state was '${newState}' after a call to send().`
@@ -294,7 +306,6 @@ proto.send = function send(msg) {
 /**
  * @memberof TransportWrapper
  * @instance
- * @throws {Error} "INVALID_CALL: ..."
  * @throws {Error} "TRANSPORT_ERROR: ..."
  * @throws {Error} "LIBRARY_ERROR: ..."
  */
@@ -302,7 +313,7 @@ proto.disconnect = function disconnect(err) {
   dbg("Disconnect requested");
 
   // Validate the library call
-  const state = this._transport.state();
+  const state = this.state(); // Cascade errors
   if (state === "disconnected") {
     throw new Error(
       `LIBRARY_ERROR: Tried to call transport.disconnect() when state was '${state}'.`
@@ -318,15 +329,19 @@ proto.disconnect = function disconnect(err) {
     }
   } catch (e) {
     const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on a call to disconnect() when state was '${state}'.`
+      `INVALID_RESULT: Transport threw an error on call to disconnect() when state was '${state}'.`
     );
     emitErr.transportError = e;
     defer(this.emit.bind(this), "transportError", emitErr);
-    throw new Error("TRANSPORT_ERROR: Transport unexpectedly threw an error.");
+    const throwErr = new Error(
+      `TRANSPORT_ERROR: Transport threw an error on call to disconnect() when state was '${state}'.`
+    );
+    throwErr.transportError = e;
+    throw throwErr;
   }
 
   // Transport state must be disconnected
-  const newState = this._transport.state();
+  const newState = this.state(); // Cascade errors
   if (newState !== "disconnected") {
     const emitErr = new Error(
       `INVALID_RESULT: Transport state was '${newState}' after a call to disconnect().`

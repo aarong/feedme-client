@@ -168,6 +168,7 @@ const protoClientSync = emitter({});
  *                      duration of the connection.
  *
  * @throws {Error}      "INVALID_ARGUMENT: ..."
+ * @throws {Error}      "TRANSPORT_ERROR: ..."
  * @returns {ClientSync}
  */
 function clientSyncFactory(options) {

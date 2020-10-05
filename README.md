@@ -131,6 +131,10 @@ If initialization fails then the factory function will throw an `Error` object
 
   The `options` argument was invalid.
 
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The supplied transport behaved in an unexpected manner.
+
 The `options` argument is an object with the following properties:
 
 - `options.transport` - Required object.
@@ -509,7 +513,7 @@ diagnositic information.
 ##### transportError
 
 Emitted when the transport demonstrates behavior that violates the requirements
-laid out in the developer documentation.
+laid out in the developer documentation after initialization
 
 Listeners are passed an `Error` object indicating the nature of the violation.
 

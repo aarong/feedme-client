@@ -55,6 +55,7 @@ const config = {
 /**
  * Factory function.
  * @param {TransportWrapper} transportWrapper
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  * @returns {SessionSync}
  */
 export default function sessionSyncFactory(transportWrapper) {
