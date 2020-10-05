@@ -50,6 +50,7 @@
     "eslint-plugin-prettier": "^3.0.1",
     "express": "^4.16.4",
     "ghooks": "^2.0.4",
+    "glob": "^7.1.6",
     "gulp": "^4.0.0",
     "gulp-babel": "^8.0.0",
     "gulp-cli": "^2.0.1",

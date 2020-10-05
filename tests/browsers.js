@@ -8,6 +8,7 @@ import path from "path";
 import webpack from "webpack";
 import fs from "fs";
 import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
+import glob from "glob";
 import targets from "../targets";
 
 (async () => {
@@ -265,10 +266,7 @@ import targets from "../targets";
 
   // Retrieve an array of test files
   console.log("Retrieving array of test files...");
-  const files = await promisify(fs.readdir)(path.resolve(__dirname, "tests"));
-  const tests = files
-    .filter(file => _.endsWith(file, ".test.js"))
-    .map(file => path.resolve(__dirname, "tests", file));
+  const tests = await promisify(glob)(`${__dirname}/tests/**/*.test.js`);
 
   // Transpile and bundle the tests and drop in webroot
   // Webpack bundling required to insert promise polyfills and dependencies like component-emitter

@@ -7,7 +7,7 @@ import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6
 
 /*
 
-Cannot run Jasmine directly in the CLI if you want Babel to transport.
+Cannot run Jasmine directly in the CLI if you want Babel to transpile.
 Instead, run this script using babel-node.
 
 */
@@ -23,7 +23,7 @@ process.on("unhandledRejection", err => {
   const jasmine = new Jasmine();
   jasmine.loadConfig({
     spec_dir: path.join(__dirname, "tests"),
-    spec_files: [`${__dirname}/tests/*.test.js`],
+    spec_files: [`${__dirname}/tests/**/*.test.js`],
     random: false,
     stopSpecOnExpectationFailure: true
   });
