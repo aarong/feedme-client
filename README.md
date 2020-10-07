@@ -512,10 +512,22 @@ diagnositic information.
 
 ##### transportError
 
-Emitted when the transport demonstrates behavior that violates the requirements
-laid out in the developer documentation after initialization
+Emitted when the transport violates the requirements set out in the developer
+documentation in the following manners:
+
+1. When the transport emits an out-of-sequence event.
+
+2. When the transport emits an event with invalid arguments.
+
+3. When the transport behaves in an unexpected manner during a timer-driven
+   invocation made by the library.
 
 Listeners are passed an `Error` object indicating the nature of the violation.
+
+When the application invokes a library method and the transport synchronously
+violates the requirements laid out in the developer documentation, the library
+method throws an `Error` object with `err.message === "TRANSPORT_ERROR: ...` and
+does not emit a `transportError` event.
 
 ### Feed API
 

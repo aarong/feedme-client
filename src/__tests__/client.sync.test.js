@@ -2743,6 +2743,72 @@ describe("The client._processDisconnect() function", () => {
   // Inbound callbacks
 
   describe("when the connection retry timer fires", () => {
+    it("should emit transportError if client._connect() throws TRANSPORT_ERROR", () => {
+      const harness = harnessFactory();
+      harness.sessionWrapper.connect = jest.fn(() => {
+        harness.sessionWrapper.state.mockReturnValue("connecting");
+      });
+      harness.client.connect();
+      harness.sessionWrapper.emit("connecting");
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+      harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
+
+      harness.sessionWrapper.connect = () => {
+        throw new Error("TRANSPORT_ERROR: ...");
+      };
+
+      const clientListener = harness.createClientListener();
+
+      jest.advanceTimersByTime(config.defaults.connectRetryMs);
+
+      expect(clientListener.connecting.mock.calls.length).toBe(0);
+      expect(clientListener.connect.mock.calls.length).toBe(0);
+      expect(clientListener.disconnect.mock.calls.length).toBe(0);
+      expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(clientListener.transportError.mock.calls.length).toBe(1);
+      expect(clientListener.transportError.mock.calls[0].length).toBe(1);
+      expect(clientListener.transportError.mock.calls[0][0]).toBeInstanceOf(
+        Error
+      );
+      expect(clientListener.transportError.mock.calls[0][0].message).toBe(
+        "TRANSPORT_ERROR: ..."
+      );
+    });
+    it("should throw unhandled error if client._connect() throws anything else", () => {
+      const harness = harnessFactory();
+      harness.sessionWrapper.connect = jest.fn(() => {
+        harness.sessionWrapper.state.mockReturnValue("connecting");
+      });
+      harness.client.connect();
+      harness.sessionWrapper.emit("connecting");
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+      harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
+
+      harness.sessionWrapper.connect = () => {
+        throw new Error("SOME_ERROR: ...");
+      };
+
+      const clientListener = harness.createClientListener();
+
+      let err;
+      try {
+        jest.advanceTimersByTime(config.defaults.connectRetryMs);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toBe("SOME_ERROR: ...");
+
+      expect(clientListener.connecting.mock.calls.length).toBe(0);
+      expect(clientListener.connect.mock.calls.length).toBe(0);
+      expect(clientListener.disconnect.mock.calls.length).toBe(0);
+      expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(clientListener.transportError.mock.calls.length).toBe(0);
+    });
+
     it("should fire no events directly and then connecting after session emits", () => {
       const harness = harnessFactory();
       harness.client.connect();

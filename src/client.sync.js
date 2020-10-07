@@ -916,7 +916,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   // Failure on connecting - retries
   if (this._lastSessionWrapperStateEmission === "connecting") {
     // Schedule a connection retry on TIMEOUT or DISCONNECT but not HANDSHAKE_REJECTED
-    if (err && !_startsWith(err.message, "HANDSHAKE_REJECTED")) {
+    if (err && !_startsWith(err.message, "HANDSHAKE_REJECTED:")) {
       // Only schedule if configured and below the configured retry threshold
       if (
         this._options.connectRetryMs >= 0 &&
@@ -937,7 +937,16 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
           // And an application call to client.connect() would clear this timer synchronously
           dbgClient("Connect retry timer fired");
           this._connectRetryTimer = null;
-          this._connect(); // Not .connect(), as that resets the retry count
+
+          try {
+            this._connect(); // Not .connect(), as that resets the retry count
+          } catch (e) {
+            if (_startsWith(e.message, "TRANSPORT_ERROR:")) {
+              this.emit("transportError", e); // TRANSPORT_ERROR thrown by wrapper - no coding error
+            } else {
+              throw e; // Anything else is a coding error - unhandled exception
+            }
+          }
         }, retryMs);
       }
     }
@@ -949,7 +958,11 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     // No need to verify that the session state is currently disconnected
     // The transport is required to remain disconnected when it loses a connection
     // and the session therefore behaves in the same manner
-    if (err && _startsWith(err.message, "FAILURE") && this._options.reconnect) {
+    if (
+      err &&
+      _startsWith(err.message, "FAILURE:") &&
+      this._options.reconnect
+    ) {
       this.connect(); // Resets connection retry counts
     }
   }
@@ -1028,7 +1041,7 @@ protoClientSync._processUnexpectedFeedClosed = function _processUnexpectedFeedCl
   this._informServerFeedClosed(feedName, feedArgs, err);
 
   // Consider reopening on bad action revelation
-  if (_startsWith(err.message, "BAD_ACTION_REVELATION")) {
+  if (_startsWith(err.message, "BAD_ACTION_REVELATION:")) {
     if (this._options.reopenMaxAttempts < 0) {
       // If there is no limit on reopens then reopen and don't track attempts
       this._considerFeedState(feedName, feedArgs);

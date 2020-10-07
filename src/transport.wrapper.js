@@ -22,8 +22,9 @@ const dbg = debug("feedme-client:transport-wrapper");
  * emitted asynchronously, it is not possible to validate state and emissions
  * against one another.
  *
- * After initialization, all problems with the transport are reported using
- * the `transportError` event.
+ * Transport errors arising during initialization or when the library invokes
+ * a transport method are thrown. Errors related to transport emissions are
+ * emitted as transportError events.
  *
  * The wrapper also validates library behavior by ensuring that transport
  * method invocations are valid for its current state.
@@ -111,11 +112,11 @@ export default function transportWrapperFactory(transport) {
       transportWrapper._processTransportDisconnect.bind(transportWrapper)
     );
   } catch (e) {
-    const throwErr = Error(
+    const err = Error(
       "TRANSPORT_ERROR: Transport threw an error on call to .on()."
     );
-    throwErr.transportError = e;
-    throw throwErr;
+    err.transportError = e;
+    throw err;
   }
 
   return transportWrapper;
@@ -158,9 +159,7 @@ export default function transportWrapperFactory(transport) {
  * @event transportError
  * @memberof TransportWrapper
  * @instance
- * @param {Error} err "INVALID_RESULT: ..."     Transport function returned unexpected return value or error
- *                    "UNEXPECTED_EVENT: ..."   Event sequence was not valid
- *                    "BAD_EVENT_ARGUMENT: ..." Event emitted with invalid arguments
+ * @param {Error} err "TRANSPORT_ERROR: ..."
  */
 
 /**
@@ -174,16 +173,11 @@ proto.state = function state() {
   try {
     transportState = this._transport.state();
   } catch (e) {
-    const emitErr = new Error(
-      "INVALID_RESULT: Transport threw an error on call to state()."
-    );
-    emitErr.transportError = e;
-    defer(this.emit.bind(this), "transportError", emitErr);
-    const throwErr = new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport threw an error on call to state()."
     );
-    throwErr.transportError = e;
-    throw throwErr;
+    err.transportError = e;
+    throw err;
   }
 
   // Validate the state
@@ -193,14 +187,10 @@ proto.state = function state() {
     transportState !== "connecting" &&
     transportState !== "connected"
   ) {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport returned invalid state '${transportState}' on call to state().`
-    );
-    defer(this.emit.bind(this), "transportError", emitErr);
-    const throwErr = new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state().`
     );
-    throw throwErr;
+    throw err;
   }
 
   // Return
@@ -228,33 +218,15 @@ proto.connect = function connect() {
   try {
     this._transport.connect();
   } catch (e) {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on call to connect() when state was '${state}'.`
-    );
-    emitErr.transportError = e;
-    defer(this.emit.bind(this), "transportError", emitErr);
-    const throwErr = new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport threw an error on call to connect() when state was '${state}'.`
     );
-    throwErr.transportError = e;
-    throw throwErr;
+    err.transportError = e;
+    throw err;
   }
 
   // Transport state must be disconnected, connecting, or connected
-  const newState = this.state(); // Cascade errors
-  if (
-    newState !== "connected" &&
-    newState !== "connecting" &&
-    newState !== "disconnected"
-  ) {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport state was '${newState}' after a call to connect().`
-    );
-    defer(this.emit.bind(this), "transportError", emitErr);
-    throw new Error(
-      `TRANSPORT_ERROR: Transport state was '${newState}' after a call to connect().`
-    );
-  }
+  this.state(); // Cascade errors
 };
 
 /**
@@ -278,25 +250,16 @@ proto.send = function send(msg) {
   try {
     this._transport.send(msg);
   } catch (e) {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on call to send() when state was '${state}'.`
-    );
-    emitErr.transportError = e;
-    defer(this.emit.bind(this), "transportError", emitErr);
-    const throwErr = new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport threw an error on call to send() when state was '${state}'.`
     );
-    throwErr.transportError = e;
-    throw throwErr;
+    err.transportError = e;
+    throw err;
   }
 
   // Transport state must be connected or disconnected
   const newState = this.state(); // Cascade errors
   if (newState !== "connected" && newState !== "disconnected") {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport state was '${newState}' after a call to send().`
-    );
-    defer(this.emit.bind(this), "transportError", emitErr);
     throw new Error(
       `TRANSPORT_ERROR: Transport state was '${newState}' after a call to send().`
     );
@@ -328,11 +291,6 @@ proto.disconnect = function disconnect(err) {
       this._transport.disconnect();
     }
   } catch (e) {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport threw an error on call to disconnect() when state was '${state}'.`
-    );
-    emitErr.transportError = e;
-    defer(this.emit.bind(this), "transportError", emitErr);
     const throwErr = new Error(
       `TRANSPORT_ERROR: Transport threw an error on call to disconnect() when state was '${state}'.`
     );
@@ -343,10 +301,6 @@ proto.disconnect = function disconnect(err) {
   // Transport state must be disconnected
   const newState = this.state(); // Cascade errors
   if (newState !== "disconnected") {
-    const emitErr = new Error(
-      `INVALID_RESULT: Transport state was '${newState}' after a call to disconnect().`
-    );
-    defer(this.emit.bind(this), "transportError", emitErr);
     throw new Error(
       `TRANSPORT_ERROR: Transport state was '${newState}' after a call to disconnect().`
     );
@@ -366,7 +320,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
   // Is the emission sequence valid?
   if (this._lastStateEmission !== "disconnect") {
     const emitErr = new Error(
-      `UNEXPECTED_EVENT: Transport emitted a  'connecting' event following a '${this._lastStateEmission}' emission.`
+      `TRANSPORT_ERROR: Transport emitted a  'connecting' event following a '${this._lastStateEmission}' emission.`
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -375,7 +329,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
   // Were the emission arguments valid?
   if (args.length > 0) {
     const emitErr = new Error(
-      "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with a 'connecting' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event."
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -396,7 +350,7 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
   // Is the emission sequence valid?
   if (this._lastStateEmission !== "connecting") {
     const emitErr = new Error(
-      `UNEXPECTED_EVENT: Transport emitted a  'connect' event when the previous state emission was '${this._lastStateEmission}'.`
+      `TRANSPORT_ERROR: Transport emitted a  'connect' event when the previous state emission was '${this._lastStateEmission}'.`
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -405,7 +359,7 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
   // Were the emission arguments valid?
   if (args.length > 0) {
     const emitErr = new Error(
-      "BAD_EVENT_ARGUMENT: Transport passed one or more extraneous arguments with a 'connect' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event."
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -426,7 +380,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // Is the emission sequence valid?
   if (this._lastStateEmission !== "connect") {
     const emitErr = new Error(
-      `UNEXPECTED_EVENT: Transport emitted a 'message' event when the previous state emission was '${this._lastStateEmission}'.`
+      `TRANSPORT_ERROR: Transport emitted a 'message' event when the previous state emission was '${this._lastStateEmission}'.`
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -435,7 +389,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // Valid arguments?
   if (args.length !== 1) {
     const emitErr = new Error(
-      "BAD_EVENT_ARGUMENT: Received an invalid number of arguments with a 'message' event."
+      "TRANSPORT_ERROR: Received an invalid number of arguments with a 'message' event."
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -444,7 +398,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // String argument?
   if (!check.string(args[0])) {
     const emitErr = new Error(
-      "BAD_EVENT_ARGUMENT: Received a non-string argument with a 'message' event."
+      "TRANSPORT_ERROR: Received a non-string argument with a 'message' event."
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -467,7 +421,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Is the emission sequence valid?
   if (this._lastStateEmission === "disconnect") {
     const emitErr = new Error(
-      `UNEXPECTED_EVENT: Transport emitted a  'disconnect' event when the previous state emission was 'disconnect'.`
+      `TRANSPORT_ERROR: Transport emitted a  'disconnect' event when the previous state emission was 'disconnect'.`
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -476,7 +430,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Valid arguments?
   if (args.length > 1) {
     const emitErr = new Error(
-      "BAD_EVENT_ARGUMENT: Received one or more extraneous arguments with a 'disconnect' event."
+      "TRANSPORT_ERROR: Received one or more extraneous arguments with a 'disconnect' event."
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
@@ -485,7 +439,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Error valid if specified?
   if (args.length === 1 && !check.instance(args[0], Error)) {
     const emitErr = new Error(
-      "BAD_EVENT_ARGUMENT: Received a non-Error argument with a 'disconnect' event."
+      "TRANSPORT_ERROR: Received a non-Error argument with a 'disconnect' event."
     );
     defer(this.emit.bind(this), "transportError", emitErr);
     return; // Stop
