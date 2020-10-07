@@ -208,12 +208,15 @@ function clientSyncFactory(options) {
   }
 
   // Check options.connectRetryMaxMs (if specified)
+  const connectRetryMs =
+    "connectRetryMs" in options
+      ? options.connectRetryMs
+      : config.defaults.connectRetryMs;
   if (
     "connectRetryMaxMs" in options &&
     (!check.integer(options.connectRetryMaxMs) ||
       check.negative(options.connectRetryMaxMs) ||
-      (options.connectRetryMs &&
-        options.connectRetryMaxMs < options.connectRetryMs))
+      options.connectRetryMaxMs < connectRetryMs)
   ) {
     throw new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxMs.");
   }
@@ -1654,7 +1657,6 @@ protoClientSync._connect = function _connect() {
         this._sessionWrapper.disconnect(
           new Error("TIMEOUT: The connection attempt timed out.")
         );
-        // Error is routed to the session disconnect event handler
       }
     }, this._options.connectTimeoutMs);
   }

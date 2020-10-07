@@ -102,7 +102,7 @@ trace === [
   { Phase: "Start", State: x },
   { Invocation: x, ... },
   ...
-  { Phase: "DoneSync", State: x }
+  { Phase: "DoneTrace", State: x }
   { Invocation: x, ... },
   ...
   { Phase: "DoneDefer", State: x }
@@ -459,6 +459,9 @@ harness.initClient = options => {
 };
 
 harness.trace = async fn => {
+  // Input fn can be synchronous or asynchronous so that trace() can be used
+  // to test harness.makeX() functions. Not used in actual library tests.
+
   harness._trace = [];
 
   // Record starting state
@@ -467,10 +470,10 @@ harness.trace = async fn => {
     State: harness._state()
   });
 
-  // Record synchronous results
-  fn();
+  // Record trace results (could be sync/async)
+  await fn();
   harness._trace.push({
-    Phase: "DoneSync",
+    Phase: "DoneTrace",
     State: harness._state()
   });
 
@@ -523,6 +526,20 @@ harness._state = () => {
 
 // Client state setup functions - assume transport mocked by the harness
 
+harness.makeClientConnecting = async () => {
+  const outsideConnect = harness.transport.connectImplementation;
+
+  harness.transport.connectImplementation = () => {
+    harness.transport.stateImplementation = () => "connecting";
+    harness.transport.emit("connecting");
+  };
+
+  harness.clientWrapper.connect();
+  await defer();
+
+  harness.transport.connectImplementation = outsideConnect;
+};
+
 harness.makeClientConnected = async () => {
   const outsideConnect = harness.transport.connectImplementation;
   const outsideSend = harness.transport.sendImplementation;
@@ -543,8 +560,6 @@ harness.makeClientConnected = async () => {
     );
   };
 
-  harness.transport.connect();
-
   harness.clientWrapper.connect();
   await defer();
 
@@ -554,6 +569,7 @@ harness.makeClientConnected = async () => {
 
 harness.makeOpenFeed = async (fn, fa, fd) => {
   // Only to be called when the client is connected
+  // Assumes the client is not already interacting with the fn/fa combo
 
   const outsideSend = harness.transport.sendImplementation;
 

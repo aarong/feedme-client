@@ -133,7 +133,7 @@ If initialization fails then the factory function will throw an `Error` object
 
 - `err.message === "TRANSPORT_ERROR: ..."`
 
-  The supplied transport behaved in an unexpected manner.
+  There was a problem with the supplied transport.
 
 The `options` argument is an object with the following properties:
 

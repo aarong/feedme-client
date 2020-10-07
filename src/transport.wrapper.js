@@ -7,15 +7,15 @@ const dbg = debug("feedme-client:transport-wrapper");
 
 /**
  * Wrapper for application-supplied transport objects that defers and queues all
- * event emissons, as the transport is permitted to emit events synchronously within
- * library method calls.
+ * event emissons, as the transport is permitted to emit events synchronously
+ * within method calls by the library.
  *
  * The wrapper also verifies that the app-provided transport object is acting as
  * required (to the extent possible):
  *
  * - The transport API surface is validated on intialization
- * - Transport function return values and errors are validated
- * - Transport state is validated after each library invocation
+ * - Transport method return values and errors are validated
+ * - Transport state is validated after each method invocation
  * - Transport event emission sequence is validated
  *
  * Because transport state is updated synchronously and associated events may be
@@ -59,7 +59,7 @@ export default function transportWrapperFactory(transport) {
     !check.function(transport.disconnect)
   ) {
     throw new Error(
-      "INVALID_ARGUMENT: Transport does not implement the required API."
+      "TRANSPORT_ERROR: Transport does not implement the required API."
     );
   }
 

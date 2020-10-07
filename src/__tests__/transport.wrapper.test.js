@@ -18,7 +18,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "INVALID_ARGUMENT: Transport does not implement the required API."
+        "TRANSPORT_ERROR: Transport does not implement the required API."
       )
     );
   });
@@ -33,7 +33,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "INVALID_ARGUMENT: Transport does not implement the required API."
+        "TRANSPORT_ERROR: Transport does not implement the required API."
       )
     );
   });
@@ -48,7 +48,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "INVALID_ARGUMENT: Transport does not implement the required API."
+        "TRANSPORT_ERROR: Transport does not implement the required API."
       )
     );
   });
@@ -63,7 +63,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "INVALID_ARGUMENT: Transport does not implement the required API."
+        "TRANSPORT_ERROR: Transport does not implement the required API."
       )
     );
   });
@@ -78,7 +78,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "INVALID_ARGUMENT: Transport does not implement the required API."
+        "TRANSPORT_ERROR: Transport does not implement the required API."
       )
     );
   });
