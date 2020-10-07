@@ -39,7 +39,6 @@ Library contributors and transport developers should see the
       - [disconnect](#disconnect)
       - [badServerMessage](#badservermessage)
       - [badClientMessage](#badclientmessage)
-      - [transportError](#transporterror)
   - [Feed API](#feed-api)
     - [Feed Objects vs Server Feeds](#feed-objects-vs-server-feeds)
     - [Desired vs Actual State](#desired-vs-actual-state)
@@ -267,7 +266,11 @@ Returns the current client state:
 - `"connected"` - The client is connected to the server and has performed a
   successful handshake.
 
-Errors thrown: None
+Errors thrown:
+
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
 
 ##### client.connect()
 
@@ -280,6 +283,10 @@ Errors thrown:
 
   The client state is not `disconnected`.
 
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
+
 ##### client.disconnect()
 
 Disconnects from the server. The client state must be either `connecting` or
@@ -290,6 +297,10 @@ Errors thrown:
 - `err.message === "INVALID_STATE: ..."`
 
   The client state is not `connecting` or `connected`.
+
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
 
 ##### client.action(...) - Callback Style
 
@@ -332,6 +343,10 @@ Errors thrown:
 - `err.message === "INVALID_ARGUMENT: ..."`
 
   There was a problem with one or more of the supplied arguments.
+
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
 
 Errors called back:
 
@@ -381,6 +396,10 @@ Errors thrown:
 - `err.message === "INVALID_ARGUMENT: ..."`
 
   There was a problem with one or more of the supplied arguments.
+
+* `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
 
 Errors returned via promise rejection:
 
@@ -510,25 +529,6 @@ specification. This can indicate a problem on the client or the server.
 Listeners are passed a `diagnostics` object containing any server-specified
 diagnositic information.
 
-##### transportError
-
-Emitted when the transport violates the requirements set out in the developer
-documentation in the following manners:
-
-1. When the transport emits an out-of-sequence event.
-
-2. When the transport emits an event with invalid arguments.
-
-3. When the transport behaves in an unexpected manner during a timer-driven
-   invocation made by the library.
-
-Listeners are passed an `Error` object indicating the nature of the violation.
-
-When the application invokes a library method and the transport synchronously
-violates the requirements laid out in the developer documentation, the library
-method throws an `Error` object with `err.message === "TRANSPORT_ERROR: ...` and
-does not emit a `transportError` event.
-
 ### Feed API
 
 Feed objects enable interaction with feeds on the server and are created using
@@ -594,6 +594,10 @@ Errors thrown:
 
   The feed object has been destroyed.
 
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
+
 ##### feed.desireClosed()
 
 Sets the feed object's desired state to `closed`. Returns nothing.
@@ -611,6 +615,10 @@ Errors thrown:
 - `err.message === "DESTROYED: ..."`
 
   The feed object has been destroyed.
+
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
 
 ##### feed.desiredState()
 
@@ -634,6 +642,10 @@ Errors thrown:
 
   The feed object has been destroyed.
 
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
+
 ##### feed.data()
 
 Returns an object containing the current feed data. The structure of the object
@@ -648,6 +660,10 @@ Errors thrown:
 - `err.message === "DESTROYED: ..."`
 
   The feed object has been destroyed.
+
+- `err.message === "TRANSPORT_ERROR: ..."`
+
+  The transport behaved unexpectedly.
 
 ##### feed.destroy()
 

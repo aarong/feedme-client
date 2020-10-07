@@ -888,26 +888,6 @@ describe("The client badClientMessage event", () => {
   });
 });
 
-describe("The client transportError event", () => {
-  it("should be emitted asynchronously", async () => {
-    const underlying = emitter({});
-    const wrapper = clientWrapper(underlying);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-
-    underlying.emit("transportError", "some", "args");
-
-    expect(listener.mock.calls.length).toBe(0);
-
-    await Promise.resolve();
-
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(2);
-    expect(listener.mock.calls[0][0]).toBe("some");
-    expect(listener.mock.calls[0][1]).toBe("args");
-  });
-});
-
 // Feed wrapper events
 
 describe("The feed opening event", () => {

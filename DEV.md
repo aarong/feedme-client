@@ -226,8 +226,9 @@ client library at initialization.
 
 Transport objects must implement the following interface and behavior in order
 to function correctly with the library. The library aims to detect invalid
-behavior and emits a `transportError` event if the transport behaves
-unexpectedly.
+behavior and throws an `Error` with `err.message === "TRANSPORT_ERROR: ..."` if
+the transport behaves unexpectedly. If the transport has thrown an unexpected
+error, then it is exposed as `err.transportError`.
 
 See the
 [Feedme WebSocket Transport](https://github.com/aarong/feedme-transport-ws) for
@@ -343,7 +344,7 @@ Transport objects must implement the following methods:
     attempting to connect.
 
     If `transport.state()` returns `disconnected`, then the transport must
-    accept a synchronous library call to `transport.connect()`.
+    accept an immediate library call to `transport.connect()`.
 
     Transport objects must be supplied to the library in a `disconnected` state
     when the library is initialized and must remain `disconnected` until the
@@ -355,7 +356,7 @@ Transport objects must implement the following methods:
     cannot yet transmit or receive messages.
 
     If `transport.state()` returns `connecting`, then the transport must accept
-    a synchronous library call to `transport.disconnect()`.
+    an immediate library call to `transport.disconnect()`.
 
   - `connected`
 
@@ -363,8 +364,11 @@ Transport objects must implement the following methods:
     will emit any messages it receives from the server.
 
     If `transport.state()` returns `connected`, then the transport must accept
-    synchronous library calls to `transport.send()` and
-    `transport.disconnect()`.
+    an immediate library call to `transport.send()` or `transport.disconnect()`.
+
+  The `transport.state()` return value must change only as described in the
+  requirements for `transport.connect()`, `transport.send()`, and
+  `transport.disconnect()`.
 
 - `transport.connect()` - Returns `undefined`
 

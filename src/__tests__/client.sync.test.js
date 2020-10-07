@@ -86,7 +86,6 @@ State
       client._processUnexpectedFeedClosed()
       client._processBadServerMessage()
       client._processBadClientMessage()
-      client._processTransportError()
     Internal helpers
       client._considerFeedState()
       client._feedOpenTimeout()
@@ -166,8 +165,7 @@ harnessProto.createClientListener = function createClientListener() {
     connect: jest.fn(),
     disconnect: jest.fn(),
     badServerMessage: jest.fn(),
-    badClientMessage: jest.fn(),
-    transportError: jest.fn()
+    badClientMessage: jest.fn()
   };
   l.mockClear = () => {
     l.connecting.mock.mockClear();
@@ -175,14 +173,12 @@ harnessProto.createClientListener = function createClientListener() {
     l.disconnect.mock.mockClear();
     l.badServerMessage.mock.mockClear();
     l.badClientMessage.mock.mockClear();
-    l.transportError.mock.mockClear();
   };
   this.client.on("connecting", l.connecting);
   this.client.on("connect", l.connect);
   this.client.on("disconnect", l.disconnect);
   this.client.on("badServerMessage", l.badServerMessage);
   this.client.on("badClientMessage", l.badClientMessage);
-  this.client.on("transportError", l.transportError);
   return l;
 };
 
@@ -690,7 +686,6 @@ describe("The client.connect() function", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -795,7 +790,6 @@ describe("The client.connect() function", () => {
         );
         expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
         expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-        expect(clientListener.transportError.mock.calls.length).toBe(0);
       });
 
       it("should update state", () => {
@@ -868,7 +862,6 @@ describe("The client.connect() function", () => {
         expect(clientListener.disconnect.mock.calls.length).toBe(0);
         expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
         expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-        expect(clientListener.transportError.mock.calls.length).toBe(0);
       });
 
       it("should not change the state", () => {
@@ -944,7 +937,6 @@ describe("The client.disconnect() function", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1047,7 +1039,6 @@ describe("The client.action() function", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1099,7 +1090,6 @@ describe("The client.action() function", () => {
         expect(clientListener.disconnect.mock.calls.length).toBe(0);
         expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
         expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-        expect(clientListener.transportError.mock.calls.length).toBe(0);
       });
 
       it("should not change the state", () => {
@@ -1185,7 +1175,6 @@ describe("The client.action() function", () => {
         expect(clientListener.disconnect.mock.calls.length).toBe(0);
         expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
         expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-        expect(clientListener.transportError.mock.calls.length).toBe(0);
       });
 
       it("should not change the state", () => {
@@ -1297,7 +1286,6 @@ describe("The client.feed() function", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2216,7 +2204,6 @@ describe("The feed.destroy() and client._appFeedDestroy() functions", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2286,7 +2273,6 @@ describe("The client._processConnecting() function", () => {
     expect(clientListener.disconnect.mock.calls.length).toBe(0);
     expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   // State
@@ -2343,7 +2329,6 @@ describe("The client._processConnect() function", () => {
     expect(clientListener.disconnect.mock.calls.length).toBe(0);
     expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit feed opening event on any feeds desired open (and not on any feeds desired closed)", () => {
@@ -2462,7 +2447,6 @@ describe("The client._processDisconnect() function", () => {
     expect(clientListener.disconnect.mock.calls[0].length).toBe(0);
     expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit client disconnect event with error", () => {
@@ -2488,7 +2472,6 @@ describe("The client._processDisconnect() function", () => {
     );
     expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   // State
@@ -2743,7 +2726,7 @@ describe("The client._processDisconnect() function", () => {
   // Inbound callbacks
 
   describe("when the connection retry timer fires", () => {
-    it("should emit transportError if client._connect() throws TRANSPORT_ERROR", () => {
+    it("should throw unhandled error if client._connect() throws", () => {
       const harness = harnessFactory();
       harness.sessionWrapper.connect = jest.fn(() => {
         harness.sessionWrapper.state.mockReturnValue("connecting");
@@ -2759,38 +2742,6 @@ describe("The client._processDisconnect() function", () => {
 
       const clientListener = harness.createClientListener();
 
-      jest.advanceTimersByTime(config.defaults.connectRetryMs);
-
-      expect(clientListener.connecting.mock.calls.length).toBe(0);
-      expect(clientListener.connect.mock.calls.length).toBe(0);
-      expect(clientListener.disconnect.mock.calls.length).toBe(0);
-      expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
-      expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(1);
-      expect(clientListener.transportError.mock.calls[0].length).toBe(1);
-      expect(clientListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-        Error
-      );
-      expect(clientListener.transportError.mock.calls[0][0].message).toBe(
-        "TRANSPORT_ERROR: ..."
-      );
-    });
-    it("should throw unhandled error if client._connect() throws anything else", () => {
-      const harness = harnessFactory();
-      harness.sessionWrapper.connect = jest.fn(() => {
-        harness.sessionWrapper.state.mockReturnValue("connecting");
-      });
-      harness.client.connect();
-      harness.sessionWrapper.emit("connecting");
-      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-      harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
-
-      harness.sessionWrapper.connect = () => {
-        throw new Error("SOME_ERROR: ...");
-      };
-
-      const clientListener = harness.createClientListener();
-
       let err;
       try {
         jest.advanceTimersByTime(config.defaults.connectRetryMs);
@@ -2799,14 +2750,13 @@ describe("The client._processDisconnect() function", () => {
       }
 
       expect(err).toBeInstanceOf(Error);
-      expect(err.message).toBe("SOME_ERROR: ...");
+      expect(err.message).toBe("TRANSPORT_ERROR: ...");
 
       expect(clientListener.connecting.mock.calls.length).toBe(0);
       expect(clientListener.connect.mock.calls.length).toBe(0);
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should fire no events directly and then connecting after session emits", () => {
@@ -2827,7 +2777,6 @@ describe("The client._processDisconnect() function", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should update state", () => {
@@ -4010,7 +3959,6 @@ describe("The client._processBadServerMessage() function", () => {
     expect(clientListener.badServerMessage.mock.calls[0].length).toBe(1);
     expect(clientListener.badServerMessage.mock.calls[0][0]).toBe(err);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   // State
@@ -4070,7 +4018,6 @@ describe("The client._processBadClientMessage() function", () => {
     expect(clientListener.badClientMessage.mock.calls[0][0]).toEqual({
       diag: "data"
     });
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   // State
@@ -4090,64 +4037,6 @@ describe("The client._processBadClientMessage() function", () => {
     harness.client.connect();
     harness.sessionWrapper.mockClear();
     harness.sessionWrapper.emit("badClientMessage", { diag: "data" });
-    expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.state.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
-  });
-
-  // Outbound callbacks - N/A
-
-  // Inbound callbacks - N/A
-});
-
-describe("The client._processTransportError() function", () => {
-  // Events
-
-  it("should emit client transportError event with diagnostics", () => {
-    const harness = harnessFactory();
-    harness.client.connect();
-    const clientListener = harness.createClientListener();
-
-    harness.sessionWrapper.emit("transportError", new Error("SOME_ERROR: ..."));
-
-    expect(clientListener.connecting.mock.calls.length).toBe(0);
-    expect(clientListener.connect.mock.calls.length).toBe(0);
-    expect(clientListener.disconnect.mock.calls.length).toBe(0);
-    expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
-    expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(1);
-    expect(clientListener.transportError.mock.calls[0].length).toBe(1);
-    expect(clientListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
-    );
-    expect(clientListener.transportError.mock.calls[0][0].message).toBe(
-      "SOME_ERROR: ..."
-    );
-  });
-
-  // State
-
-  it("should not change the state", () => {
-    const harness = harnessFactory();
-    harness.client.connect();
-    const newState = harness.getClientState();
-    harness.sessionWrapper.emit("transportError", new Error("SOME_ERROR: ..."));
-    expect(harness.client).toHaveState(newState);
-  });
-
-  // Session
-
-  it("should do nothing on the session", () => {
-    const harness = harnessFactory();
-    harness.client.connect();
-    harness.sessionWrapper.mockClear();
-    harness.sessionWrapper.emit("transportError", new Error("SOME_ERROR: ..."));
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
@@ -5683,7 +5572,6 @@ describe("The client._feedOpenTimeout() function", () => {
     expect(clientListener.disconnect.mock.calls.length).toBe(0);
     expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
 
   // State
@@ -5859,7 +5747,6 @@ describe("The client._feedOpenTimeout() function", () => {
       expect(clientListener.disconnect.mock.calls.length).toBe(0);
       expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
       expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(clientListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should not change the state", () => {

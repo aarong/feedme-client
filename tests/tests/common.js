@@ -293,8 +293,7 @@ harness.initClient = options => {
     "connect",
     "disconnect",
     "badServerMessage",
-    "badClientMessage",
-    "transportError"
+    "badClientMessage"
   ].forEach(evt => {
     harness.clientActual.on(evt, function(...args) {
       harness._trace.push({

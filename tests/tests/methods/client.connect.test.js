@@ -96,119 +96,311 @@ describe("The client.connect() function", () => {
   });
 
   describe("transport-related failures", () => {
-    it("transport returns invalid state initially", async () => {
+    it("transport throws on pre-connect state check", async () => {
       const mockTransport = harness.mockTransport();
       harness.initClient({
-        transport: mockTransport,
-        connectTimeoutMs: 0
+        transport: mockTransport
+      });
+
+      mockTransport.stateImplementation = () => {
+        throw new Error("SOME_ERROR: ...");
+      };
+
+      const trace = await harness.trace(() => {
+        harness.clientWrapper.connect();
+      });
+
+      expect(trace[0]).toEqual({
+        Phase: "Start",
+        State: jasmine.any(Object)
+      });
+
+      const curState = trace[0].State;
+
+      expect(trace[1]).toEqual({
+        Invocation: "ExitClientMethod",
+        State: curState,
+        Method: "connect",
+        Result: {
+          Error: {
+            name: "Error",
+            message:
+              "TRANSPORT_ERROR: Transport threw an error on call to state().",
+            transportError: {
+              name: "Error",
+              message: "SOME_ERROR: ..."
+            }
+          }
+        }
+      });
+
+      expect(trace[2]).toEqual({
+        Phase: "DoneTrace",
+        State: curState
+      });
+
+      expect(trace[3]).toEqual({
+        Phase: "DoneDefer",
+        State: curState
+      });
+
+      expect(trace[4]).toEqual({
+        Phase: "DoneTimers",
+        State: curState
+      });
+    });
+
+    it("transport returns invalid value on pre-connect state check", async () => {
+      const mockTransport = harness.mockTransport();
+      harness.initClient({
+        transport: mockTransport
       });
 
       mockTransport.stateImplementation = () => "bad_state";
 
-      /*
+      const trace = await harness.trace(() => {
+        harness.clientWrapper.connect();
+      });
 
-      The problem is that GETTING the state results in another transportError
-      being added to the trace, which itself tries to get a state
+      expect(trace[0]).toEqual({
+        Phase: "Start",
+        State: jasmine.any(Object)
+      });
 
-      What to do?
-      Maybe you don't emit transportError for method calls, only for event
-      emissions!!! For method calls, you can just throw...
-        BUT WAIT -- what if you are running inside a timer function? The
-        application may not have directly requested the transport call...
+      const curState = trace[0].State;
 
-        One option would be to try/catch those errors and emit from session/client
-        Is that a reasonable change for tests alone?
-        And isn't it nice to be able to see all transport errors in one place?
+      expect(trace[1]).toEqual({
+        Invocation: "ExitClientMethod",
+        State: curState,
+        Method: "connect",
+        Result: {
+          Error: {
+            name: "Error",
+            message:
+              "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+          }
+        }
+      });
 
-      Maybe you don't get transport state in some circumstances?
-        Perhaps just not on transportError events? Easiest way, but is this
-        something that you want to be able to test?
-        You STILL get a buttload of transportErrors in the trace, just no
-        infinite loop (because at each invocation you're still geting state)
+      expect(trace[2]).toEqual({
+        Phase: "DoneTrace",
+        State: curState
+      });
 
-      So I'm leaning toward not emitting on method calls, and doing so in the
-      client/session on timer functions. Does this for sure fix the problem? I believe so
-      So the transportError event is for internal transport errors -- anything not
-      thrown directly on an application method call. This also gets rid of my
-      annoying emitErr/throwErr duplication in the transport. And as a general
-      rule, if you're throwing, you should probably not have other side effets. Perfect.
+      expect(trace[3]).toEqual({
+        Phase: "DoneDefer",
+        State: curState
+      });
 
-      And make it emit only TRANSPORT_ERROR
-
-      Update README to show TRANSPORT_ERROR everywhere
-
-      For transport message events, check that the emission sequence is VALID
-      - IE must follow a connect event or a message event
-      - This means you do NOT track last STATE emission
-      - First review transport requirements
-        
-      */
-
-      // const trace = await harness.trace(() => {
-      //   harness.clientWrapper.connect();
-      // });
-
-      // expect(trace[0]).toEqual({
-      //   Phase: "Start",
-      //   State: jasmine.any(Object)
-      // });
-
-      // const curState = trace[0].State;
-
-      // curState.state = {
-      //   Error: {
-      //     name: "Error",
-      //     message:
-      //       "TRANSPORT_ERROR2: Transport returned invalid state 'bad_state' on call to state()."
-      //   }
-      // };
-
-      // console.log(trace);
-
-      // expect(trace[1]).toEqual({
-      //   Invocation: "ExitClientMethod",
-      //   State: curState,
-      //   Method: "connect",
-      //   Result: {
-      //     Error: {
-      //       name: "Error",
-      //       message:
-      //         "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      //     }
-      //   }
-      // });
-
-      // expect(trace[2]).toEqual({
-      //   Invocation: "EmitClientEvent",
-      //   State: curState,
-      //   Event: "transportError",
-      //   Args: [],
-      //   Context: toBe(harness.clientActual)
-      // });
-
-      // expect(trace[2]).toEqual({
-      //   Phase: "DoneTrace",
-      //   State: curState
-      // });
-
-      // expect(trace[3]).toEqual({
-      //   Phase: "DoneDefer",
-      //   State: curState
-      // });
-
-      // expect(trace[4]).toEqual({
-      //   Phase: "DoneTimers",
-      //   State: curState
-      // });
+      expect(trace[4]).toEqual({
+        Phase: "DoneTimers",
+        State: curState
+      });
     });
 
-    // WHAT IF TRANSPORT THROWS on STATE???
+    it("transport throws on call to transport.connect()", async () => {
+      const mockTransport = harness.mockTransport();
+      harness.initClient({
+        transport: mockTransport
+      });
 
-    it("transport returns invalid state before call to transport.connect()", async () => {});
+      mockTransport.connectImplementation = () => {
+        throw new Error("SOME_ERROR: ...");
+      };
 
-    it("transport throws on valid call to transport.connect()", async () => {});
+      const trace = await harness.trace(() => {
+        harness.clientWrapper.connect();
+      });
 
-    it("transport returns invalid state after call to transport.connect()", async () => {});
+      expect(trace[0]).toEqual({
+        Phase: "Start",
+        State: jasmine.any(Object)
+      });
+
+      const curState = trace[0].State;
+
+      expect(trace[1]).toEqual({
+        Invocation: "CallTransportMethod",
+        State: curState,
+        Method: "connect",
+        Args: [],
+        Context: toBe(mockTransport)
+      });
+
+      expect(trace[2]).toEqual({
+        Invocation: "ExitClientMethod",
+        State: curState,
+        Method: "connect",
+        Result: {
+          Error: {
+            name: "Error",
+            message:
+              "TRANSPORT_ERROR: Transport threw an error on call to connect().",
+            transportError: {
+              name: "Error",
+              message: "SOME_ERROR: ..."
+            }
+          }
+        }
+      });
+
+      expect(trace[3]).toEqual({
+        Phase: "DoneTrace",
+        State: curState
+      });
+
+      expect(trace[4]).toEqual({
+        Phase: "DoneDefer",
+        State: curState
+      });
+
+      expect(trace[5]).toEqual({
+        Phase: "DoneTimers",
+        State: curState
+      });
+    });
+
+    it("transport throws on post-connect state check", async () => {
+      const mockTransport = harness.mockTransport();
+      harness.initClient({
+        transport: mockTransport
+      });
+
+      mockTransport.connectImplementation = () => {
+        mockTransport.stateImplementation = () => {
+          throw new Error("SOME_ERROR: ...");
+        };
+      };
+
+      const trace = await harness.trace(() => {
+        harness.clientWrapper.connect();
+      });
+
+      expect(trace[0]).toEqual({
+        Phase: "Start",
+        State: jasmine.any(Object)
+      });
+
+      const curState = trace[0].State;
+
+      expect(trace[1]).toEqual({
+        Invocation: "CallTransportMethod",
+        State: curState,
+        Method: "connect",
+        Args: [],
+        Context: toBe(mockTransport)
+      });
+
+      curState.state = {
+        Error: {
+          name: "Error",
+          message:
+            "TRANSPORT_ERROR: Transport threw an error on call to state().",
+          transportError: {
+            name: "Error",
+            message: "SOME_ERROR: ..."
+          }
+        }
+      };
+
+      expect(trace[2]).toEqual({
+        Invocation: "ExitClientMethod",
+        State: curState,
+        Method: "connect",
+        Result: {
+          Error: {
+            name: "Error",
+            message:
+              "TRANSPORT_ERROR: Transport threw an error on call to state().",
+            transportError: {
+              name: "Error",
+              message: "SOME_ERROR: ..."
+            }
+          }
+        }
+      });
+
+      expect(trace[3]).toEqual({
+        Phase: "DoneTrace",
+        State: curState
+      });
+
+      expect(trace[4]).toEqual({
+        Phase: "DoneDefer",
+        State: curState
+      });
+
+      expect(trace[5]).toEqual({
+        Phase: "DoneTimers",
+        State: curState
+      });
+    });
+
+    it("transport returns invalid value on post-connect state check", async () => {
+      const mockTransport = harness.mockTransport();
+      harness.initClient({
+        transport: mockTransport
+      });
+
+      mockTransport.connectImplementation = () => {
+        mockTransport.stateImplementation = () => "bad_state";
+      };
+
+      const trace = await harness.trace(() => {
+        harness.clientWrapper.connect();
+      });
+
+      expect(trace[0]).toEqual({
+        Phase: "Start",
+        State: jasmine.any(Object)
+      });
+
+      const curState = trace[0].State;
+
+      expect(trace[1]).toEqual({
+        Invocation: "CallTransportMethod",
+        State: curState,
+        Method: "connect",
+        Args: [],
+        Context: toBe(mockTransport)
+      });
+
+      curState.state = {
+        Error: {
+          name: "Error",
+          message:
+            "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+        }
+      };
+
+      expect(trace[2]).toEqual({
+        Invocation: "ExitClientMethod",
+        State: curState,
+        Method: "connect",
+        Result: {
+          Error: {
+            name: "Error",
+            message:
+              "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+          }
+        }
+      });
+
+      expect(trace[3]).toEqual({
+        Phase: "DoneTrace",
+        State: curState
+      });
+
+      expect(trace[4]).toEqual({
+        Phase: "DoneDefer",
+        State: curState
+      });
+
+      expect(trace[5]).toEqual({
+        Phase: "DoneTimers",
+        State: curState
+      });
+    });
   });
 
   describe("success", () => {

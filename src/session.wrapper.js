@@ -41,8 +41,7 @@ export default function sessionWrapperFactory(sessionSync) {
     "unexpectedFeedClosing",
     "unexpectedFeedClosed",
     "badServerMessage",
-    "badClientMessage",
-    "transportError"
+    "badClientMessage"
   ];
   evts.forEach(evt => {
     sessionWrapper._sessionSync.on(evt, (...args) => {
@@ -105,13 +104,6 @@ export default function sessionWrapperFactory(sessionSync) {
 /**
  * Deferred and queued from SessionSync.
  * @event badClientMessage
- * @memberof SessionWrapper
- * @instance
- */
-
-/**
- * Deferred and queued from SessionSync.
- * @event transportError
  * @memberof SessionWrapper
  * @instance
  */

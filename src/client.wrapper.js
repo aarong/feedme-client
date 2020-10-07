@@ -38,8 +38,7 @@ function clientWrapperFactory(clientSync) {
     "connect",
     "disconnect",
     "badServerMessage",
-    "badClientMessage",
-    "transportError"
+    "badClientMessage"
   ];
   evts.forEach(evt => {
     clientWrapper._clientSync.on(evt, (...args) => {
@@ -81,13 +80,6 @@ function clientWrapperFactory(clientSync) {
 /**
  * Deferred and queued from ClientSync.
  * @event badClientMessage
- * @memberof ClientWrapper
- * @instance
- */
-
-/**
- * Deferred and queued from ClientSync.
- * @event transportError
  * @memberof ClientWrapper
  * @instance
  */

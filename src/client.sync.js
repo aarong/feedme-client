@@ -421,10 +421,6 @@ function clientSyncFactory(options) {
     "badClientMessage",
     clientSync._processBadClientMessage.bind(clientSync)
   );
-  clientSync._sessionWrapper.on(
-    "transportError",
-    clientSync._processTransportError.bind(clientSync)
-  );
 
   return clientSync;
 }
@@ -464,14 +460,6 @@ function clientSyncFactory(options) {
 /**
  * Pass-through for session event.
  * @event badClientMessage
- * @memberof ClientSync
- * @instance
- * @param {Error} err
- */
-
-/**
- * Pass-through for session event.
- * @event transportError
  * @memberof ClientSync
  * @instance
  * @param {Error} err
@@ -937,16 +925,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
           // And an application call to client.connect() would clear this timer synchronously
           dbgClient("Connect retry timer fired");
           this._connectRetryTimer = null;
-
-          try {
-            this._connect(); // Not .connect(), as that resets the retry count
-          } catch (e) {
-            if (_startsWith(e.message, "TRANSPORT_ERROR:")) {
-              this.emit("transportError", e); // TRANSPORT_ERROR thrown by wrapper - no coding error
-            } else {
-              throw e; // Anything else is a coding error - unhandled exception
-            }
-          }
+          this._connect(); // Not .connect(), as that resets the retry count
         }, retryMs);
       }
     }
@@ -1114,19 +1093,6 @@ protoClientSync._processBadClientMessage = function _processBadClientMessage(
   dbgClient("Observed session badClientMessage event");
 
   this.emit("badClientMessage", diagnostics);
-};
-
-/**
- * Processes a session transportError event. Pass-through.
- * @memberof ClientSync
- * @instance
- * @private
- * @param {Error} err
- */
-protoClientSync._processTransportError = function _processTransportError(err) {
-  dbgClient("Observed session transportError event");
-
-  this.emit("transportError", err);
 };
 
 /**
@@ -1657,7 +1623,10 @@ protoClientSync._connect = function _connect() {
   // Session state could be connecting or disconnected, but not connected
   // because the handshake is always sent asynchronously
 
-  // Set a timeout for the connection attempt?
+  // Set a timeout for the connection attempt? Connection attempt includes handshake
+  // What if I put this in the transport connecting handler? Better???
+  // Then you can actually get rid of this method altogether!
+  // //////////////////////////
   if (
     this._sessionWrapper.state() !== "disconnected" &&
     this._options.connectTimeoutMs > 0

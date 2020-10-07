@@ -66,7 +66,6 @@ State: Session members
             ._processFeedCloseResponse()
             ._processActionRevelation()
             ._processFeedTermination()
-        ._processTransportError()
 
 2. State-getting functionality
     Session functions
@@ -166,8 +165,7 @@ harnessProto.createSessionListener = function createSessionListener() {
     unexpectedFeedClosing: jest.fn(),
     unexpectedFeedClosed: jest.fn(),
     badServerMessage: jest.fn(),
-    badClientMessage: jest.fn(),
-    transportError: jest.fn()
+    badClientMessage: jest.fn()
   };
   l.mockClear = function mockClear() {
     l.connecting.mock.mockClear();
@@ -178,7 +176,6 @@ harnessProto.createSessionListener = function createSessionListener() {
     l.unexpectedFeedClosed.mockClear();
     l.badServerMessage.mock.mockClear();
     l.badClientMessage.mock.mockClear();
-    l.transportError.mock.mockClear();
   };
   this.session.on("connecting", l.connecting);
   this.session.on("connect", l.connect);
@@ -188,7 +185,6 @@ harnessProto.createSessionListener = function createSessionListener() {
   this.session.on("unexpectedFeedClosed", l.unexpectedFeedClosed);
   this.session.on("badServerMessage", l.badServerMessage);
   this.session.on("badClientMessage", l.badClientMessage);
-  this.session.on("transportError", l.transportError);
   return l;
 };
 
@@ -426,7 +422,6 @@ describe("The .connect() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -491,7 +486,6 @@ describe("The .disconnect() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -586,7 +580,6 @@ describe("The .action() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -643,7 +636,6 @@ describe("The .action() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -742,7 +734,6 @@ describe("The .feedOpen() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -846,7 +837,6 @@ describe("The .feedClose() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -924,7 +914,6 @@ describe("The transport connecting event", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -978,7 +967,6 @@ describe("The transport connect event", () => {
         expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
         expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
         expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-        expect(sessionListener.transportError.mock.calls.length).toBe(0);
       });
 
       // State
@@ -1033,7 +1021,6 @@ describe("The transport connect event", () => {
         expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
         expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
         expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-        expect(sessionListener.transportError.mock.calls.length).toBe(0);
       });
 
       // State
@@ -1125,7 +1112,6 @@ describe("The transport disconnect(err) event", () => {
       ).toBe("DISCONNECTED: The transport disconnected.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should emit disconnect(HANDSHAKE_REJECTED) for open feeds if the handshake failed", () => {
@@ -1162,7 +1148,6 @@ describe("The transport disconnect(err) event", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should emit disconnect() and unexpectedFeedClosing/Closed for open feeds if requested", () => {
@@ -1208,7 +1193,6 @@ describe("The transport disconnect(err) event", () => {
       ).toBe("DISCONNECTED: The transport disconnected.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1309,7 +1293,6 @@ describe("The transport message(msg) event", () => {
       sessionListener.badServerMessage.mock.calls[0][0].parseError
     ).toBeTruthy();
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit badServerMessage(err) if message is structurally invalid", () => {
@@ -1337,7 +1320,6 @@ describe("The transport message(msg) event", () => {
       sessionListener.badServerMessage.mock.calls[0][0].parseError
     ).toBeTruthy();
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully", () => {
@@ -1382,7 +1364,6 @@ describe("The ViolationResponse processor", () => {
       expect(sessionListener.badClientMessage.mock.calls[0][0]).toEqual(
         msg.Diagnostics
       );
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1458,7 +1439,6 @@ describe("The HandshakeResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating a successful handshake result", () => {
@@ -1479,7 +1459,6 @@ describe("The HandshakeResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1523,7 +1502,6 @@ describe("The HandshakeResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1578,7 +1556,6 @@ describe("The HandshakeResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1666,7 +1643,6 @@ describe("The ActionResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating a successful action result", () => {
@@ -1685,7 +1661,6 @@ describe("The ActionResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // // State
@@ -1740,7 +1715,6 @@ describe("The ActionResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1835,7 +1809,6 @@ describe("The FeedOpenResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating successful FeedOpen", () => {
@@ -1854,7 +1827,6 @@ describe("The FeedOpenResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1914,7 +1886,6 @@ describe("The FeedOpenResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2000,7 +1971,6 @@ describe("The FeedCloseResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating successful FeedClose", () => {
@@ -2019,7 +1989,6 @@ describe("The FeedCloseResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2100,7 +2069,6 @@ describe("The ActionRevelation processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msg);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should do nothing if the feed is closing (no violation)", () => {
@@ -2117,7 +2085,6 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
     expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if delta writing fails", () => {
@@ -2165,7 +2132,6 @@ describe("The ActionRevelation processor", () => {
     expect(
       sessionListener.badServerMessage.mock.calls[0][0].deltaError
     ).toBeTruthy();
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should eventually emit unexpectedFeedClosed(fn, fa) if delta writing fails", () => {
@@ -2201,7 +2167,6 @@ describe("The ActionRevelation processor", () => {
     });
     expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if MD5 verification fails", () => {
@@ -2243,7 +2208,6 @@ describe("The ActionRevelation processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(badMsg);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should eventually emit unexpectedFeedClosed(fn, fa) if MD5 verification fails", () => {
@@ -2278,7 +2242,6 @@ describe("The ActionRevelation processor", () => {
     });
     expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully - with MD5", () => {
@@ -2319,7 +2282,6 @@ describe("The ActionRevelation processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2399,7 +2361,6 @@ describe("The ActionRevelation processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2496,7 +2457,6 @@ describe("The FeedTermination processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msg);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully", () => {
@@ -2557,7 +2517,6 @@ describe("The FeedTermination processor", () => {
       ).toBe("TERMINATED: The server terminated the feed.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should emit nothing if the feed was closing", () => {
@@ -2573,7 +2532,6 @@ describe("The FeedTermination processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2613,40 +2571,6 @@ describe("The FeedTermination processor", () => {
     });
 
     // Callbacks - N/A
-  });
-});
-
-describe("The transport transportError(err) event", () => {
-  // Mock a connected session
-  let harness;
-  beforeEach(() => {
-    harness = harnessFactory();
-    harness.connectSession();
-  });
-
-  it("should emit the transportError event", () => {
-    const sessionListener = harness.createSessionListener();
-    harness.transportWrapper.emit(
-      "transportError",
-      new Error("SOME_ERROR: ...")
-    );
-
-    expect(sessionListener.connecting.mock.calls.length).toBe(0);
-    expect(sessionListener.connect.mock.calls.length).toBe(0);
-    expect(sessionListener.disconnect.mock.calls.length).toBe(0);
-    expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
-    expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
-    expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
-    expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    expect(sessionListener.transportError.mock.calls.length).toBe(1);
-    expect(sessionListener.transportError.mock.calls[0].length).toBe(1);
-    expect(sessionListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
-    );
-    expect(sessionListener.transportError.mock.calls[0][0].message).toBe(
-      "SOME_ERROR: ..."
-    );
   });
 });
 

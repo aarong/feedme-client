@@ -162,10 +162,6 @@ export default function sessionSyncFactory(transportWrapper) {
     "disconnect",
     sessionSync._processTransportDisconnect.bind(sessionSync)
   );
-  sessionSync._transportWrapper.on(
-    "transportError",
-    sessionSync._processTransportError.bind(sessionSync)
-  );
 
   return sessionSync;
 }
@@ -343,15 +339,6 @@ export default function sessionSyncFactory(transportWrapper) {
  * @memberof SessionSync
  * @instance
  * @param {Object} diagnostics Server-reported debugging information
- */
-
-/**
- * Relayed from the transportWrapper when the transport violates
- * the prescribed behavior.
- * @event transportError
- * @memberof SessionSync
- * @instance
- * @param {Error} err Passed from wrapper
  */
 
 // Callbacks
@@ -823,19 +810,6 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
   } else {
     this.emit("disconnect");
   }
-};
-
-/**
- * Processes a transport transportError event - relay to outside.
- * @memberof SessionSync
- * @instance
- * @private
- * @param {Error} err
- */
-proto._processTransportError = function _processTransportError(err) {
-  dbg("Observed transportWrapper transportError event");
-
-  this.emit("transportError", err);
 };
 
 /**

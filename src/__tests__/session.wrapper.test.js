@@ -815,26 +815,6 @@ describe("The sessionWrapper badClientMessage event", () => {
   });
 });
 
-describe("The sessionWrapper transportError event", () => {
-  it("should be emitted asynchronously", async () => {
-    const underlying = emitter({});
-    const wrapper = sessionWrapper(underlying);
-    const listener = jest.fn();
-    wrapper.on("transportError", listener);
-
-    underlying.emit("transportError", "some", "args");
-
-    expect(listener.mock.calls.length).toBe(0);
-
-    await Promise.resolve();
-
-    expect(listener.mock.calls.length).toBe(1);
-    expect(listener.mock.calls[0].length).toBe(2);
-    expect(listener.mock.calls[0][0]).toBe("some");
-    expect(listener.mock.calls[0][1]).toBe("args");
-  });
-});
-
 // Deferral ordering
 
 it("On disconnect, any outstanding action callbacks should be invoked before disconnect event", async () => {
