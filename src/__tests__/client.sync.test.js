@@ -703,7 +703,6 @@ describe("The client.connect() function", () => {
       // Now a connection retry is scheduled and retry count is 1
       const newState = harness.getClientState();
       newState._sessionWrapperState = "connecting";
-      newState._connectTimeoutTimer = 9999;
       newState._connectRetryCount = 0;
       newState._connectRetryTimer = null;
 
@@ -712,34 +711,6 @@ describe("The client.connect() function", () => {
       });
       harness.client.connect();
 
-      expect(harness.client).toHaveState(newState);
-    });
-
-    it("should set a connect timeout if configured and post-connect session state is connecting", () => {
-      const newState = harness.getClientState();
-      newState._sessionWrapperState = "connecting";
-      newState._connectTimeoutTimer = 9999;
-      harness.sessionWrapper.connect = jest.fn(() => {
-        harness.sessionWrapper.state.mockReturnValue("connecting");
-      });
-      harness.client.connect();
-      expect(harness.client).toHaveState(newState);
-    });
-
-    it("should not set a connect timeout if configured and post-connect session state is disconnected", () => {
-      const newState = harness.getClientState();
-      newState._sessionWrapperState = "disconnected";
-      harness.sessionWrapper.connect = jest.fn(() => {
-        harness.sessionWrapper.state.mockReturnValue("disconnected");
-      });
-      harness.client.connect();
-      expect(harness.client).toHaveState(newState);
-    });
-
-    it("should not set a connect timeout if not configured and post-connect session state is connecting", () => {
-      harness = harnessFactory({ connectTimeoutMs: 0 });
-      const newState = harness.getClientState();
-      harness.client.connect();
       expect(harness.client).toHaveState(newState);
     });
 
@@ -756,153 +727,13 @@ describe("The client.connect() function", () => {
       expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
-      expect(harness.sessionWrapper.state.mock.calls.length).toBe(1);
+      expect(harness.sessionWrapper.state.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
     });
 
     // Outbound callbacks - N/A
 
-    // Inbound callbacks
-
-    describe("on timeout if session state is connecting", () => {
-      it("should emit disconnect", () => {
-        // Need to try to connect and time out
-        harness.sessionWrapper.connect = jest.fn(() => {
-          harness.sessionWrapper.state.mockReturnValue("connecting");
-        });
-        harness.client.connect();
-        harness.sessionWrapper.emit("connecting");
-
-        const clientListener = harness.createClientListener();
-
-        jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-        harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
-
-        expect(clientListener.connecting.mock.calls.length).toBe(0);
-        expect(clientListener.connect.mock.calls.length).toBe(0);
-        expect(clientListener.disconnect.mock.calls.length).toBe(1);
-        expect(clientListener.disconnect.mock.calls[0].length).toBe(1);
-        expect(clientListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-          Error
-        );
-        expect(clientListener.disconnect.mock.calls[0][0].message).toBe(
-          "TIMEOUT: ."
-        );
-        expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
-        expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      });
-
-      it("should update state", () => {
-        // Need to try to connect and time out
-        harness.sessionWrapper.connect = jest.fn(() => {
-          harness.sessionWrapper.state.mockReturnValue("connecting");
-        });
-        harness.client.connect();
-        harness.sessionWrapper.emit("connecting");
-        const newState = harness.getClientState();
-        newState._sessionWrapperState = "disconnected";
-        newState._lastSessionWrapperStateEmission = "disconnect"; // Since _processDisconnect() is done
-        newState._connectTimeoutTimer = null;
-        newState._connectRetryTimer = 9999;
-        newState._connectRetryCount = 1;
-
-        jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-        harness.sessionWrapper.state.mockReturnValue("disconnected");
-        harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
-
-        expect(harness.client).toHaveState(newState);
-      });
-
-      it("should call session.disconnect()", () => {
-        // Need to try to connect and time out
-        harness.sessionWrapper.connect = jest.fn(() => {
-          harness.sessionWrapper.state.mockReturnValue("connecting");
-        });
-        harness.client.connect();
-        harness.sessionWrapper.emit("connecting");
-        harness.sessionWrapper.mockClear();
-
-        jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-
-        expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(1);
-        expect(harness.sessionWrapper.disconnect.mock.calls[0].length).toBe(1);
-        expect(
-          harness.sessionWrapper.disconnect.mock.calls[0][0]
-        ).toBeInstanceOf(Error);
-        expect(harness.sessionWrapper.disconnect.mock.calls[0][0].message).toBe(
-          "TIMEOUT: The connection attempt timed out."
-        );
-        expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.state.mock.calls.length).toBe(1);
-        expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
-      });
-    });
-
-    describe("on timeout if session state is disconnected", () => {
-      it("should emit nothing", () => {
-        // Need to try to connect and time out
-        harness.sessionWrapper.connect = jest.fn(() => {
-          harness.sessionWrapper.state.mockReturnValue("connecting");
-        });
-        harness.client.connect();
-
-        harness.sessionWrapper.state.mockReturnValue("disconnected"); // No emission yet
-
-        const clientListener = harness.createClientListener();
-
-        jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-
-        expect(clientListener.connecting.mock.calls.length).toBe(0);
-        expect(clientListener.connect.mock.calls.length).toBe(0);
-        expect(clientListener.disconnect.mock.calls.length).toBe(0);
-        expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
-        expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
-      });
-
-      it("should not change the state", () => {
-        // Need to try to connect and time out
-        harness.sessionWrapper.connect = jest.fn(() => {
-          harness.sessionWrapper.state.mockReturnValue("connecting");
-        });
-        harness.client.connect();
-
-        harness.sessionWrapper.state.mockReturnValue("disconnected"); // No emission yet
-
-        const newState = harness.getClientState();
-
-        jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-
-        expect(harness.client).toHaveState(newState);
-      });
-
-      it("should call nothing on the session", () => {
-        // Need to try to connect and time out
-        harness.sessionWrapper.connect = jest.fn(() => {
-          harness.sessionWrapper.state.mockReturnValue("connecting");
-        });
-        harness.client.connect();
-        harness.sessionWrapper.mockClear();
-
-        harness.sessionWrapper.state.mockReturnValue("disconnected"); // No emission yet
-
-        jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
-
-        expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
-        expect(harness.sessionWrapper.state.mock.calls.length).toBe(1);
-        expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
-      });
-    });
+    // Inbound callbacks - N/A
 
     // Return value
 
@@ -2281,6 +2112,7 @@ describe("The client._processConnecting() function", () => {
     harness.client.connect();
     const newState = harness.getClientState();
     newState._lastSessionWrapperStateEmission = "connecting";
+    newState._connectTimeoutTimer = 9999;
     harness.sessionWrapper.emit("connecting");
 
     expect(harness.client).toHaveState(newState);
@@ -2305,7 +2137,131 @@ describe("The client._processConnecting() function", () => {
 
   // Outbound callbacks - N/A
 
-  // Inbound callbacks - N/A
+  // Inbound callbacks
+
+  describe("on timeout if session state is connecting", () => {
+    it("should emit nothing", () => {
+      // Need to try to connect and time out
+      harness.sessionWrapper.connect = jest.fn(() => {
+        harness.sessionWrapper.state.mockReturnValue("connecting");
+      });
+      harness.client.connect();
+
+      harness.sessionWrapper.emit("connecting");
+
+      const clientListener = harness.createClientListener();
+
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+
+      expect(clientListener.connecting.mock.calls.length).toBe(0);
+      expect(clientListener.connect.mock.calls.length).toBe(0);
+      expect(clientListener.disconnect.mock.calls.length).toBe(0);
+      expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+    });
+
+    it("should update state", () => {
+      // Need to try to connect and time out
+      harness.sessionWrapper.connect = jest.fn(() => {
+        harness.sessionWrapper.state.mockReturnValue("connecting");
+      });
+      harness.client.connect();
+      harness.sessionWrapper.emit("connecting");
+
+      const newState = harness.getClientState();
+      newState._connectTimeoutTimer = null;
+
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+
+      expect(harness.client).toHaveState(newState);
+    });
+
+    it("should call session.disconnect()", () => {
+      // Need to try to connect and time out
+      harness.sessionWrapper.connect = jest.fn(() => {
+        harness.sessionWrapper.state.mockReturnValue("connecting");
+      });
+      harness.client.connect();
+      harness.sessionWrapper.emit("connecting");
+      harness.sessionWrapper.mockClear();
+
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+
+      expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(1);
+      expect(harness.sessionWrapper.disconnect.mock.calls[0].length).toBe(1);
+      expect(harness.sessionWrapper.disconnect.mock.calls[0][0]).toBeInstanceOf(
+        Error
+      );
+      expect(harness.sessionWrapper.disconnect.mock.calls[0][0].message).toBe(
+        "TIMEOUT: The connection attempt timed out."
+      );
+      expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.state.mock.calls.length).toBe(1);
+      expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
+    });
+  });
+
+  describe("on timeout if session state is disconnected", () => {
+    it("should emit nothing", () => {
+      // Need to try to connect and time out
+      harness.sessionWrapper.connect = jest.fn(() => {
+        harness.sessionWrapper.state.mockReturnValue("connecting");
+      });
+      harness.client.connect();
+
+      harness.sessionWrapper.state.mockReturnValue("disconnected"); // No emission yet
+
+      const clientListener = harness.createClientListener();
+
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+
+      expect(clientListener.connecting.mock.calls.length).toBe(0);
+      expect(clientListener.connect.mock.calls.length).toBe(0);
+      expect(clientListener.disconnect.mock.calls.length).toBe(0);
+      expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
+    });
+
+    it("should update the state appropriately", () => {
+      // Need to try to connect and time out
+      harness.client.connect();
+      harness.sessionWrapper.state.mockReturnValue("disconnected");
+      harness.sessionWrapper.emit("connecting");
+      harness.sessionWrapper.mockClear();
+
+      const newState = harness.getClientState();
+      newState._connectTimeoutTimer = null;
+
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+
+      expect(harness.client).toHaveState(newState);
+    });
+
+    it("should call nothing on the session", () => {
+      // Need to try to connect and time out
+      harness.client.connect();
+      harness.sessionWrapper.state.mockReturnValue("disconnected");
+      harness.sessionWrapper.emit("connecting");
+      harness.sessionWrapper.mockClear();
+
+      jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+
+      expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.id.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
+      expect(harness.sessionWrapper.state.mock.calls.length).toBe(1);
+      expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
+    });
+  });
 });
 
 describe("The client._processConnect() function", () => {
@@ -2626,8 +2582,6 @@ describe("The client._processDisconnect() function", () => {
     );
     // Disconnect and check the state
     const newState = harness.getClientState();
-    // Set a connect timeout timer
-    newState._connectTimeoutTimer = 9999;
     // Reset feed-reopen counts and timers
     newState._reopenCounts = {};
     newState._reopenTimers = [];
@@ -2717,7 +2671,7 @@ describe("The client._processDisconnect() function", () => {
     expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
-    expect(harness.sessionWrapper.state.mock.calls.length).toBe(1);
+    expect(harness.sessionWrapper.state.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
   });
 
@@ -2734,6 +2688,7 @@ describe("The client._processDisconnect() function", () => {
       harness.client.connect();
       harness.sessionWrapper.emit("connecting");
       jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+      harness.sessionWrapper.state.mockReturnValue("disconnected");
       harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
 
       harness.sessionWrapper.connect = () => {
@@ -2764,6 +2719,7 @@ describe("The client._processDisconnect() function", () => {
       harness.client.connect();
       harness.sessionWrapper.emit("connecting");
       jest.advanceTimersByTime(config.defaults.connectTimeoutMs);
+      harness.sessionWrapper.state.mockReturnValue("disconnected");
       harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
 
       const clientListener = harness.createClientListener();
@@ -2790,7 +2746,6 @@ describe("The client._processDisconnect() function", () => {
       harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ."));
 
       const newState = harness.getClientState();
-      newState._connectTimeoutTimer = 9999;
       newState._connectRetryTimer = null;
       jest.advanceTimersByTime(config.defaults.connectRetryMs);
       expect(harness.client).toHaveState(newState);

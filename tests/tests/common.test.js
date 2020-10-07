@@ -945,7 +945,8 @@ describe("The harness object", () => {
     });
 
     it("should record timer callback-driven invocations and state changes after the test", async () => {
-      harness.initClient({ transport: harness.mockTransport() });
+      const mockTransport = harness.mockTransport();
+      harness.initClient({ transport: mockTransport });
       harness.transport.connectImplementation = () => {
         harness.transport.stateImplementation = () => "connecting";
       };
@@ -953,8 +954,10 @@ describe("The harness object", () => {
         harness.transport.stateImplementation = () => "disconnected";
       };
 
+      harness.clientWrapper.connect();
+
       const trace = await harness.trace(() => {
-        harness.clientWrapper.connect();
+        mockTransport.emit("connecting");
       });
 
       expect(trace[0]).toEqual({
@@ -965,14 +968,9 @@ describe("The harness object", () => {
       const curState = trace[0].State;
 
       expect(trace[1]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "connect",
-        Args: [],
-        Context: toBe(harness.transport)
+        Phase: "DoneTrace",
+        State: curState
       });
-
-      curState.state = { ReturnValue: "connecting" };
 
       expect(trace[2]).toEqual({
         Invocation: "CallTimerMethod",
@@ -983,23 +981,19 @@ describe("The harness object", () => {
       });
 
       expect(trace[3]).toEqual({
-        Invocation: "ExitClientMethod",
+        Invocation: "EmitClientEvent",
         State: curState,
-        Method: "connect",
-        Result: { ReturnValue: undefined }
+        Event: "connecting",
+        Args: [],
+        Context: toBe(harness.clientActual)
       });
 
       expect(trace[4]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
         Phase: "DoneDefer",
         State: curState
       });
 
-      expect(trace[6]).toEqual({
+      expect(trace[5]).toEqual({
         Invocation: "CallTransportMethod",
         State: curState,
         Method: "disconnect",
@@ -1014,7 +1008,7 @@ describe("The harness object", () => {
 
       curState.state = { ReturnValue: "disconnected" };
 
-      expect(trace[7]).toEqual({
+      expect(trace[6]).toEqual({
         Phase: "DoneTimers",
         State: curState
       });

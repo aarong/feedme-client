@@ -666,8 +666,8 @@ protoClientSync.state = function state() {
 protoClientSync.connect = function connect() {
   dbgClient("Connect requested");
 
-  // Attempt a connect with timeout (could fail if session state is bad)
-  this._connect();
+  // Attempt a connect
+  this._sessionWrapper.connect(); // Cascade errors
 
   // Success
 
@@ -807,6 +807,23 @@ protoClientSync.feed = function feedF(feedName, feedArgs) {
 protoClientSync._processConnecting = function _processConnecting() {
   dbgClient("Observed session connecting event");
 
+  // Set a timeout for the connection attempt
+  // The timeout is cleared on session connect/disconnect event
+  if (this._options.connectTimeoutMs > 0) {
+    dbgClient("Connection timeout timer created");
+    this._connectTimeoutTimer = setTimeout(() => {
+      dbgClient("Connection timeout timer fired");
+      this._connectTimeoutTimer = null;
+      // Disconnect the session if still connecting
+      // Can't guarantee session state due to event deferral (handlers clear timers)
+      if (this._sessionWrapper.state() === "connecting") {
+        this._sessionWrapper.disconnect(
+          new Error("TIMEOUT: The connection attempt timed out.")
+        );
+      }
+    }, this._options.connectTimeoutMs);
+  }
+
   this.emit("connecting");
   this._lastSessionWrapperStateEmission = "connecting";
 };
@@ -919,13 +936,13 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
         this._connectRetryCount += 1;
         dbgClient("Connection retry timer created");
         this._connectRetryTimer = setTimeout(() => {
-          // No need to verify that the session state is currently disconnected
-          // The transport is required to remain disconnected when it loses a connection
-          // and the session therefore behaves in the same manner
-          // And an application call to client.connect() would clear this timer synchronously
           dbgClient("Connect retry timer fired");
           this._connectRetryTimer = null;
-          this._connect(); // Not .connect(), as that resets the retry count
+          // Perform another connection attempt if the session is still disconnected
+          // Can't guarantee session state due to event deferral (handlers clear timers)
+          if (this._sessionWrapper.state() === "disconnected") {
+            this._sessionWrapper.connect(); // Not client.connect(), which would reset the retry count
+          }
         }, retryMs);
       }
     }
@@ -1601,46 +1618,6 @@ protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
       timer = null; // Mark fired
       callbackTimeout();
     }, this._options.feedTimeoutMs);
-  }
-};
-
-/**
- * Internal function that tries to connect the session with timeout, and
- * that does not reset connection retry count (i.e. on TIMEOUT you call this).
- * @memberof ClientSync
- * @instance
- * @throws {Error} Passed through from session.connect()
- */
-protoClientSync._connect = function _connect() {
-  dbgClient("Attempting to connect the session");
-
-  // Connect the session - could fail
-  this._sessionWrapper.connect();
-
-  // Success
-
-  // Transport state could be connecting, connected, or disconnected
-  // Session state could be connecting or disconnected, but not connected
-  // because the handshake is always sent asynchronously
-
-  // Set a timeout for the connection attempt? Connection attempt includes handshake
-  // What if I put this in the transport connecting handler? Better???
-  // Then you can actually get rid of this method altogether!
-  // //////////////////////////
-  if (
-    this._sessionWrapper.state() !== "disconnected" &&
-    this._options.connectTimeoutMs > 0
-  ) {
-    // The timeout is cleared on session connect/disconnect event
-    dbgClient("Connection timeout timer created");
-    this._connectTimeoutTimer = setTimeout(() => {
-      dbgClient("Connection timeout timer fired");
-      if (this._sessionWrapper.state() !== "disconnected") {
-        this._sessionWrapper.disconnect(
-          new Error("TIMEOUT: The connection attempt timed out.")
-        );
-      }
-    }, this._options.connectTimeoutMs);
   }
 };
 

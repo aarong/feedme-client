@@ -716,18 +716,16 @@ proto._processTransportConnecting = function _processTransportConnecting() {
 proto._processTransportConnect = function _processTransportConnect() {
   dbg("Observed transportWrapper connect event");
 
-  // Transport state is not guaranteed in event handlers - ensure still connected
-  if (this._transportWrapper.state() !== "connected") {
-    return; // Stop
+  // Initiate a handshake if still connected
+  // Transport state is not guaranteed in event handlers
+  if (this._transportWrapper.state() === "connected") {
+    this._transportWrapper.send(
+      JSON.stringify({
+        MessageType: "Handshake",
+        Versions: [config.specVersion]
+      })
+    );
   }
-
-  // Initiate a handshake - transport is 'connected', session is 'connecting'
-  this._transportWrapper.send(
-    JSON.stringify({
-      MessageType: "Handshake",
-      Versions: [config.specVersion]
-    })
-  );
 };
 
 /**
