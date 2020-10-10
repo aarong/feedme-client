@@ -1197,7 +1197,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
 
     // Events
 
-    it("if session is disconnected, should emit close(DISCONNECTED)", () => {
+    it("if session is disconnected, should emit close(NOT_CONNECTED)", () => {
       harness = harnessFactory();
       harness.sessionWrapper.state.mockReturnValue("disconnected");
       const feed = harness.client.feed("someFeed", { arg: "val" });
@@ -1210,7 +1210,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       expect(feedListener.close.mock.calls[0].length).toBe(1);
       expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(feedListener.close.mock.calls[0][0].message).toBe(
-        "DISCONNECTED: The client is not connected."
+        "NOT_CONNECTED: The client is not connected."
       );
       expect(feedListener.action.mock.calls.length).toBe(0);
     });
@@ -2470,7 +2470,7 @@ describe("The client._processDisconnect() function", () => {
     expect(harness.client).toHaveState(newState);
   });
 
-  it("if was connecting and TIMEOUT/DISCONNECTED, update state appropriately below retry limit", () => {
+  it("if was connecting and TIMEOUT/NOT_CONNECTED, update state appropriately below retry limit", () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -2489,7 +2489,7 @@ describe("The client._processDisconnect() function", () => {
     expect(harness.client).toHaveState(newState);
   });
 
-  it("if was connecting and TIMEOUT/DISCONNECTED, update state appropriately at retry limit", () => {
+  it("if was connecting and TIMEOUT/NOT_CONNECTED, update state appropriately at retry limit", () => {
     const harness = harnessFactory({ connectRetryMaxAttempts: 1 });
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -2656,7 +2656,7 @@ describe("The client._processDisconnect() function", () => {
     expect(harness.sessionWrapper.feedState.mock.calls.length).toBe(0);
   });
 
-  it("if was connected and DISCONNECTED, call session.connect()", () => {
+  it("if was connected and NOT_CONNECTED, call session.connect()", () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -2907,7 +2907,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
       "unexpectedFeedClosing",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
 
     expect(feedListener1.opening.mock.calls.length).toBe(0);
@@ -2945,7 +2945,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
       "unexpectedFeedClosing",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
 
     expect(harness.client).toHaveState(newState);
@@ -2974,7 +2974,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
       "unexpectedFeedClosing",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -3006,14 +3006,14 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       "unexpectedFeedClosing",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
     const feedListener = harness.createFeedListener(feed);
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -3034,7 +3034,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       "unexpectedFeedClosing",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
 
     const feedListener = harness.createFeedListener(feed);
@@ -3042,7 +3042,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       "unexpectedFeedClosed",
       "someFeed",
       { arg: "val" },
-      new Error("DISCONNECTED: .")
+      new Error("NOT_CONNECTED: .")
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -5264,7 +5264,7 @@ describe("The client._considerFeedState() function", () => {
         expect(feedListener.close.mock.calls[0].length).toBe(1);
         expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(feedListener.close.mock.calls[0][0].message).toBe(
-          "DISCONNECTED: The transport disconnected."
+          "NOT_CONNECTED: The transport disconnected."
         );
         expect(feedListener.action.mock.calls.length).toBe(0);
       });

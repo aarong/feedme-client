@@ -609,11 +609,11 @@ function feedSyncFactory(clientSync, name, args) {
  * no error.
  *
  * 2. The user makes a valid call to feed.desireOpen() but the client is not
- * connected. The feed object is now closed with DISCONNECTED error.
+ * connected. The feed object is now closed with NOT_CONNECTED error.
  *
  * 3. A feed open times out and the client subsequently receives a
  * rejection from the server or disconnects. The feed object is now closed with
- * a REJECTED or DISCONNECTED error.
+ * a REJECTED or NOT_CONNECTED error.
  *
  * @event close
  * @memberof FeedSync
@@ -627,7 +627,7 @@ function feedSyncFactory(clientSync, name, args) {
  *                        err.serverErrorCode (string)
  *                        err.serverErrorData (object)
  *
- *                      Error("DISCONNECTED: ...")
+ *                      Error("NOT_CONNECTED: ...")
  *
  *                      Error("TERMINATED: ...")
  *
@@ -673,6 +673,7 @@ protoClientSync.connect = function connect() {
 
   // Reset connection retries
   if (this._connectRetryTimer) {
+    dbgClient("Connection retry timer cleared");
     clearTimeout(this._connectRetryTimer);
     this._connectRetryTimer = null;
   }
@@ -727,6 +728,7 @@ protoClientSync.action = function action(name, args, callback) {
         "Received pre-timeout action callback from session - calling back."
       );
       if (timer) {
+        dbgClient("Action timeout timer cleared");
         clearTimeout(timer); // Not present if actionTimeoutMs === 0
       }
       if (err) {
@@ -764,7 +766,7 @@ protoClientSync.action = function action(name, args, callback) {
  * @returns {FeedSync}
  * @throws {Error} "INVALID_ARGUMENT: ..."
  */
-protoClientSync.feed = function feedF(feedName, feedArgs) {
+protoClientSync.feed = function feedFunction(feedName, feedArgs) {
   dbgClient("Feed interaction object requested");
 
   // Check name
@@ -839,6 +841,7 @@ protoClientSync._processConnect = function _processConnect() {
 
   // Session has returned a connection result - cancel timeout if present
   if (this._connectTimeoutTimer) {
+    dbgClient("Connection timeout timer cleared");
     clearTimeout(this._connectTimeoutTimer);
     this._connectTimeoutTimer = null;
   }
@@ -879,6 +882,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
 
   // Session has returned a connection result - cancel timeout if present
   if (this._connectTimeoutTimer) {
+    dbgClient("Connection timeout timer cleared");
     clearTimeout(this._connectTimeoutTimer);
     this._connectTimeoutTimer = null;
   }
@@ -896,6 +900,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   // Other timers are reset on action/feedOpen callbacks
   this._reopenCounts = {};
   _each(this._reopenTimers, tmr => {
+    dbgClient("Feed re-open counter timer cleared");
     clearTimeout(tmr);
   });
   this._reopenTimers = [];
@@ -914,7 +919,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     this._informServerFeedClosed(
       feedName,
       feedArgs,
-      Error("DISCONNECTED: The transport disconnected.")
+      Error("NOT_CONNECTED: The transport disconnected.")
     );
   });
 
@@ -1133,9 +1138,11 @@ protoClientSync._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
   // Success
   appFeed._desiredState = "open"; // eslint-disable-line no-param-reassign
 
-  // If not connected, emit close(DISCONNECTED) (new reason for closure) and stop
+  // If not connected, emit close(NOT_CONNECTED) (new reason for closure) and stop
   if (this._sessionWrapper.state() !== "connected") {
-    appFeed._emitClose(new Error("DISCONNECTED: The client is not connected."));
+    appFeed._emitClose(
+      new Error("NOT_CONNECTED: The client is not connected.")
+    );
     return;
   }
 
@@ -1318,7 +1325,7 @@ protoClientSync._appFeedData = function _appFeedData(appFeed) {
  *
  *                      Error("TIMEOUT: ...")
  *                      Error("REJECTED: ...")
- *                      Error("DISCONNECTED: ...")
+ *                      Error("NOT_CONNECTED: ...")
  *                      Error("TERMINATED: ...")
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
@@ -1532,7 +1539,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
         if (err) {
           dbgClient("Feed open request returned error");
           this._informServerFeedClosed(feedName, feedArgs, err);
-          // The error is either DISCONNECTED or REJECTED - don't _consider in either case
+          // The error is either NOT_CONNECTED or REJECTED - don't _consider in either case
         } else {
           dbgClient("Feed open request returned success");
           this._informServerFeedOpen(feedName, feedArgs, feedData);
@@ -1562,7 +1569,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
         this._informServerFeedClosed(
           feedName,
           feedArgs,
-          new Error("DISCONNECTED: The transport disconnected.")
+          new Error("NOT_CONNECTED: The transport disconnected.")
         );
       }
 
@@ -1578,7 +1585,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
  * If the message timeout is exceeded then callbackTimeout() is invoked.
  * When a response is received, callbackResponse() is invoked irrespective
  * of whether the timeout fired. If the client disconnects, then callbackResponse
- * receives DISCONNECTED error.
+ * receives NOT_CONNECTED error.
  *
  * The session is assumed to be connected and session feed state is
  * assumed to be closed.
@@ -1720,7 +1727,7 @@ protoFeedSync.destroyed = function destroyed() {
  *
  *                      Error("TIMEOUT: ...")
  *                      Error("REJECTED: ...")
- *                      Error("DISCONNECTED: ...")
+ *                      Error("NOT_CONNECTED: ...")
  *                      Error("TERMINATED: ...")
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
@@ -1812,7 +1819,7 @@ protoFeedSync._serverFeedOpen = function _serverFeedOpen(feedData) {
  *
  *                      Error("TIMEOUT: ...")
  *                      Error("REJECTED: ...")
- *                      Error("DISCONNECTED: ...")
+ *                      Error("NOT_CONNECTED: ...")
  *                      Error("TERMINATED: ...")
  *                      Error("BAD_ACTION_REVELATION: ...")
  */
@@ -1875,7 +1882,7 @@ protoFeedSync._serverActionRevelation = function _serverActionRevelation(
  *
  *                      Error("TIMEOUT: ...")
  *                      Error("REJECTED: ...")
- *                      Error("DISCONNECTED: ...")
+ *                      Error("NOT_CONNECTED: ...")
  *                      Error("TERMINATED: ...")
  *                      Error("BAD_ACTION_REVELATION: ...")
  */

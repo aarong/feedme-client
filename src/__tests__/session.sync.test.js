@@ -603,14 +603,16 @@ describe("The .action() function", () => {
 
     // Callbacks
 
-    it("should call back DISCONNECTED error", () => {
+    it("should call back NOT_CONNECTED error", () => {
       const harness2 = harnessFactory();
       const cb = jest.fn();
       harness2.session.action("myAction", { arg: "val" }, cb);
       expect(cb.mock.calls.length).toBe(1);
       expect(cb.mock.calls[0].length).toBe(1);
       expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
-      expect(cb.mock.calls[0][0].message).toBe("DISCONNECTED: Not connected.");
+      expect(cb.mock.calls[0][0].message).toBe(
+        "NOT_CONNECTED: The client is not connected."
+      );
       expect(cb.mock.instances[0]).toBe(undefined);
     });
 
@@ -1065,9 +1067,9 @@ describe("The transport disconnect(err) event", () => {
   describe("runs successfully", () => {
     // Events
 
-    it("should emit disconnect(DISCONNECTED) and unexpectedFeedClosing/Closed for open feeds if the transport failed", () => {
+    it("should emit disconnect(NOT_CONNECTED) and unexpectedFeedClosing/Closed for open feeds if the transport failed", () => {
       const err = new Error(
-        "DISCONNECTED: Error message passed by the transport."
+        "NOT_CONNECTED: Error message passed by the transport."
       );
       const sessionListener = harness.createSessionListener();
       harness.session.feedOpen("myFeed", { arg: "val" }, () => {});
@@ -1095,7 +1097,7 @@ describe("The transport disconnect(err) event", () => {
       ).toBeInstanceOf(Error);
       expect(
         sessionListener.unexpectedFeedClosing.mock.calls[0][2].message
-      ).toBe("DISCONNECTED: The transport disconnected.");
+      ).toBe("NOT_CONNECTED: The transport disconnected.");
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(1);
       expect(sessionListener.unexpectedFeedClosed.mock.calls[0].length).toBe(3);
       expect(sessionListener.unexpectedFeedClosed.mock.calls[0][0]).toBe(
@@ -1109,7 +1111,7 @@ describe("The transport disconnect(err) event", () => {
       ).toBeInstanceOf(Error);
       expect(
         sessionListener.unexpectedFeedClosed.mock.calls[0][2].message
-      ).toBe("DISCONNECTED: The transport disconnected.");
+      ).toBe("NOT_CONNECTED: The transport disconnected.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
     });
@@ -1176,7 +1178,7 @@ describe("The transport disconnect(err) event", () => {
       ).toBeInstanceOf(Error);
       expect(
         sessionListener.unexpectedFeedClosing.mock.calls[0][2].message
-      ).toBe("DISCONNECTED: The transport disconnected.");
+      ).toBe("NOT_CONNECTED: The transport disconnected.");
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(1);
       expect(sessionListener.unexpectedFeedClosed.mock.calls[0].length).toBe(3);
       expect(sessionListener.unexpectedFeedClosed.mock.calls[0][0]).toBe(
@@ -1190,7 +1192,7 @@ describe("The transport disconnect(err) event", () => {
       ).toBeInstanceOf(Error);
       expect(
         sessionListener.unexpectedFeedClosed.mock.calls[0][2].message
-      ).toBe("DISCONNECTED: The transport disconnected.");
+      ).toBe("NOT_CONNECTED: The transport disconnected.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
     });
@@ -1246,13 +1248,13 @@ describe("The transport disconnect(err) event", () => {
       expect(acb.mock.calls[0].length).toBe(1);
       expect(acb.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(acb.mock.calls[0][0].message).toBe(
-        "DISCONNECTED: The transport disconnected."
+        "NOT_CONNECTED: The transport disconnected."
       );
       expect(focb.mock.calls.length).toBe(1);
       expect(focb.mock.calls[0].length).toBe(1);
       expect(focb.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(focb.mock.calls[0][0].message).toBe(
-        "DISCONNECTED: The transport disconnected."
+        "NOT_CONNECTED: The transport disconnected."
       );
       expect(fccb.mock.calls.length).toBe(1);
       expect(fccb.mock.calls[0].length).toBe(0);

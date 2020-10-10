@@ -93,7 +93,8 @@ const replaceErrors = (collection, processed = []) => {
 
 The test harness tracks all external invocations made by the library, including
 calls on transport methods, emissions/callbacks/settlements on the
-application, calls on global timer functions, and library function exits.
+application, and library function exits. Calls on global timer functions are
+considered internal to the library.
 
 The tests use the harness.trace() function to execute a code path on the library.
 The method returns a trace object of the form:
@@ -184,14 +185,6 @@ so that tests can verify the state of the library when the invocation was made.
   Context: x
 }
 
-{
-  Invocation: "CallTimerMethod",
-  State: x,
-  Method: x,
-  Args: [ ... ],
-  Context: x
-}
-
 The library state is the return values and/or errors thrown by public state
 functions and is represented using objects of the following form, where the x
 are either { ReturnValue: val }  or { Error: err }:
@@ -222,24 +215,6 @@ harness.start = () => {
   harness.clientWrapper = null;
   harness._feedActuals = null;
   harness._nextActionNumber = null;
-
-  // Track library calls to fake timer functions
-  // Restored to system functions when Jasmine uninstalls the clock
-  ["setTimeout", "clearTimeout", "setInterval", "clearInterval"].forEach(
-    timerFn => {
-      const orig = global[timerFn];
-      global[timerFn] = function(...args) {
-        harness._trace.push({
-          Invocation: "CallTimerMethod",
-          State: harness._state(),
-          Method: timerFn,
-          Args: args,
-          Context: this
-        });
-        return orig(...args); // Return timer id
-      };
-    }
-  );
 };
 
 harness.mockTransport = () => {
@@ -322,11 +297,11 @@ harness.initClient = options => {
     // Invoke the action and track callback/settlement
     let res;
     if (cb) {
-      res = tryCatch(
-        harness.clientActual.action.bind(harness.clientActual),
-        an,
-        aa,
-        function(...args) {
+      // Wrap callback only if function
+      // Use truthy non-function to test invalid callback errors
+      let actionCb = cb;
+      if (check.function(cb)) {
+        actionCb = function(...args) {
           harness._trace.push({
             Invocation: "CallbackAction",
             State: harness._state(),
@@ -334,7 +309,13 @@ harness.initClient = options => {
             Args: args,
             Context: this
           });
-        }
+        };
+      }
+      res = tryCatch(
+        harness.clientActual.action.bind(harness.clientActual),
+        an,
+        aa,
+        actionCb
       );
     } else {
       res = tryCatch(
@@ -525,12 +506,29 @@ harness._state = () => {
 
 // Client state setup functions - assume transport mocked by the harness
 
-harness.makeClientConnecting = async () => {
+harness.makeClientConnectingBeforeHandshake = async () => {
+  // Make the client connecting: transport connecting
   const outsideConnect = harness.transport.connectImplementation;
 
   harness.transport.connectImplementation = () => {
     harness.transport.stateImplementation = () => "connecting";
     harness.transport.emit("connecting");
+  };
+
+  harness.clientWrapper.connect();
+  await defer();
+
+  harness.transport.connectImplementation = outsideConnect;
+};
+
+harness.makeClientConnectingAfterHandshake = async () => {
+  // Make the client connecting: transport connected but HandshakeResponse pending
+  const outsideConnect = harness.transport.connectImplementation;
+
+  harness.transport.connectImplementation = () => {
+    harness.transport.stateImplementation = () => "connected";
+    harness.transport.emit("connecting");
+    harness.transport.emit("connect");
   };
 
   harness.clientWrapper.connect();

@@ -2,7 +2,7 @@ import { harness, toBe } from "../common";
 import config from "../../../src/config";
 
 describe("The feedmeClient() factory function", () => {
-  describe("application-driven failures", () => {
+  describe("invalid application invocation", () => {
     it("options argument - invalid type", async () => {
       const trace = await harness.trace(() => {
         harness.initClient();
@@ -22,45 +22,6 @@ describe("The feedmeClient() factory function", () => {
           Error: {
             name: "Error",
             message: "INVALID_ARGUMENT: Invalid options argument."
-          }
-        }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    it("options.transport - invalid type", async () => {
-      const trace = await harness.trace(() => {
-        harness.initClient({});
-      });
-
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: null
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitFactory",
-        State: curState,
-        Result: {
-          Error: {
-            name: "Error",
-            message: "INVALID_ARGUMENT: Transport is not an object."
           }
         }
       });
@@ -1260,9 +1221,46 @@ describe("The feedmeClient() factory function", () => {
         State: curState
       });
     });
-  });
 
-  describe("transport-driven failures", () => {
+    it("options.transport - invalid type", async () => {
+      const trace = await harness.trace(() => {
+        harness.initClient({});
+      });
+
+      expect(trace[0]).toEqual({
+        Phase: "Start",
+        State: null
+      });
+
+      const curState = trace[0].State;
+
+      expect(trace[1]).toEqual({
+        Invocation: "ExitFactory",
+        State: curState,
+        Result: {
+          Error: {
+            name: "Error",
+            message: "INVALID_ARGUMENT: Transport is not an object."
+          }
+        }
+      });
+
+      expect(trace[2]).toEqual({
+        Phase: "DoneTrace",
+        State: curState
+      });
+
+      expect(trace[3]).toEqual({
+        Phase: "DoneDefer",
+        State: curState
+      });
+
+      expect(trace[4]).toEqual({
+        Phase: "DoneTimers",
+        State: curState
+      });
+    });
+
     it("options.transport - invalid transport.on type", async () => {
       const trace = await harness.trace(() => {
         harness.initClient({
@@ -1751,7 +1749,7 @@ describe("The feedmeClient() factory function", () => {
     });
   });
 
-  describe("success", () => {
+  describe("valid application invocation", () => {
     it("all default options", async () => {
       const trace = await harness.trace(() => {
         harness.initClient({ transport: harness.mockTransport() });

@@ -191,7 +191,7 @@ export default function sessionSyncFactory(transportWrapper) {
  * - Unexpected failure of the tranport connection once connected
  *
  * All waiting callbacks are fired on disconnect
- * - actionCallbacks and feedOpenCallbacks are called with error DISCONNECTED
+ * - actionCallbacks and feedOpenCallbacks are called with error NOT_CONNECTED
  * - feedCloseCallbacks are called with no error
  * @event disconnect
  * @memberof SessionSync
@@ -256,7 +256,7 @@ export default function sessionSyncFactory(transportWrapper) {
  *
  *                    Error("BAD_ACTION_REVELATION: ...")
  *
- *                    Error("DISCONNECTED: ...")
+ *                    Error("NOT_CONNECTED: ...")
  */
 
 /**
@@ -278,7 +278,7 @@ export default function sessionSyncFactory(transportWrapper) {
  *
  *                    Error("BAD_ACTION_REVELATION: ...")
  *
- *                    Error("DISCONNECTED: ...")
+ *                    Error("NOT_CONNECTED: ...")
  */
 
 /**
@@ -483,7 +483,7 @@ proto.action = function action(name, args, callback) {
   // Applications should not have to check state for each action or wrap action
   // calls in a try/catch block (keep error handling in one place)
   if (this.state() !== "connected") {
-    callback(new Error("DISCONNECTED: Not connected."));
+    callback(new Error("NOT_CONNECTED: The client is not connected."));
     return; // Stop
   }
 
@@ -737,7 +737,7 @@ proto._processTransportConnect = function _processTransportConnect() {
  * - If the transport indicates no error, then the disconnect was requested
  *
  *      - A disconnect event is emitted with no error
- *      - Outstanding .action() and .feedOpen() callbacks receive a DISCONNECTED error
+ *      - Outstanding .action() and .feedOpen() callbacks receive a NOT_CONNECTED error
  *        There will be none if never connected
  *      - For each open feed, an unexpectedFeedClosing/Close sequence is emitted
  *        There will be none if never connected
@@ -752,7 +752,7 @@ proto._processTransportConnect = function _processTransportConnect() {
  * - If the transport indicates a FAILURE error, then the it failed internally
  *
  *      - A disconnect event is emitted with the FAILURE error
- *      - Outstanding .action() and .feedOpen() callbacks receive a DISCONNECTED error
+ *      - Outstanding .action() and .feedOpen() callbacks receive a NOT_CONNECTED error
  *      - For each open feed, an unexpectedFeedClosing/Close sequence is emitted
  *
  * @memberof SessionSync
@@ -778,7 +778,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
   this._feedData = {};
   this._feedCloseCallbacks = {};
 
-  const cbErr = new Error("DISCONNECTED: The transport disconnected."); // err may not exist
+  const cbErr = new Error("NOT_CONNECTED: The transport disconnected."); // err may not exist
 
   // Send action callbacks an error
   _each(actionCallbacks, val => {

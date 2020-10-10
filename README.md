@@ -356,7 +356,7 @@ Errors called back:
   `options.actionTimeoutMs`. The library will discard any subsequent response
   from the server.
 
-* `err.message === "DISCONNECTED: ..."`
+* `err.message === "NOT_CONNECTED: ..."`
 
   The client was not connected to the server at the time of the action
   invocation or the client disconnected from the server before it received a
@@ -408,7 +408,7 @@ Errors returned via promise rejection:
   The server did not respond within the amount of time specified by
   `options.actionTimeoutMs`.
 
-- `err.message === "DISCONNECTED: ..."`
+- `err.message === "NOT_CONNECTED: ..."`
 
   The client was not connected to the server at the time of the action
   invocation or the client disconnected from the server before it received a
@@ -737,7 +737,7 @@ an `Error` object (`err`) as an argument. The following errors are possible:
   disconnects/reconnects, or if a feed object associated with the feed receives
   a valid call to `feed.desireOpen()`.
 
-- `err.message === "DISCONNECTED: ..."`
+- `err.message === "NOT_CONNECTED: ..."`
 
   The client is not connected to the server. If a connection is later
   established, the feed object will emit as appropriate. If the server has just
