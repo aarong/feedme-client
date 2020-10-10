@@ -566,6 +566,29 @@ harness.makeClientConnected = async () => {
   harness.transport.sendImplementation = outsideSend;
 };
 
+harness.makeClientConnectTimeoutTransport = async () => {
+  // Make a client connection attempt time out - failure to establish transport connection
+  const outsideConnect = harness.transport.connectImplementation;
+  const outsideDisconnect = harness.transport.disconnectImplementation;
+
+  harness.transport.connectImplementation = () => {
+    harness.transport.stateImplementation = () => "connecting";
+    harness.transport.emit("connecting");
+  };
+  harness.clientWrapper.connect();
+  await defer();
+
+  harness.transport.disconnectImplementation = () => {
+    harness.transport.stateImplementation = () => "disconnected";
+    harness.transport.emit("disconnect", new Error("TIMEOUT: ..."));
+  };
+  jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
+  await defer();
+
+  harness.transport.connectImplementation = outsideConnect;
+  harness.transport.disconnectImplementation = outsideDisconnect;
+};
+
 harness.makeOpenFeed = async (fn, fa, fd) => {
   // Only to be called when the client is connected
   // Assumes the client is not already interacting with the fn/fa combo

@@ -2,7 +2,7 @@ import { harness, toBe } from "../common";
 import config from "../../../src/config";
 
 describe("The feedmeClient() factory function", () => {
-  describe("application-related failures", () => {
+  describe("application-driven failures", () => {
     it("options argument - invalid type", async () => {
       const trace = await harness.trace(() => {
         harness.initClient();
@@ -1262,7 +1262,7 @@ describe("The feedmeClient() factory function", () => {
     });
   });
 
-  describe("transport-related failures", () => {
+  describe("transport-driven failures", () => {
     it("options.transport - invalid transport.on type", async () => {
       const trace = await harness.trace(() => {
         harness.initClient({

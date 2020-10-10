@@ -1,7 +1,7 @@
 import { harness, toBe } from "../common";
 
 describe("The client.connect() function", () => {
-  describe("application-related failures", () => {
+  describe("application-driven failures", () => {
     it("client is connecting", async () => {
       harness.initClient({
         transport: harness.mockTransport(),
@@ -95,7 +95,7 @@ describe("The client.connect() function", () => {
     });
   });
 
-  describe("transport-related failures", () => {
+  describe("transport-driven failures", () => {
     it("transport throws on pre-connect state check", async () => {
       const mockTransport = harness.mockTransport();
       harness.initClient({
@@ -404,37 +404,371 @@ describe("The client.connect() function", () => {
   });
 
   describe("success", () => {
-    describe("ending state is disconnected", () => {
-      describe("connect retry timer is not pending", () => {});
+    describe("post-connect transport state is disconnected", () => {
+      it("connect retry timer was not pending", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
+        });
 
-      describe("connect retry timer is pending", () => {});
+        mockTransport.connectImplementation = () => {
+          mockTransport.stateImplementation = () => "disconnected";
+        };
+
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.connect();
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "connect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
+
+        expect(trace[2]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "connect",
+          Result: {
+            ReturnValue: undefined
+          }
+        });
+
+        expect(trace[3]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
+      });
+
+      it("connect retry timer was pending", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
+        });
+
+        await harness.makeClientConnectTimeoutTransport();
+
+        mockTransport.connectImplementation = () => {
+          mockTransport.stateImplementation = () => "disconnected";
+        };
+
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.connect();
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "connect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
+
+        expect(trace[2]).toEqual({
+          Invocation: "CallTimerMethod",
+          State: curState,
+          Method: "clearTimeout",
+          Args: [jasmine.anything()],
+          Context: undefined
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "connect",
+          Result: {
+            ReturnValue: undefined
+          }
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[6]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
+      });
     });
 
-    describe("ending state is connecting", () => {
-      describe("options.connectTimeoutMs > 0", () => {
-        describe("connect retry timer is not pending", () => {});
+    describe("post-connect transport state is connecting", () => {
+      it("connect retry timer was not pending", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
+        });
 
-        describe("connect retry timer is pending", () => {});
+        mockTransport.connectImplementation = () => {
+          mockTransport.stateImplementation = () => "connecting";
+        };
+
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.connect();
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "connect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
+
+        curState.state = { ReturnValue: "connecting" };
+
+        expect(trace[2]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "connect",
+          Result: {
+            ReturnValue: undefined
+          }
+        });
+
+        expect(trace[3]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
       });
 
-      describe("options.connectTimeoutMs === 0", () => {
-        describe("connect retry timer is not pending", () => {});
+      it("connect retry timer was pending", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
+        });
 
-        describe("connect retry timer is pending", () => {});
+        await harness.makeClientConnectTimeoutTransport();
+
+        mockTransport.connectImplementation = () => {
+          mockTransport.stateImplementation = () => "connecting";
+        };
+
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.connect();
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "connect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
+
+        curState.state = { ReturnValue: "connecting" };
+
+        expect(trace[2]).toEqual({
+          Invocation: "CallTimerMethod",
+          State: curState,
+          Method: "clearTimeout",
+          Args: [jasmine.anything()],
+          Context: undefined
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "connect",
+          Result: {
+            ReturnValue: undefined
+          }
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[6]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
       });
     });
 
-    describe("ending state is connected", () => {
-      describe("options.connectTimeoutMs > 0", () => {
-        describe("connect retry timer is not pending", () => {});
+    describe("post-connect transport state is connected", () => {
+      it("connect retry timer was not pending", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
+        });
 
-        describe("connect retry timer is pending", () => {});
+        mockTransport.connectImplementation = () => {
+          mockTransport.stateImplementation = () => "connected";
+        };
+
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.connect();
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "connect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
+
+        curState.state = { ReturnValue: "connecting" }; // Handshake not complete
+
+        expect(trace[2]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "connect",
+          Result: {
+            ReturnValue: undefined
+          }
+        });
+
+        expect(trace[3]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
       });
 
-      describe("options.connectTimeoutMs === 0", () => {
-        describe("connect retry timer is not pending", () => {});
+      it("connect retry timer was pending", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
+        });
 
-        describe("connect retry timer is pending", () => {});
+        await harness.makeClientConnectTimeoutTransport();
+
+        mockTransport.connectImplementation = () => {
+          mockTransport.stateImplementation = () => "connected";
+        };
+
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.connect();
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "connect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
+
+        curState.state = { ReturnValue: "connecting" }; // Handshake not complete
+
+        expect(trace[2]).toEqual({
+          Invocation: "CallTimerMethod",
+          State: curState,
+          Method: "clearTimeout",
+          Args: [jasmine.anything()],
+          Context: undefined
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "connect",
+          Result: {
+            ReturnValue: undefined
+          }
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[6]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
       });
     });
   });
