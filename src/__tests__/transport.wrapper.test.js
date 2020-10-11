@@ -134,7 +134,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'connecting' on call to state(). Must be 'disconnected' at initialization."
+        "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
       )
     );
   });
@@ -150,7 +150,7 @@ describe("The factory function", () => {
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'connected' on call to state(). Must be 'disconnected' at initialization."
+        "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
       )
     );
   });
@@ -227,6 +227,100 @@ describe("the state() function", () => {
     }).toThrow(
       new Error(
         "TRANSPORT_ERROR: Transport returned invalid state 'junk' on call to state()."
+      )
+    );
+  });
+
+  it("if the transport returns connecting initially without a call to connect(), it should throw TRANSPORT_ERROR", async () => {
+    const transport = {
+      on: () => {},
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    };
+    const wrapper = transportWrapper(transport);
+    transport.state = () => "connecting";
+
+    expect(() => {
+      wrapper.state();
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
+      )
+    );
+  });
+
+  it("if the transport returns connected initially without a call to connect(), it should throw TRANSPORT_ERROR", async () => {
+    const transport = {
+      on: () => {},
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    };
+    const wrapper = transportWrapper(transport);
+    transport.state = () => "connected";
+
+    expect(() => {
+      wrapper.state();
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
+      )
+    );
+  });
+
+  it("if the transport returns connecting after disconnect without a call to connect(), it should throw TRANSPORT_ERROR", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connecting";
+    };
+    wrapper.connect();
+    transport.emit("connecting");
+    transport.emit("disconnect", new Error("FAILURE: ..."));
+
+    transport.state = () => "connecting";
+
+    expect(() => {
+      wrapper.state();
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
+      )
+    );
+  });
+
+  it("if the transport returns connected after disconnect without a call to connect(), it should throw TRANSPORT_ERROR", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connecting";
+    };
+    wrapper.connect();
+    transport.emit("connecting");
+    transport.emit("disconnect", new Error("FAILURE: ..."));
+
+    transport.state = () => "connected";
+
+    expect(() => {
+      wrapper.state();
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
       )
     );
   });
@@ -721,6 +815,69 @@ describe("the disconnect() function", () => {
 });
 
 describe("the transport 'connecting' event", () => {
+  it("if the library hasn't called connect() initially, it should throw an error", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+
+    const connectingListener = jest.fn();
+    wrapper.on("connecting", connectingListener);
+
+    expect(() => {
+      transport.emit("connecting");
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      )
+    );
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+  });
+
+  it("if the library hasn't called connect() after disconnect, it should throw an error", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connecting";
+    };
+    wrapper.connect();
+    transport.emit("connecting");
+    transport.emit("disconnect", new Error("FAILURE: ..."));
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    const connectingListener = jest.fn();
+    wrapper.on("connecting", connectingListener);
+
+    expect(() => {
+      transport.emit("connecting");
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      )
+    );
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+  });
+
   it("if the previous emission was connecting, it should throw unhandled error", async () => {
     const transport = emitter({
       state: () => "disconnected",

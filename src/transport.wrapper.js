@@ -15,11 +15,15 @@ const dbg = debug("feedme-client:transport-wrapper");
  *
  * - The transport API surface is validated on intialization
  * - Transport method return values and errors are validated
- * - Transport state is validated after each method invocation
+ * - Transport state is validated after connect/disconnect/send invocation
  * - Transport event emission sequence is validated
+ * - Transport state is verified to remain disconnected after a disconnect event
+ *   until there has been a call to transport.connect()
+ * - Transport is verified to emit no connecting event until there has been a
+ *   call to transport.connect()
  *
  * Because transport state is updated synchronously and associated events may be
- * emitted asynchronously, it is not possible to validate state and emissions
+ * deferred, it is not generally possible to validate state and emissions
  * against one another.
  *
  * Transport errors are always thrown:
@@ -30,7 +34,8 @@ const dbg = debug("feedme-client:transport-wrapper");
  * - If the transport errors synchronously on a method call invoked by a
  *   library timer, then the error will be unhandled
  *
- * - If the transport emits an invalid event, then the error will be unhandled
+ * - If the transport emits an invalid event, then it is up to the transport to
+ *   handle the error (will generally be unhandled)
  *
  * Assumes that the library interacts with the transport according to the
  * requirements laid out in the developer documentation.
@@ -91,13 +96,21 @@ export default function transportWrapperFactory(transport) {
    */
   transportWrapper._lastEmission = "disconnect";
 
+  /**
+   * Flag indicating whether the library has called transport.connect().
+   * Set to true on calls to transportWrapper.connect() and then set to false
+   * when the transport emits a connecting event.
+   * @memberof TransportWrapper
+   * @instance
+   * @private
+   * @type {boolean}
+   */
+  transportWrapper._connectCalled = false;
+
   // Check that the transport state is disconnected
-  const transportState = transportWrapper.state(); // Cascade errors
-  if (transportState !== "disconnected") {
-    throw new Error(
-      `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state(). Must be 'disconnected' at initialization.`
-    );
-  }
+  // The transportWrapper.state() function will throw if not disconnected
+  // because there has not been a call to transport.connect()
+  transportWrapper.state(); // Cascade errors
 
   // Try to listen for transport events
   try {
@@ -191,6 +204,18 @@ proto.state = function state() {
     throw err;
   }
 
+  // After a disconnect event, state must remain disconnected until there is a
+  // call to transport.connect()
+  if (
+    this._lastEmission === "disconnect" &&
+    transportState !== "disconnected" &&
+    !this._connectCalled
+  ) {
+    throw new Error(
+      `TRANSPORT_ERROR: Transport returned state '${transportState}' without library call to connect().`
+    );
+  }
+
   // Return
   return transportState;
 };
@@ -204,9 +229,11 @@ proto.connect = function connect() {
   dbg("Connect requested");
 
   // Try to connect
+  this._connectCalled = true;
   try {
     this._transport.connect();
   } catch (e) {
+    this._connectCalled = false;
     const err = new Error(
       `TRANSPORT_ERROR: Transport threw an error on call to connect().`
     );
@@ -302,7 +329,15 @@ proto._processTransportConnecting = function _processTransportConnecting(
     );
   }
 
+  // Did the library call transport.connect()?
+  if (!this._connectCalled) {
+    throw new Error(
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+    );
+  }
+
   // Emit
+  this._connectCalled = false;
   this._lastEmission = "connecting";
   defer(this.emit.bind(this), "connecting");
 };

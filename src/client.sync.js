@@ -1260,7 +1260,8 @@ protoClientSync._appFeedState = function _appFeedState(appFeed) {
  * @memberof ClientSync
  * @instance
  * @private
- * @param {FeedSync} appFeed Interaction object, plus Error("INVALID_FEED_STATE: ...")
+ * @param {FeedSync} appFeed
+ * @throws {Error} "INVALID_FEED_STATE: ..."
  */
 protoClientSync._appFeedDestroy = function _appFeedDestroy(appFeed) {
   dbgClient("Feed destroy requested");

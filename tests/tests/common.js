@@ -442,6 +442,9 @@ harness.trace = async fn => {
   // Input fn can be synchronous or asynchronous so that trace() can be used
   // to test harness.makeX() functions. Not used in actual library tests.
 
+  // Run the trace function synchronously. No deferred behavior should be
+  // permitted to occur before the trace is executed.
+
   harness._trace = [];
 
   // Record starting state
@@ -585,6 +588,17 @@ harness.makeClientConnectTimeoutTransport = async () => {
 
   harness.transport.connectImplementation = outsideConnect;
   harness.transport.disconnectImplementation = outsideDisconnect;
+};
+
+harness.makeDesiredOpenFeed = async (fn, fa) => {
+  // Only to be called when the client is disconnected
+  // Purpose is to move past the deferred close event (reason change)
+
+  const feed = harness.clientWrapper.feed(fn, fa);
+  feed.wrapper.desireOpen();
+  await defer();
+
+  return feed;
 };
 
 harness.makeOpenFeed = async (fn, fa, fd) => {

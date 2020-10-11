@@ -1625,7 +1625,7 @@ describe("The feedmeClient() factory function", () => {
           Error: {
             name: "Error",
             message:
-              "TRANSPORT_ERROR: Transport returned invalid state 'connecting' on call to state(). Must be 'disconnected' at initialization."
+              "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
           }
         }
       });
@@ -1673,7 +1673,7 @@ describe("The feedmeClient() factory function", () => {
           Error: {
             name: "Error",
             message:
-              "TRANSPORT_ERROR: Transport returned invalid state 'connected' on call to state(). Must be 'disconnected' at initialization."
+              "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
           }
         }
       });

@@ -189,254 +189,227 @@ describe("The client.action() function - callback usage", () => {
   });
 
   describe("valid application invocation", () => {
-    it("client is disconnected", async () => {
-      harness.initClient({
-        transport: harness.mockTransport()
+    describe("client is disconnected", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on initial state check", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          mockTransport.stateImplementation = () => {
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.action(
+              "ActionName",
+              { Action: "Args" },
+              () => {} // Callback mode
+            );
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "action",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to state().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[2]).toEqual({
+            Phase: "DoneTrace",
+            State: curState
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport returns invalid value on initial state check", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          mockTransport.stateImplementation = () => "bad_state";
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.action(
+              "ActionName",
+              { Action: "Args" },
+              () => {} // Callback mode
+            );
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "action",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+              }
+            }
+          });
+
+          expect(trace[2]).toEqual({
+            Phase: "DoneTrace",
+            State: curState
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport returns 'connecting' on initial state check", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          mockTransport.stateImplementation = () => "connecting";
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.action(
+              "ActionName",
+              { Action: "Args" },
+              () => {} // Callback mode
+            );
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "action",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
+              }
+            }
+          });
+
+          expect(trace[2]).toEqual({
+            Phase: "DoneTrace",
+            State: curState
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport returns 'connected' on initial state check", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          mockTransport.stateImplementation = () => "connected";
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.action(
+              "ActionName",
+              { Action: "Args" },
+              () => {} // Callback mode
+            );
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "action",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
+              }
+            }
+          });
+
+          expect(trace[2]).toEqual({
+            Phase: "DoneTrace",
+            State: curState
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
       });
 
-      let actionNumber;
-      const trace = await harness.trace(() => {
-        actionNumber = harness.clientWrapper.action(
-          "ActionName",
-          { Action: "Args" },
-          () => {} // Callback mode
-        );
-      });
-
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "action",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "CallbackAction",
-        State: curState,
-        ActionNumber: actionNumber,
-        Args: [
-          {
-            name: "Error",
-            message: "NOT_CONNECTED: The client is not connected."
-          }
-        ],
-        Context: undefined
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    it("client is connecting - transport connecting", async () => {
-      harness.initClient({
-        transport: harness.mockTransport(),
-        connectTimeoutMs: 0
-      });
-
-      await harness.makeClientConnectingBeforeHandshake();
-
-      let actionNumber;
-      const trace = await harness.trace(() => {
-        actionNumber = harness.clientWrapper.action(
-          "ActionName",
-          { Action: "Args" },
-          () => {} // Callback mode
-        );
-      });
-
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "action",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "CallbackAction",
-        State: curState,
-        ActionNumber: actionNumber,
-        Args: [
-          {
-            name: "Error",
-            message: "NOT_CONNECTED: The client is not connected."
-          }
-        ],
-        Context: undefined
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    it("client is connecting - transport connected and handshake pending", async () => {
-      harness.initClient({
-        transport: harness.mockTransport(),
-        connectTimeoutMs: 0
-      });
-
-      await harness.makeClientConnectingAfterHandshake();
-
-      let actionNumber;
-      const trace = await harness.trace(() => {
-        actionNumber = harness.clientWrapper.action(
-          "ActionName",
-          { Action: "Args" },
-          () => {} // Callback mode
-        );
-      });
-
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "action",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "CallbackAction",
-        State: curState,
-        ActionNumber: actionNumber,
-        Args: [
-          {
-            name: "Error",
-            message: "NOT_CONNECTED: The client is not connected."
-          }
-        ],
-        Context: undefined
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    describe("client is connected", () => {
-      it("options.actionTimeoutMs === 0", async () => {
-        const mockTransport = harness.mockTransport();
+      it("valid transport behavior", async () => {
         harness.initClient({
-          transport: mockTransport,
-          actionTimeoutMs: 0
+          transport: harness.mockTransport()
         });
-
-        await harness.makeClientConnected();
-
-        const trace = await harness.trace(() => {
-          harness.clientWrapper.action(
-            "ActionName",
-            { Action: "Args" },
-            () => {} // Callback mode
-          );
-        });
-
-        expect(trace[0]).toEqual({
-          Phase: "Start",
-          State: jasmine.any(Object)
-        });
-
-        const curState = trace[0].State;
-
-        expect(trace[1]).toEqual({
-          Invocation: "CallTransportMethod",
-          State: curState,
-          Method: "send",
-          Args: [
-            JSON.stringify({
-              MessageType: "Action",
-              ActionName: "ActionName",
-              ActionArgs: { Action: "Args" },
-              CallbackId: "1"
-            })
-          ],
-          Context: toBe(mockTransport)
-        });
-
-        expect(trace[2]).toEqual({
-          Invocation: "ExitClientMethod",
-          State: curState,
-          Method: "action",
-          Result: { ReturnValue: undefined }
-        });
-
-        expect(trace[3]).toEqual({
-          Phase: "DoneTrace",
-          State: curState
-        });
-
-        expect(trace[4]).toEqual({
-          Phase: "DoneDefer",
-          State: curState
-        });
-
-        expect(trace[5]).toEqual({
-          Phase: "DoneTimers",
-          State: curState
-        });
-      });
-
-      it("options.actionTimeoutMs > 0", async () => {
-        const mockTransport = harness.mockTransport();
-        harness.initClient({
-          transport: mockTransport,
-          actionTimeoutMs: 1
-        });
-
-        await harness.makeClientConnected();
 
         let actionNumber;
         const trace = await harness.trace(() => {
@@ -455,30 +428,28 @@ describe("The client.action() function - callback usage", () => {
         const curState = trace[0].State;
 
         expect(trace[1]).toEqual({
-          Invocation: "CallTransportMethod",
-          State: curState,
-          Method: "send",
-          Args: [
-            JSON.stringify({
-              MessageType: "Action",
-              ActionName: "ActionName",
-              ActionArgs: { Action: "Args" },
-              CallbackId: "1"
-            })
-          ],
-          Context: toBe(mockTransport)
-        });
-
-        expect(trace[2]).toEqual({
           Invocation: "ExitClientMethod",
           State: curState,
           Method: "action",
           Result: { ReturnValue: undefined }
         });
 
-        expect(trace[3]).toEqual({
+        expect(trace[2]).toEqual({
           Phase: "DoneTrace",
           State: curState
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "CallbackAction",
+          State: curState,
+          ActionNumber: actionNumber,
+          Args: [
+            {
+              name: "Error",
+              message: "NOT_CONNECTED: The client is not connected."
+            }
+          ],
+          Context: undefined
         });
 
         expect(trace[4]).toEqual({
@@ -487,22 +458,402 @@ describe("The client.action() function - callback usage", () => {
         });
 
         expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
+      });
+    });
+
+    describe("client is connecting - transport connecting", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on initial state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on initial state check", () => {
+          // //
+        });
+
+        /*
+          Could you check that state does not change synchronously?
+
+          transport.state()
+
+            if (
+              this._syncState !== null
+              && transportState !== this._syncState
+            ) {
+              TRANSPORT_ERROR: Transport state synchronously changed from X to Y.
+            }
+            this._syncState = transportState;
+            defer(() => {
+              this._syncState = null;
+            });
+
+          And set this._syncState = null on each state event BEFORE emitting
+            Because your deferred event could come after a transport event
+            Your deferred event would NOT reset the new sync state synchronously
+
+          And update this._syncState on connect/send/disconnect
+
+          What would the test look like?
+            You need to run state() synchronously before the trace, and have it
+            return the correct initial state but set things up so that the next
+            state is wrong
+
+
+
+
+
+        */
+
+        it("transport returns 'disconnected' on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'connected' on initial state check", () => {
+          // //
+        });
+      });
+
+      it("valid transport behavior", async () => {
+        harness.initClient({
+          transport: harness.mockTransport(),
+          connectTimeoutMs: 0
+        });
+
+        await harness.makeClientConnectingBeforeHandshake();
+
+        let actionNumber;
+        const trace = await harness.trace(() => {
+          actionNumber = harness.clientWrapper.action(
+            "ActionName",
+            { Action: "Args" },
+            () => {} // Callback mode
+          );
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "action",
+          Result: { ReturnValue: undefined }
+        });
+
+        expect(trace[2]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[3]).toEqual({
           Invocation: "CallbackAction",
           State: curState,
           ActionNumber: actionNumber,
           Args: [
             {
               name: "Error",
-              message:
-                "TIMEOUT: The server did not respond within the allocated time."
+              message: "NOT_CONNECTED: The client is not connected."
             }
           ],
           Context: undefined
         });
 
-        expect(trace[6]).toEqual({
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
           Phase: "DoneTimers",
           State: curState
+        });
+      });
+    });
+
+    describe("client is connecting - transport connected and handshake pending", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on initial state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'disconnected' on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'connected' on initial state check", () => {
+          // //
+        });
+      });
+
+      it("valid transport behavior", async () => {
+        harness.initClient({
+          transport: harness.mockTransport(),
+          connectTimeoutMs: 0
+        });
+
+        await harness.makeClientConnectingAfterHandshake();
+
+        let actionNumber;
+        const trace = await harness.trace(() => {
+          actionNumber = harness.clientWrapper.action(
+            "ActionName",
+            { Action: "Args" },
+            () => {} // Callback mode
+          );
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "action",
+          Result: { ReturnValue: undefined }
+        });
+
+        expect(trace[2]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "CallbackAction",
+          State: curState,
+          ActionNumber: actionNumber,
+          Args: [
+            {
+              name: "Error",
+              message: "NOT_CONNECTED: The client is not connected."
+            }
+          ],
+          Context: undefined
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
+      });
+    });
+
+    describe("client is connected", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on pre-send state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on pre-send state check", () => {
+          // //
+        });
+
+        it("transport returns 'disconnected' on pre-send state check", () => {
+          // //
+        });
+
+        it("transport returns 'connecting' on pre-send state check", () => {
+          // //
+        });
+
+        it("transport throws on call to transport.send()", () => {
+          // //
+        });
+
+        it("transport throws on post-send state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on post-send state check", () => {
+          // //
+        });
+
+        it("transport returns 'connecting' on post-send state check", () => {
+          // //
+        });
+      });
+
+      describe("valid transport behavior", () => {
+        describe("post-send transport state is disconnected", () => {
+          describe("transport emits disconnect synchronously", () => {
+            it("options.actionTimeoutMs === 0", () => {
+              // //
+            });
+
+            it("options.actionTimeoutMs > 0", () => {
+              // //
+            });
+          });
+
+          describe("transport does not emit disconnect synchronously", () => {
+            it("options.actionTimeoutMs === 0", () => {
+              // //
+            });
+
+            it("options.actionTimeoutMs > 0", () => {
+              // //
+            });
+          });
+        });
+
+        describe("post-send transport state is connected", () => {
+          it("options.actionTimeoutMs === 0", async () => {
+            const mockTransport = harness.mockTransport();
+            harness.initClient({
+              transport: mockTransport,
+              actionTimeoutMs: 0
+            });
+
+            await harness.makeClientConnected();
+
+            const trace = await harness.trace(() => {
+              harness.clientWrapper.action(
+                "ActionName",
+                { Action: "Args" },
+                () => {} // Callback mode
+              );
+            });
+
+            expect(trace[0]).toEqual({
+              Phase: "Start",
+              State: jasmine.any(Object)
+            });
+
+            const curState = trace[0].State;
+
+            expect(trace[1]).toEqual({
+              Invocation: "CallTransportMethod",
+              State: curState,
+              Method: "send",
+              Args: [
+                JSON.stringify({
+                  MessageType: "Action",
+                  ActionName: "ActionName",
+                  ActionArgs: { Action: "Args" },
+                  CallbackId: "1"
+                })
+              ],
+              Context: toBe(mockTransport)
+            });
+
+            expect(trace[2]).toEqual({
+              Invocation: "ExitClientMethod",
+              State: curState,
+              Method: "action",
+              Result: { ReturnValue: undefined }
+            });
+
+            expect(trace[3]).toEqual({
+              Phase: "DoneTrace",
+              State: curState
+            });
+
+            expect(trace[4]).toEqual({
+              Phase: "DoneDefer",
+              State: curState
+            });
+
+            expect(trace[5]).toEqual({
+              Phase: "DoneTimers",
+              State: curState
+            });
+          });
+
+          it("options.actionTimeoutMs > 0", async () => {
+            const mockTransport = harness.mockTransport();
+            harness.initClient({
+              transport: mockTransport,
+              actionTimeoutMs: 1
+            });
+
+            await harness.makeClientConnected();
+
+            let actionNumber;
+            const trace = await harness.trace(() => {
+              actionNumber = harness.clientWrapper.action(
+                "ActionName",
+                { Action: "Args" },
+                () => {} // Callback mode
+              );
+            });
+
+            expect(trace[0]).toEqual({
+              Phase: "Start",
+              State: jasmine.any(Object)
+            });
+
+            const curState = trace[0].State;
+
+            expect(trace[1]).toEqual({
+              Invocation: "CallTransportMethod",
+              State: curState,
+              Method: "send",
+              Args: [
+                JSON.stringify({
+                  MessageType: "Action",
+                  ActionName: "ActionName",
+                  ActionArgs: { Action: "Args" },
+                  CallbackId: "1"
+                })
+              ],
+              Context: toBe(mockTransport)
+            });
+
+            expect(trace[2]).toEqual({
+              Invocation: "ExitClientMethod",
+              State: curState,
+              Method: "action",
+              Result: { ReturnValue: undefined }
+            });
+
+            expect(trace[3]).toEqual({
+              Phase: "DoneTrace",
+              State: curState
+            });
+
+            expect(trace[4]).toEqual({
+              Phase: "DoneDefer",
+              State: curState
+            });
+
+            expect(trace[5]).toEqual({
+              Invocation: "CallbackAction",
+              State: curState,
+              ActionNumber: actionNumber,
+              Args: [
+                {
+                  name: "Error",
+                  message:
+                    "TIMEOUT: The server did not respond within the allocated time."
+                }
+              ],
+              Context: undefined
+            });
+
+            expect(trace[6]).toEqual({
+              Phase: "DoneTimers",
+              State: curState
+            });
+          });
         });
       });
     });
@@ -646,238 +997,29 @@ describe("The client.action() function - promise usage", () => {
   });
 
   describe("valid application invocation", () => {
-    it("client is disconnected", async () => {
-      harness.initClient({
-        transport: harness.mockTransport()
-      });
+    describe("client is disconnected", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on initial state check", () => {
+          // //
+        });
 
-      let actionNumber;
-      const trace = await harness.trace(() => {
-        actionNumber = harness.clientWrapper.action("ActionName", {
-          Action: "Args"
+        it("transport returns invalid value on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'connecting' on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'connected' on initial state check", () => {
+          // //
         });
       });
 
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "action",
-        Result: { ReturnValue: jasmine.any(Promise) }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "RejectAction",
-        State: curState,
-        ActionNumber: actionNumber,
-        Error: {
-          name: "Error",
-          message: "NOT_CONNECTED: The client is not connected."
-        },
-        Context: undefined
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    it("client is connecting - transport connecting", async () => {
-      harness.initClient({
-        transport: harness.mockTransport(),
-        connectTimeoutMs: 0
-      });
-
-      await harness.makeClientConnectingBeforeHandshake();
-
-      let actionNumber;
-      const trace = await harness.trace(() => {
-        actionNumber = harness.clientWrapper.action("ActionName", {
-          Action: "Args"
-        });
-      });
-
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "action",
-        Result: { ReturnValue: jasmine.any(Promise) }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "RejectAction",
-        State: curState,
-        ActionNumber: actionNumber,
-        Error: {
-          name: "Error",
-          message: "NOT_CONNECTED: The client is not connected."
-        },
-        Context: undefined
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    it("client is connecting - transport connected and handshake pending", async () => {
-      harness.initClient({
-        transport: harness.mockTransport(),
-        connectTimeoutMs: 0
-      });
-
-      await harness.makeClientConnectingAfterHandshake();
-
-      let actionNumber;
-      const trace = await harness.trace(() => {
-        actionNumber = harness.clientWrapper.action("ActionName", {
-          Action: "Args"
-        });
-      });
-
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "action",
-        Result: { ReturnValue: jasmine.any(Promise) }
-      });
-
-      expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "RejectAction",
-        State: curState,
-        ActionNumber: actionNumber,
-        Error: {
-          name: "Error",
-          message: "NOT_CONNECTED: The client is not connected."
-        },
-        Context: undefined
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
-    });
-
-    describe("client is connected", () => {
-      it("options.actionTimeoutMs === 0", async () => {
-        const mockTransport = harness.mockTransport();
+      it("valid transport behavior", async () => {
         harness.initClient({
-          transport: mockTransport,
-          actionTimeoutMs: 0
+          transport: harness.mockTransport()
         });
-
-        await harness.makeClientConnected();
-
-        const trace = await harness.trace(() => {
-          harness.clientWrapper.action("ActionName", { Action: "Args" });
-        });
-
-        expect(trace[0]).toEqual({
-          Phase: "Start",
-          State: jasmine.any(Object)
-        });
-
-        const curState = trace[0].State;
-
-        expect(trace[1]).toEqual({
-          Invocation: "CallTransportMethod",
-          State: curState,
-          Method: "send",
-          Args: [
-            JSON.stringify({
-              MessageType: "Action",
-              ActionName: "ActionName",
-              ActionArgs: { Action: "Args" },
-              CallbackId: "1"
-            })
-          ],
-          Context: toBe(mockTransport)
-        });
-
-        expect(trace[2]).toEqual({
-          Invocation: "ExitClientMethod",
-          State: curState,
-          Method: "action",
-          Result: { ReturnValue: jasmine.any(Promise) }
-        });
-
-        expect(trace[3]).toEqual({
-          Phase: "DoneTrace",
-          State: curState
-        });
-
-        expect(trace[4]).toEqual({
-          Phase: "DoneDefer",
-          State: curState
-        });
-
-        expect(trace[5]).toEqual({
-          Phase: "DoneTimers",
-          State: curState
-        });
-      });
-
-      it("options.actionTimeoutMs > 0", async () => {
-        const mockTransport = harness.mockTransport();
-        harness.initClient({
-          transport: mockTransport,
-          actionTimeoutMs: 1
-        });
-
-        await harness.makeClientConnected();
 
         let actionNumber;
         const trace = await harness.trace(() => {
@@ -894,30 +1036,26 @@ describe("The client.action() function - promise usage", () => {
         const curState = trace[0].State;
 
         expect(trace[1]).toEqual({
-          Invocation: "CallTransportMethod",
-          State: curState,
-          Method: "send",
-          Args: [
-            JSON.stringify({
-              MessageType: "Action",
-              ActionName: "ActionName",
-              ActionArgs: { Action: "Args" },
-              CallbackId: "1"
-            })
-          ],
-          Context: toBe(mockTransport)
-        });
-
-        expect(trace[2]).toEqual({
           Invocation: "ExitClientMethod",
           State: curState,
           Method: "action",
           Result: { ReturnValue: jasmine.any(Promise) }
         });
 
-        expect(trace[3]).toEqual({
+        expect(trace[2]).toEqual({
           Phase: "DoneTrace",
           State: curState
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "RejectAction",
+          State: curState,
+          ActionNumber: actionNumber,
+          Error: {
+            name: "Error",
+            message: "NOT_CONNECTED: The client is not connected."
+          },
+          Context: undefined
         });
 
         expect(trace[4]).toEqual({
@@ -926,20 +1064,353 @@ describe("The client.action() function - promise usage", () => {
         });
 
         expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
+      });
+    });
+
+    describe("client is connecting - transport connecting", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on initial state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'disconnected' on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'connected' on initial state check", () => {
+          // //
+        });
+      });
+
+      it("valid transport behavior", async () => {
+        harness.initClient({
+          transport: harness.mockTransport(),
+          connectTimeoutMs: 0
+        });
+
+        await harness.makeClientConnectingBeforeHandshake();
+
+        let actionNumber;
+        const trace = await harness.trace(() => {
+          actionNumber = harness.clientWrapper.action("ActionName", {
+            Action: "Args"
+          });
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "action",
+          Result: { ReturnValue: jasmine.any(Promise) }
+        });
+
+        expect(trace[2]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[3]).toEqual({
           Invocation: "RejectAction",
           State: curState,
           ActionNumber: actionNumber,
           Error: {
             name: "Error",
-            message:
-              "TIMEOUT: The server did not respond within the allocated time."
+            message: "NOT_CONNECTED: The client is not connected."
           },
           Context: undefined
         });
 
-        expect(trace[6]).toEqual({
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
           Phase: "DoneTimers",
           State: curState
+        });
+      });
+    });
+
+    describe("client is connecting - transport connected and handshake pending", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on initial state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'disconnected' on initial state check", () => {
+          // //
+        });
+
+        it("transport returns 'connected' on initial state check", () => {
+          // //
+        });
+      });
+
+      it("valid transport behavior", async () => {
+        harness.initClient({
+          transport: harness.mockTransport(),
+          connectTimeoutMs: 0
+        });
+
+        await harness.makeClientConnectingAfterHandshake();
+
+        let actionNumber;
+        const trace = await harness.trace(() => {
+          actionNumber = harness.clientWrapper.action("ActionName", {
+            Action: "Args"
+          });
+        });
+
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
+
+        const curState = trace[0].State;
+
+        expect(trace[1]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "action",
+          Result: { ReturnValue: jasmine.any(Promise) }
+        });
+
+        expect(trace[2]).toEqual({
+          Phase: "DoneTrace",
+          State: curState
+        });
+
+        expect(trace[3]).toEqual({
+          Invocation: "RejectAction",
+          State: curState,
+          ActionNumber: actionNumber,
+          Error: {
+            name: "Error",
+            message: "NOT_CONNECTED: The client is not connected."
+          },
+          Context: undefined
+        });
+
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
+
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
+        });
+      });
+    });
+
+    describe("client is connected", () => {
+      describe("invalid transport behavior", () => {
+        it("transport throws on pre-send state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on pre-send state check", () => {
+          // //
+        });
+
+        it("transport returns 'disconnected' on pre-send state check", () => {
+          // //
+        });
+
+        it("transport returns 'connecting' on pre-send state check", () => {
+          // //
+        });
+
+        it("transport throws on call to transport.send()", () => {
+          // //
+        });
+
+        it("transport throws on post-send state check", () => {
+          // //
+        });
+
+        it("transport returns invalid value on post-send state check", () => {
+          // //
+        });
+
+        it("transport returns 'connecting' on post-send state check", () => {
+          // //
+        });
+      });
+
+      describe("valid transport behavior", () => {
+        describe("post-send transport state is disconnected", () => {
+          describe("transport emits disconnect synchronously", () => {
+            it("options.actionTimeoutMs === 0", () => {
+              // //
+            });
+
+            it("options.actionTimeoutMs > 0", () => {
+              // //
+            });
+          });
+
+          describe("transport does not emit disconnect synchronously", () => {
+            it("options.actionTimeoutMs === 0", () => {
+              // //
+            });
+
+            it("options.actionTimeoutMs > 0", () => {
+              // //
+            });
+          });
+        });
+
+        describe("post-send transport state is connected", () => {
+          it("options.actionTimeoutMs === 0", async () => {
+            const mockTransport = harness.mockTransport();
+            harness.initClient({
+              transport: mockTransport,
+              actionTimeoutMs: 0
+            });
+
+            await harness.makeClientConnected();
+
+            const trace = await harness.trace(() => {
+              harness.clientWrapper.action("ActionName", { Action: "Args" });
+            });
+
+            expect(trace[0]).toEqual({
+              Phase: "Start",
+              State: jasmine.any(Object)
+            });
+
+            const curState = trace[0].State;
+
+            expect(trace[1]).toEqual({
+              Invocation: "CallTransportMethod",
+              State: curState,
+              Method: "send",
+              Args: [
+                JSON.stringify({
+                  MessageType: "Action",
+                  ActionName: "ActionName",
+                  ActionArgs: { Action: "Args" },
+                  CallbackId: "1"
+                })
+              ],
+              Context: toBe(mockTransport)
+            });
+
+            expect(trace[2]).toEqual({
+              Invocation: "ExitClientMethod",
+              State: curState,
+              Method: "action",
+              Result: { ReturnValue: jasmine.any(Promise) }
+            });
+
+            expect(trace[3]).toEqual({
+              Phase: "DoneTrace",
+              State: curState
+            });
+
+            expect(trace[4]).toEqual({
+              Phase: "DoneDefer",
+              State: curState
+            });
+
+            expect(trace[5]).toEqual({
+              Phase: "DoneTimers",
+              State: curState
+            });
+          });
+
+          it("options.actionTimeoutMs > 0", async () => {
+            const mockTransport = harness.mockTransport();
+            harness.initClient({
+              transport: mockTransport,
+              actionTimeoutMs: 1
+            });
+
+            await harness.makeClientConnected();
+
+            let actionNumber;
+            const trace = await harness.trace(() => {
+              actionNumber = harness.clientWrapper.action("ActionName", {
+                Action: "Args"
+              });
+            });
+
+            expect(trace[0]).toEqual({
+              Phase: "Start",
+              State: jasmine.any(Object)
+            });
+
+            const curState = trace[0].State;
+
+            expect(trace[1]).toEqual({
+              Invocation: "CallTransportMethod",
+              State: curState,
+              Method: "send",
+              Args: [
+                JSON.stringify({
+                  MessageType: "Action",
+                  ActionName: "ActionName",
+                  ActionArgs: { Action: "Args" },
+                  CallbackId: "1"
+                })
+              ],
+              Context: toBe(mockTransport)
+            });
+
+            expect(trace[2]).toEqual({
+              Invocation: "ExitClientMethod",
+              State: curState,
+              Method: "action",
+              Result: { ReturnValue: jasmine.any(Promise) }
+            });
+
+            expect(trace[3]).toEqual({
+              Phase: "DoneTrace",
+              State: curState
+            });
+
+            expect(trace[4]).toEqual({
+              Phase: "DoneDefer",
+              State: curState
+            });
+
+            expect(trace[5]).toEqual({
+              Invocation: "RejectAction",
+              State: curState,
+              ActionNumber: actionNumber,
+              Error: {
+                name: "Error",
+                message:
+                  "TIMEOUT: The server did not respond within the allocated time."
+              },
+              Context: undefined
+            });
+
+            expect(trace[6]).toEqual({
+              Phase: "DoneTimers",
+              State: curState
+            });
+          });
         });
       });
     });
@@ -948,6 +1419,7 @@ describe("The client.action() function - promise usage", () => {
 
 describe("The client.action() function - async/await usage", () => {
   // Primarily tested in promise usage section
+  // Just confirm that async/await usage works
 
   it("should work with action reject", async () => {
     harness.initClient({
@@ -961,7 +1433,7 @@ describe("The client.action() function - async/await usage", () => {
       err = e;
     }
 
-    expect(err).toBeInstanceOf(Error);
+    expect(err).toEqual(jasmine.any(Error));
     expect(err.message).toBe("NOT_CONNECTED: The client is not connected.");
   });
 
