@@ -103,7 +103,7 @@ trace === [
   { Phase: "Start", State: x },
   { Invocation: x, ... },
   ...
-  { Phase: "DoneTrace", State: x }
+  { Phase: "DoneSync", State: x }
   { Invocation: x, ... },
   ...
   { Phase: "DoneDefer", State: x }
@@ -439,12 +439,6 @@ harness.initClient = options => {
 };
 
 harness.trace = async fn => {
-  // Input fn can be synchronous or asynchronous so that trace() can be used
-  // to test harness.makeX() functions. Not used in actual library tests.
-
-  // Run the trace function synchronously. No deferred behavior should be
-  // permitted to occur before the trace is executed.
-
   harness._trace = [];
 
   // Record starting state
@@ -453,10 +447,10 @@ harness.trace = async fn => {
     State: harness._state()
   });
 
-  // Record trace results (could be sync/async)
-  await fn();
+  // Record trace results
+  fn();
   harness._trace.push({
-    Phase: "DoneTrace",
+    Phase: "DoneSync",
     State: harness._state()
   });
 

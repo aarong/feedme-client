@@ -31,7 +31,7 @@ describe("The client.disconnect() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -92,7 +92,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -143,7 +143,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -208,7 +208,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -287,7 +287,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -356,7 +356,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -403,7 +403,13 @@ describe("The client.disconnect() function", () => {
             Context: toBe(mockTransport)
           });
 
-          curState.state = { ReturnValue: "connecting" };
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
+            }
+          };
 
           expect(trace[2]).toEqual({
             Invocation: "ExitClientMethod",
@@ -413,15 +419,22 @@ describe("The client.disconnect() function", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport state was 'connecting' after a call to disconnect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
+
+          // The last working call to transport.state() returned connecting
+          // So connecting transport state is valid after a deferral
+
+          curState.state = {
+            ReturnValue: "connecting"
+          };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -466,7 +479,13 @@ describe("The client.disconnect() function", () => {
             Context: toBe(mockTransport)
           });
 
-          curState.state = { ReturnValue: "connecting" }; // Handshake not complete
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
+            }
+          };
 
           expect(trace[2]).toEqual({
             Invocation: "ExitClientMethod",
@@ -476,15 +495,23 @@ describe("The client.disconnect() function", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport state was 'connected' after a call to disconnect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
+
+          // The last working call to transport.state() returned connecting
+          // So connected transport state is valid after a deferral
+          // Handshake is not complete, so client state is connecting
+
+          curState.state = {
+            ReturnValue: "connecting"
+          };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -540,7 +567,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -597,7 +624,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -666,7 +693,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -717,7 +744,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -782,7 +809,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -861,7 +888,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -930,7 +957,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -977,7 +1004,13 @@ describe("The client.disconnect() function", () => {
             Context: toBe(mockTransport)
           });
 
-          curState.state = { ReturnValue: "connecting" };
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
+            }
+          };
 
           expect(trace[2]).toEqual({
             Invocation: "ExitClientMethod",
@@ -987,15 +1020,26 @@ describe("The client.disconnect() function", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport state was 'connecting' after a call to disconnect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
+
+          // The last working call to transport.state() returned connected
+          // So connecting transport state is not valid after a deferral
+
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            }
+          };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -1040,7 +1084,13 @@ describe("The client.disconnect() function", () => {
             Context: toBe(mockTransport)
           });
 
-          curState.state = { ReturnValue: "connecting" }; // Handshake not complete
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
+            }
+          };
 
           expect(trace[2]).toEqual({
             Invocation: "ExitClientMethod",
@@ -1050,15 +1100,23 @@ describe("The client.disconnect() function", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport state was 'connected' after a call to disconnect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
+
+          // The last working call to transport.state() returned connecting
+          // So connected transport state is valid after a deferral
+          // The handshake has not taken place, so client state is connecting
+
+          curState.state = {
+            ReturnValue: "connecting"
+          };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -1114,7 +1172,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1171,7 +1229,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1239,7 +1297,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1289,7 +1347,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1353,7 +1411,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1431,7 +1489,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1499,7 +1557,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1545,7 +1603,13 @@ describe("The client.disconnect() function", () => {
             Context: toBe(mockTransport)
           });
 
-          curState.state = { ReturnValue: "connecting" };
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
+            }
+          };
 
           expect(trace[2]).toEqual({
             Invocation: "ExitClientMethod",
@@ -1555,15 +1619,26 @@ describe("The client.disconnect() function", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport state was 'connecting' after a call to disconnect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
+
+          // The last working call to transport.state() returned connected
+          // So connecting is invalid after a deferral
+
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            }
+          };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -1607,7 +1682,13 @@ describe("The client.disconnect() function", () => {
             Context: toBe(mockTransport)
           });
 
-          curState.state = { ReturnValue: "connected" };
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
+            }
+          };
 
           expect(trace[2]).toEqual({
             Invocation: "ExitClientMethod",
@@ -1617,15 +1698,22 @@ describe("The client.disconnect() function", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport state was 'connected' after a call to disconnect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
+
+          // The last working call to transport.state() returned connected
+          // So connected is valid after a deferral
+
+          curState.state = {
+            ReturnValue: "connected"
+          };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -1681,7 +1769,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -1738,7 +1826,7 @@ describe("The client.disconnect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 

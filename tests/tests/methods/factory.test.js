@@ -27,7 +27,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -69,7 +69,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -111,7 +111,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -153,7 +153,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -195,7 +195,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -237,7 +237,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -279,7 +279,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -321,7 +321,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -363,7 +363,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -405,7 +405,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -447,7 +447,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -489,7 +489,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -532,7 +532,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -574,7 +574,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -617,7 +617,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -660,7 +660,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -703,7 +703,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -745,7 +745,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -787,7 +787,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -829,7 +829,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -871,7 +871,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -913,7 +913,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -955,7 +955,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -997,7 +997,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1039,7 +1039,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1081,7 +1081,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1123,7 +1123,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1165,7 +1165,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1207,7 +1207,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1246,7 +1246,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1293,7 +1293,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1340,7 +1340,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1387,7 +1387,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1434,7 +1434,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1481,7 +1481,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1535,7 +1535,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1583,7 +1583,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1625,13 +1625,13 @@ describe("The feedmeClient() factory function", () => {
           Error: {
             name: "Error",
             message:
-              "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
           }
         }
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1673,13 +1673,13 @@ describe("The feedmeClient() factory function", () => {
           Error: {
             name: "Error",
             message:
-              "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
           }
         }
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1723,7 +1723,7 @@ describe("The feedmeClient() factory function", () => {
           Error: {
             name: "Error",
             message:
-              "TRANSPORT_ERROR: Transport threw an error on call to .on().",
+              "TRANSPORT_ERROR: Transport threw an error on call to on().",
             transportError: {
               name: "Error",
               message: "SOME_ERROR: ..."
@@ -1733,7 +1733,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1774,7 +1774,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1825,7 +1825,7 @@ describe("The feedmeClient() factory function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 

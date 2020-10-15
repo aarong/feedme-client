@@ -37,7 +37,7 @@ describe("The feed.destroy() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -85,7 +85,7 @@ describe("The feed.destroy() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -150,7 +150,7 @@ describe("The feed.destroy() function", () => {
     });
 
     expect(trace[2]).toEqual({
-      Phase: "DoneTrace",
+      Phase: "DoneSync",
       State: curState
     });
 

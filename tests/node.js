@@ -2,8 +2,6 @@
 import "make-promises-safe"; // Exit with error on unhandled rejection
 import Jasmine from "jasmine";
 import path from "path";
-import fs from "fs";
-import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
 
 /*
 
@@ -37,10 +35,6 @@ process.on("unhandledRejection", err => {
     });
   });
   console.log("Tests completed.");
-
-  // Delete the temp file
-  console.log("Deleting temporary test file...");
-  promisify(fs.unlink)(`${__dirname}/node.tmp.js`);
 
   // Return script success/failure according to test results
   if (passed) {

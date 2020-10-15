@@ -115,7 +115,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -154,7 +154,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -198,7 +198,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[3]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -235,7 +235,7 @@ describe("The harness object", () => {
       const curState = trace[0].State;
 
       expect(trace[1]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -296,7 +296,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[3]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -337,7 +337,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -390,7 +390,7 @@ describe("The harness object", () => {
       const curState = trace[0].State;
 
       expect(trace[1]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -447,7 +447,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[3]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -488,7 +488,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -539,7 +539,7 @@ describe("The harness object", () => {
       const curState = trace[0].State;
 
       expect(trace[1]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -599,7 +599,7 @@ describe("The harness object", () => {
       const curState = trace[0].State;
 
       expect(trace[1]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -660,7 +660,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -702,7 +702,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -753,7 +753,7 @@ describe("The harness object", () => {
       };
 
       expect(trace[1]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -840,7 +840,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -885,7 +885,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -929,7 +929,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[3]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -970,7 +970,7 @@ describe("The harness object", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1009,7 +1009,7 @@ describe("The harness object", () => {
       const curState = trace[0].State;
 
       expect(trace[1]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1050,203 +1050,42 @@ describe("The harness object", () => {
 
   describe("state setup", () => {
     it("should establish correct state on call to harness.makeClientConnectingBeforeHandshake()", async () => {
+      const mockTransport = harness.mockTransport();
       harness.initClient({
-        transport: harness.mockTransport(),
+        transport: mockTransport,
         connectTimeoutMs: 0
       });
 
-      const trace = await harness.trace(async () => {
-        await harness.makeClientConnectingBeforeHandshake(); // Await to capture deferred effects
-      });
+      await harness.makeClientConnectingBeforeHandshake();
 
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "connect",
-        Args: [],
-        Context: toBe(harness.transport)
-      });
-
-      curState.state = { ReturnValue: "connecting" };
-
-      expect(trace[2]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "connect",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "EmitClientEvent",
-        State: curState,
-        Event: "connecting",
-        Args: [],
-        Context: toBe(harness.clientActual)
-      });
-
-      expect(trace[4]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[6]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
+      expect(harness.clientActual.state()).toBe("connecting");
+      expect(mockTransport.state()).toBe("connecting");
     });
 
     it("should establish correct state on call to harness.makeClientConnectingAfterHandshake()", async () => {
+      const mockTransport = harness.mockTransport();
       harness.initClient({
-        transport: harness.mockTransport(),
+        transport: mockTransport,
         connectTimeoutMs: 0
       });
 
-      const trace = await harness.trace(async () => {
-        await harness.makeClientConnectingAfterHandshake(); // Await to capture deferred effects
-      });
+      await harness.makeClientConnectingAfterHandshake();
 
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "connect",
-        Args: [],
-        Context: toBe(harness.transport)
-      });
-
-      curState.state = { ReturnValue: "connecting" };
-
-      expect(trace[2]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "connect",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "send",
-        Args: [JSON.stringify({ MessageType: "Handshake", Versions: ["0.1"] })],
-        Context: toBe(harness.transport)
-      });
-
-      expect(trace[4]).toEqual({
-        Invocation: "EmitClientEvent",
-        State: curState,
-        Event: "connecting",
-        Args: [],
-        Context: toBe(harness.clientActual)
-      });
-
-      expect(trace[5]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[6]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[7]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
+      expect(harness.clientActual.state()).toBe("connecting");
+      expect(mockTransport.state()).toBe("connected");
     });
 
     it("should establish correct state on call to harness.makeClientConnected()", async () => {
+      const mockTransport = harness.mockTransport();
       harness.initClient({
-        transport: harness.mockTransport(),
+        transport: mockTransport,
         connectTimeoutMs: 0
       });
 
-      const trace = await harness.trace(async () => {
-        await harness.makeClientConnected();
-      });
+      await harness.makeClientConnected();
 
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-
-      expect(trace[1]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "connect",
-        Args: [],
-        Context: toBe(harness.transport)
-      });
-
-      curState.state = { ReturnValue: "connecting" }; // Handshake is deferred
-
-      expect(trace[2]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "connect",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "send",
-        Args: [JSON.stringify({ MessageType: "Handshake", Versions: ["0.1"] })],
-        Context: toBe(harness.transport)
-      });
-
-      curState.state = { ReturnValue: "connected" }; // Handshake is complete
-
-      expect(trace[4]).toEqual({
-        Invocation: "EmitClientEvent",
-        State: curState,
-        Event: "connecting",
-        Args: [],
-        Context: toBe(harness.clientActual)
-      });
-
-      expect(trace[5]).toEqual({
-        Invocation: "EmitClientEvent",
-        State: curState,
-        Event: "connect",
-        Args: [],
-        Context: toBe(harness.clientActual)
-      });
-
-      expect(trace[6]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[7]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[8]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
+      expect(harness.clientActual.state()).toBe("connected");
+      expect(mockTransport.state()).toBe("connected");
     });
 
     it("should establish correct state on call to harness.makeOpenFeed()", async () => {
@@ -1256,108 +1095,14 @@ describe("The harness object", () => {
       });
       await harness.makeClientConnected();
 
-      let feed;
-      const trace = await harness.trace(async () => {
-        feed = await harness.makeOpenFeed(
-          "FeedName",
-          { Feed: "Args" },
-          { Feed: "Data" }
-        );
-      });
+      const feed = await harness.makeOpenFeed(
+        "FeedName",
+        { Feed: "Args" },
+        { Feed: "Data" }
+      );
 
-      expect(trace[0]).toEqual({
-        Phase: "Start",
-        State: jasmine.any(Object)
-      });
-
-      const curState = trace[0].State;
-      curState.feeds = [
-        {
-          destroyed: { ReturnValue: false },
-          desiredState: { ReturnValue: "closed" },
-          state: { ReturnValue: "closed" },
-          data: {
-            Error: {
-              name: "Error",
-              message: "INVALID_FEED_STATE: The feed object is not open."
-            }
-          }
-        }
-      ];
-
-      // Call to client.feed()
-
-      expect(trace[1]).toEqual({
-        Invocation: "ExitClientMethod",
-        State: curState,
-        Method: "feed",
-        Result: { ReturnValue: toBe(feed.actual) }
-      });
-
-      curState.feeds[0].desiredState = { ReturnValue: "open" };
-      curState.feeds[0].state = { ReturnValue: "opening" };
-
-      // Call to feed.desireOpen();
-
-      expect(trace[2]).toEqual({
-        Invocation: "CallTransportMethod",
-        State: curState,
-        Method: "send",
-        Args: [
-          JSON.stringify({
-            MessageType: "FeedOpen",
-            FeedName: "FeedName",
-            FeedArgs: { Feed: "Args" }
-          })
-        ],
-        Context: toBe(harness.transport)
-      });
-
-      expect(trace[3]).toEqual({
-        Invocation: "ExitFeedMethod",
-        State: curState,
-        Feed: toBe(feed.actual),
-        Method: "desireOpen",
-        Result: { ReturnValue: undefined }
-      });
-
-      expect(trace[4]).toEqual({
-        Invocation: "EmitFeedEvent",
-        State: curState,
-        Feed: toBe(feed.actual),
-        Event: "opening",
-        Args: [],
-        Context: toBe(feed.actual)
-      });
-
-      curState.feeds[0].state = { ReturnValue: "open" };
-      curState.feeds[0].data = { ReturnValue: { Feed: "Data" } };
-
-      // FeedOpenResponse received
-
-      expect(trace[5]).toEqual({
-        Invocation: "EmitFeedEvent",
-        State: curState,
-        Feed: toBe(feed.actual),
-        Event: "open",
-        Args: [{ Feed: "Data" }],
-        Context: toBe(feed.actual)
-      });
-
-      expect(trace[6]).toEqual({
-        Phase: "DoneTrace",
-        State: curState
-      });
-
-      expect(trace[7]).toEqual({
-        Phase: "DoneDefer",
-        State: curState
-      });
-
-      expect(trace[8]).toEqual({
-        Phase: "DoneTimers",
-        State: curState
-      });
+      expect(feed.actual.state()).toBe("open");
+      expect(feed.actual.data()).toEqual({ Feed: "Data" });
     });
   });
 });

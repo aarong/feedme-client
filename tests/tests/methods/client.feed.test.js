@@ -31,7 +31,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -75,7 +75,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -119,7 +119,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -177,7 +177,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -236,7 +236,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -295,7 +295,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -353,7 +353,7 @@ describe("The client.feed() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 

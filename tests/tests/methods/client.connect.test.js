@@ -33,7 +33,7 @@ describe("The client.connect() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -79,7 +79,7 @@ describe("The client.connect() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -124,7 +124,7 @@ describe("The client.connect() function", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -181,7 +181,7 @@ describe("The client.connect() function", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -229,7 +229,7 @@ describe("The client.connect() function", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -291,7 +291,7 @@ describe("The client.connect() function", () => {
         });
 
         expect(trace[3]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -367,7 +367,7 @@ describe("The client.connect() function", () => {
         });
 
         expect(trace[3]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -433,7 +433,7 @@ describe("The client.connect() function", () => {
         });
 
         expect(trace[3]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -490,7 +490,7 @@ describe("The client.connect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -546,7 +546,7 @@ describe("The client.connect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -604,7 +604,7 @@ describe("The client.connect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -662,7 +662,7 @@ describe("The client.connect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -720,7 +720,7 @@ describe("The client.connect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -778,7 +778,7 @@ describe("The client.connect() function", () => {
           });
 
           expect(trace[3]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 

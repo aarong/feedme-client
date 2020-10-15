@@ -31,7 +31,7 @@ describe("The client.action() function - callback usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -75,7 +75,7 @@ describe("The client.action() function - callback usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -124,7 +124,7 @@ describe("The client.action() function - callback usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -172,7 +172,7 @@ describe("The client.action() function - callback usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -234,7 +234,7 @@ describe("The client.action() function - callback usage", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -286,7 +286,7 @@ describe("The client.action() function - callback usage", () => {
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -332,13 +332,13 @@ describe("The client.action() function - callback usage", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport returned state 'connecting' without library call to connect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -384,13 +384,13 @@ describe("The client.action() function - callback usage", () => {
               Error: {
                 name: "Error",
                 message:
-                  "TRANSPORT_ERROR: Transport returned state 'connected' without library call to connect()."
+                  "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
               }
             }
           });
 
           expect(trace[2]).toEqual({
-            Phase: "DoneTrace",
+            Phase: "DoneSync",
             State: curState
           });
 
@@ -435,7 +435,7 @@ describe("The client.action() function - callback usage", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -473,39 +473,6 @@ describe("The client.action() function - callback usage", () => {
         it("transport returns invalid value on initial state check", () => {
           // //
         });
-
-        /*
-          Could you check that state does not change synchronously?
-
-          transport.state()
-
-            if (
-              this._syncState !== null
-              && transportState !== this._syncState
-            ) {
-              TRANSPORT_ERROR: Transport state synchronously changed from X to Y.
-            }
-            this._syncState = transportState;
-            defer(() => {
-              this._syncState = null;
-            });
-
-          And set this._syncState = null on each state event BEFORE emitting
-            Because your deferred event could come after a transport event
-            Your deferred event would NOT reset the new sync state synchronously
-
-          And update this._syncState on connect/send/disconnect
-
-          What would the test look like?
-            You need to run state() synchronously before the trace, and have it
-            return the correct initial state but set things up so that the next
-            state is wrong
-
-
-
-
-
-        */
 
         it("transport returns 'disconnected' on initial state check", () => {
           // //
@@ -548,7 +515,7 @@ describe("The client.action() function - callback usage", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -628,7 +595,7 @@ describe("The client.action() function - callback usage", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -763,7 +730,7 @@ describe("The client.action() function - callback usage", () => {
             });
 
             expect(trace[3]).toEqual({
-              Phase: "DoneTrace",
+              Phase: "DoneSync",
               State: curState
             });
 
@@ -826,7 +793,7 @@ describe("The client.action() function - callback usage", () => {
             });
 
             expect(trace[3]).toEqual({
-              Phase: "DoneTrace",
+              Phase: "DoneSync",
               State: curState
             });
 
@@ -891,7 +858,7 @@ describe("The client.action() function - promise usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -935,7 +902,7 @@ describe("The client.action() function - promise usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -980,7 +947,7 @@ describe("The client.action() function - promise usage", () => {
       });
 
       expect(trace[2]).toEqual({
-        Phase: "DoneTrace",
+        Phase: "DoneSync",
         State: curState
       });
 
@@ -1043,7 +1010,7 @@ describe("The client.action() function - promise usage", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -1119,7 +1086,7 @@ describe("The client.action() function - promise usage", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -1195,7 +1162,7 @@ describe("The client.action() function - promise usage", () => {
         });
 
         expect(trace[2]).toEqual({
-          Phase: "DoneTrace",
+          Phase: "DoneSync",
           State: curState
         });
 
@@ -1324,7 +1291,7 @@ describe("The client.action() function - promise usage", () => {
             });
 
             expect(trace[3]).toEqual({
-              Phase: "DoneTrace",
+              Phase: "DoneSync",
               State: curState
             });
 
@@ -1385,7 +1352,7 @@ describe("The client.action() function - promise usage", () => {
             });
 
             expect(trace[3]).toEqual({
-              Phase: "DoneTrace",
+              Phase: "DoneSync",
               State: curState
             });
 
