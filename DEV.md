@@ -290,22 +290,17 @@ The library attaches event handlers to the following transport events:
   or `connected` to `disconnected`.
 
   When the transport emits a `disconnect` event due to a library call to
-  `transport.disconnect(err)`, the transport must pass the `err` argument
-  supplied by the library as an event argument. If the library calls
-  `transport.disconnect()` without an `err` argument, then the transport must
-  emit the `disconnect` event with no arguments.
+  `transport.disconnect()`, it must emit the event with no arguments. When the
+  transport emits a `disconnect` event because its internal connection to the
+  server has failed, it must emit the event with an `err` argument (generally an
+  `Error` object) describing the nature of the failure.
 
-  When the transport emits a `disconnect` event because its connection to the
-  server has failed, it must emit the event with an argument of the form
-  `Error("FAILURE: Transport-specific error message")`. The transport is free to
-  attach additional diagnostic information to the error object.
-
-Transport objects must sequence their event emissions as follows:
+Transport objects must sequence event emissions as follows:
 
 - After library initialization, the transport must not emit any events until the
   library calls `transport.connect()`.
 
-- When the library calls `transport.connect()`, the transport must emit a
+- After the library calls `transport.connect()`, the transport must emit a
   `connecting` event.
 
 - A `connecting` event must be followed by a `connect` event or a `disconnect`
@@ -322,7 +317,10 @@ Transport objects must sequence their event emissions as follows:
 
 When the library invokes a transport method, the transport must emit any
 resulting events asynchronously using a mechanism like `process.nextTick()` or
-`setTimeout()`.
+`setTimeout()`. Therefore, when the transport emits an event, the state returned
+by `transport.state()` is not required to align with the state suggested by the
+event. When the library observes a transport event, it determines the transport
+state using `transport.state()` and proceeds accordingly.
 
 ### Transport Methods
 
@@ -366,8 +364,8 @@ Transport objects must implement the following methods:
     synchronous library call to `transport.send()` or `transport.disconnect()`.
 
   The `transport.state()` return value must change only as described in the
-  requirements for `transport.connect()`, `transport.send()`, and
-  `transport.disconnect()`.
+  `transport.connect()`, `transport.send()`, and `transport.disconnect()`
+  sections below.
 
 - `transport.connect()` - Returns `undefined`
 
@@ -378,7 +376,7 @@ Transport objects must implement the following methods:
   If the transport connection attempt fails synchronously within the call to
   `transport.connect()`, then `transport.state()` must return `disconnected`
   when the method exits and the transport must asynchronously emit `connecting`
-  and then `disconnect(Error("FAILURE: ..."))`. The call to
+  and then `disconnect` with a descriptive error argument. The call to
   `transport.connect()` must exit successfully.
 
   If the transport is able to establish a connection to the server synchronously
@@ -394,8 +392,8 @@ Transport objects must implement the following methods:
 
   - If the transport connection attempt fails before the library calls
     `transport.disconnect()`, then the state reported by `transport.state()`
-    must become `disconnected` and the transport must then emit
-    `disconnect(Error("FAILURE: ..."))`.
+    must become `disconnected` and the transport must then emit `disconnect`
+    with a descriptive error argument.
 
   - If the transport connection attempt succeeds before the library calls
     `transport.disconnect()`, then the state reported by `transport.state()`
@@ -403,7 +401,7 @@ Transport objects must implement the following methods:
     Subsequently, if the transport's connection to the server fails before the
     library calls `transport.disconnect()`, then the state reported by
     `transport.state()` must become `disconnected` and the transport must then
-    emit `disconnect(Error("FAILURE: ..."))`.
+    emit `disconnect` with a descriptive error argument.
 
 - `transport.send(msg)` - Returns `undefined`
 
@@ -413,23 +411,20 @@ Transport objects must implement the following methods:
 
   If the transmission attempt fails synchronously within the call to
   `transport.send()` then `transport.state()` must return `disconnected` when
-  the method exits and the transport must asynchronously emit
-  `disconnect(Error("FAILURE: ..."))`. The call to `transport.send()` must exit
+  the method exits and the transport must asynchronously emit `disconnect` with
+  a descriptive error argument. The call to `transport.send()` must exit
   successfully.
 
   If the transmission attempt does not fail synchronously within the call to
   `transport.send()` then `transport.state()` must return `connected` when the
   method exits and the call to `transport.send()` must exit successfully.
 
-- `transport.disconnect([err])` - Returns `undefined`
+- `transport.disconnect()` - Returns `undefined`
 
   Used by the library to instruct the transport to disconnect from the server.
   The library calls this method only after verifying that the state reported by
   `transport.state()` is `connecting` or `connected`.
 
   The state reported by `transport.state()` must be `disconnected` after the
-  method exits and the transport must asynchronously emit `disconnect([err])`.
-  If the library supplied an `err` argument then the transport must emit the
-  `disconnect` event with that argument. If the library did not supply an `err`
-  argument then the transport must emit the `disconnect` event with no
-  arguments. The call to `transport.disconnect([err])` must exit successfully.
+  method exits and the transport must asynchronously emit `disconnect` with no
+  arguments. The call to `transport.disconnect()` must exit successfully.

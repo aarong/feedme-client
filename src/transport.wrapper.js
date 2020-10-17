@@ -2,13 +2,16 @@ import check from "check-types";
 import emitter from "component-emitter";
 import debug from "debug";
 import _includes from "lodash/includes";
+import _startsWith from "lodash/startsWith";
 import defer from "./defer";
 
 const dbg = debug("feedme-client:transport-wrapper");
 
 /**
  * Wrapper that verifies that the app-provided transport object has the required
- * functionality and behavior:
+ * functionality and behavior. The wrapper assumes that the library interacts
+ * with the transport according to the commitments laid out in the developer
+ * documentation.
  *
  * - Transport API surface is validated on intialization
  *
@@ -18,6 +21,9 @@ const dbg = debug("feedme-client:transport-wrapper");
  *
  * - Transport is verified to emit no connecting event until there has been a
  *   call to transport.connect()
+ *
+ * - Transport is verified to emit no argument-less disconnect event unless
+ *   there has been a call to transport.disconnect()
  *
  * - Transport is verified not to emit events synchronously within method calls
  *
@@ -42,11 +48,9 @@ const dbg = debug("feedme-client:transport-wrapper");
  * required to remain disconnected until there is a call to connect(), but it is
  * conceivable that the application could call connect() before the deferred
  * disconnect event is received by the transport wrapper, so you cannot enforce
- * this in the disconnect event. However, on each event, if the new state is
- * disconnected then you can require that the state remain disconnected until
- * there is a call to connect(). So you don't validate the state when an event
- * handler is invoked, but you require that the it evolves appropriately,
- * whatever it is reported to be.
+ * this in the disconnect event. However, when there is an event, the wrapper
+ * can ensure that the current state is valid (disconnected, connecting, or
+ * connected) and then require that it evolves appropriately.
  *
  * Transport errors are always thrown. They are serious and should fail hard.
  *
@@ -58,9 +62,6 @@ const dbg = debug("feedme-client:transport-wrapper");
  *
  * - If the transport emits an invalid event, then it is up to the transport to
  *   handle the error (and it will generally be unhandled)
- *
- * The wrapper assumes that the library interacts with the transport according
- * to the commitments laid out in the developer documentation.
  *
  * @typedef {Object} TransportWrapper
  * @extends emitter
@@ -151,16 +152,35 @@ export default function transportWrapperFactory(transport) {
   transportWrapper._methodRunning = null;
 
   /**
-   * Flag indicating whether the library has called transport.connect().
-   * Set to true on calls to transportWrapper.connect() and then set to false
-   * when the transport emits a connecting event. Used to ensure that
+   * The number of times that transport.connect() has been called, minus the
+   * number of connecting emissions that have been observed. Used to ensure that
    * transport does not emit connecting event without call to connect().
+   * Since transport events are deferred, the wrapper cannot maintain a simple
+   * boolean flag, as the app/library could synchronously call
+   * connect()/disconnect() multiple times before any events are received from
+   * the transport.
    * @memberof TransportWrapper
    * @instance
    * @private
-   * @type {boolean}
+   * @type {number}
    */
-  transportWrapper._connectCalled = false;
+  transportWrapper._connectCalls = 0;
+
+  /**
+   * When the library calls wrapper.disconnect([err]), the error (or undefined)
+   * is pushed into this array. When the transport emits a disconnect event
+   * without an argument (i.e. resulting from a call to disconnect()), the first
+   * element in the array is removed and emitted with the error. Since transport
+   * events are deferred, the wrapper must maintain a queue of disconnect
+   * errors, not just the latest. In principle, the app/library could
+   * synchronously call connect()/disconnect() multiple times before any events
+   * are received from the transport.
+   * @memberof TransportWrapper
+   * @instance
+   * @private
+   * @type {Array}
+   */
+  transportWrapper._disconnectCalls = [];
 
   // Check that the transport state is valid and disconnected
   transportWrapper.state(); // Cascade errors
@@ -223,7 +243,8 @@ export default function transportWrapperFactory(transport) {
  * @event disconnect
  * @memberof TransportWrapper
  * @instance
- * @param {?Error} err Passed by the transport.
+ * @param {?Error} err "FAILURE: ..." if the transport emitted an error
+ *                     Otherwise the error (or lack thereof) passed by library to wrapper.disconnect()
  */
 
 /**
@@ -232,20 +253,8 @@ export default function transportWrapperFactory(transport) {
  * @throws {Error} "TRANSPORT_ERROR: ...""
  */
 proto.state = function state() {
-  // Try to get the state
-  let transportState;
-  this._methodRunning = "state";
-  try {
-    transportState = this._transport.state();
-  } catch (e) {
-    const throwErr = new Error(
-      `TRANSPORT_ERROR: Transport threw an error on call to state().`
-    );
-    throwErr.transportError = e;
-    throw throwErr;
-  } finally {
-    this._methodRunning = null;
-  }
+  // Try to get state
+  const transportState = this._runTransportMethod("state"); // Cascade errors
 
   // Validate the state
   // Cannot validate against last emission due to emission deferrals
@@ -309,24 +318,14 @@ proto.connect = function connect() {
   dbg("Connect requested");
 
   // Try to connect
-  this._methodRunning = "connect";
-  this._connectCalled = true;
-  try {
-    this._transport.connect();
-  } catch (e) {
-    this._connectCalled = false;
-    const throwErr = new Error(
-      `TRANSPORT_ERROR: Transport threw an error on call to connect().`
-    );
-    throwErr.transportError = e;
-    throw throwErr;
-  } finally {
-    this._methodRunning = null;
-  }
+  this._runTransportMethod("connect"); // Cascade errors
 
   // Update permittedStates and validate post-operation transport state
   this._permittedStates = ["disconnected", "connecting", "connected"];
   this.state(); // Cascade errors
+
+  // Increment number of connect() calls to permit an additional connecting event
+  this._connectCalls += 1;
 };
 
 /**
@@ -337,19 +336,8 @@ proto.connect = function connect() {
 proto.send = function send(msg) {
   dbg("Send requested");
 
-  // Try to send the message
-  this._methodRunning = "send";
-  try {
-    this._transport.send(msg);
-  } catch (e) {
-    const throwErr = new Error(
-      `TRANSPORT_ERROR: Transport threw an error on call to send().`
-    );
-    throwErr.transportError = e;
-    throw throwErr;
-  } finally {
-    this._methodRunning = null;
-  }
+  // Try to send
+  this._runTransportMethod("send", msg); // Cascade errors
 
   // Update permittedStates and validate post-operation transport state
   this._permittedStates = ["disconnected", "connected"];
@@ -357,34 +345,60 @@ proto.send = function send(msg) {
 };
 
 /**
+ * If an error argument is supplied, it will be passed as an argument with
+ * the resulting disconnect event.
  * @memberof TransportWrapper
  * @instance
+ * @param {?Error} err
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.disconnect = function disconnect(err) {
   dbg("Disconnect requested");
 
   // Try to disconnect
-  this._methodRunning = "disconnect";
-  try {
-    if (err) {
-      this._transport.disconnect(err);
-    } else {
-      this._transport.disconnect();
-    }
-  } catch (e) {
-    const throwErr = new Error(
-      `TRANSPORT_ERROR: Transport threw an error on call to disconnect().`
-    );
-    throwErr.transportError = e;
-    throw throwErr;
-  } finally {
-    this._methodRunning = null;
-  }
+  this._runTransportMethod("disconnect"); // Cascade errors
 
   // Update permittedStates and validate post-operation transport state
   this._permittedStates = ["disconnected"];
   this.state(); // Cascade errors
+
+  // Save the error (or undefined) for disconnect emission
+  this._disconnectCalls.push(err);
+};
+
+/**
+ * Try to run a transport method, catching and throwing if there are
+ * any synchronous event emissions or other errors.
+ * @memberof TransportWrapper
+ * @instance
+ * @param {?Error} err
+ * @throws {Error} "TRANSPORT_ERROR: ..."
+ */
+proto._runTransportMethod = function _runTransportMethod(method, ...args) {
+  // Save the _methodRunning value on start and restore it to its previous value
+  // on completion. The state() method is run within all of the transport event
+  // handlers, and if the transport emits synchronously within a method call,
+  // you don't want to forget about the initial method invocation
+  let returnValue;
+  const prevMethodRunning = this._methodRunning;
+  this._methodRunning = method;
+  try {
+    returnValue = this._transport[method](...args);
+  } catch (e) {
+    // If it's a TRANSPORT_ERROR then emit it without wrapping (synchronous emission)
+    if (_startsWith(e.message, "TRANSPORT_ERROR:")) {
+      throw e;
+    } else {
+      const throwErr = new Error(
+        `TRANSPORT_ERROR: Transport threw an error on call to ${method}().`
+      );
+      throwErr.transportError = e;
+      throw throwErr;
+    }
+  } finally {
+    this._methodRunning = prevMethodRunning;
+  }
+  return returnValue;
 };
 
 /**
@@ -412,19 +426,20 @@ proto._processTransportConnecting = function _processTransportConnecting(
     );
   }
 
-  // Did the library call transport.connect()?
-  if (!this._connectCalled) {
-    throw new Error(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
-    );
-  }
-
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
     throw new Error(
       `TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to ${this._methodRunning}().`
     );
   }
+
+  // Did the library call transport.connect()?
+  if (this._connectCalls === 0) {
+    throw new Error(
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+    );
+  }
+
   // Update permitted states and validate the current state
   // Event deferral means that you cannot require a specific valid state during events
   // But ensure that the current state is valid and ensure that the state does not
@@ -434,7 +449,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
 
   // Success
 
-  this._connectCalled = false;
+  this._connectCalls -= 1;
   this._lastEmission = "connecting";
   defer(this.emit.bind(this), "connecting");
 };
@@ -570,6 +585,14 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
     );
   }
 
+  // If there is no error argument then there must be an entry in disconnectErrors
+  // That is, there must have been a call to transport.disconnect()
+  if (args.length === 0 && this._disconnectCalls.length === 0) {
+    throw new Error(
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+    );
+  }
+
   // Update permitted states and validate the current state
   // Event deferral means that you cannot require a specific valid state during events
   // But ensure that the current state is valid and ensure that the state does not
@@ -580,9 +603,17 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Success
 
   this._lastEmission = "disconnect";
-  if (args.length === 0) {
-    defer(this.emit.bind(this), "disconnect");
+
+  let err;
+  if (args.length > 0) {
+    err = new Error("FAILURE: The transport connection failed.");
+    [err.transportError] = args;
   } else {
-    defer(this.emit.bind(this), "disconnect", args[0]);
+    err = this._disconnectCalls.shift(); // undefined if requested by application
+  }
+  if (err) {
+    defer(this.emit.bind(this), "disconnect", err);
+  } else {
+    defer(this.emit.bind(this), "disconnect");
   }
 };

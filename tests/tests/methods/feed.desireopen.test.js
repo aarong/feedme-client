@@ -52,14 +52,18 @@ describe("The feed.desireOpen() function", () => {
           it("transport returns invalid value on post-send state check", () => {});
 
           it("transport returns 'connecting' on post-send state check", () => {});
+
+          it("transport emits disconnect synchronously", () => {});
+
+          it("transport emits connecting synchronously", () => {});
+
+          it("transport emits connect synchronously", () => {});
+
+          it("transport emits message synchronously", () => {});
         });
 
         describe("valid transport behavior", () => {
-          describe("post-send transport state is disconnected", () => {
-            it("transport emits disconnect synchronously", () => {});
-
-            it("transport does not emit disconnect synchronously", () => {});
-          });
+          it("post-send transport state is disconnected", () => {});
 
           it("post-send transport state is connected", () => {});
         });

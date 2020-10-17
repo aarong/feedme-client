@@ -657,28 +657,24 @@ describe("The client.action() function - callback usage", () => {
         it("transport returns 'connecting' on post-send state check", () => {
           // //
         });
+
+        it("transport emits disconnect synchronously", () => {});
+
+        it("transport emits connecting synchronously", () => {});
+
+        it("transport emits connect synchronously", () => {});
+
+        it("transport emits message synchronously", () => {});
       });
 
       describe("valid transport behavior", () => {
         describe("post-send transport state is disconnected", () => {
-          describe("transport emits disconnect synchronously", () => {
-            it("options.actionTimeoutMs === 0", () => {
-              // //
-            });
-
-            it("options.actionTimeoutMs > 0", () => {
-              // //
-            });
+          it("options.actionTimeoutMs === 0", () => {
+            // //
           });
 
-          describe("transport does not emit disconnect synchronously", () => {
-            it("options.actionTimeoutMs === 0", () => {
-              // //
-            });
-
-            it("options.actionTimeoutMs > 0", () => {
-              // //
-            });
+          it("options.actionTimeoutMs > 0", () => {
+            // //
           });
         });
 
@@ -1222,28 +1218,24 @@ describe("The client.action() function - promise usage", () => {
         it("transport returns 'connecting' on post-send state check", () => {
           // //
         });
+
+        it("transport emits disconnect synchronously", () => {});
+
+        it("transport emits connecting synchronously", () => {});
+
+        it("transport emits connect synchronously", () => {});
+
+        it("transport emits message synchronously", () => {});
       });
 
       describe("valid transport behavior", () => {
         describe("post-send transport state is disconnected", () => {
-          describe("transport emits disconnect synchronously", () => {
-            it("options.actionTimeoutMs === 0", () => {
-              // //
-            });
-
-            it("options.actionTimeoutMs > 0", () => {
-              // //
-            });
+          it("options.actionTimeoutMs === 0", () => {
+            // //
           });
 
-          describe("transport does not emit disconnect synchronously", () => {
-            it("options.actionTimeoutMs === 0", () => {
-              // //
-            });
-
-            it("options.actionTimeoutMs > 0", () => {
-              // //
-            });
+          it("options.actionTimeoutMs > 0", () => {
+            // //
           });
         });
 
@@ -1414,15 +1406,18 @@ describe("The client.action() function - async/await usage", () => {
     await harness.makeClientConnected();
 
     mockTransport.sendImplementation = () => {
-      mockTransport.emit(
-        "message",
-        JSON.stringify({
-          MessageType: "ActionResponse",
-          CallbackId: "1",
-          Success: true,
-          ActionData: { Action: "Data" }
-        })
-      );
+      // Emit ActionResponse message asynchronously
+      process.nextTick(() => {
+        mockTransport.emit(
+          "message",
+          JSON.stringify({
+            MessageType: "ActionResponse",
+            CallbackId: "1",
+            Success: true,
+            ActionData: { Action: "Data" }
+          })
+        );
+      });
     };
 
     const actionData = await harness.clientActual.action("ActionName", {

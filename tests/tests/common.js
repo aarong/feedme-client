@@ -509,10 +509,12 @@ harness.makeClientConnectingBeforeHandshake = async () => {
 
   harness.transport.connectImplementation = () => {
     harness.transport.stateImplementation = () => "connecting";
-    harness.transport.emit("connecting");
   };
 
   harness.clientWrapper.connect();
+
+  harness.transport.emit("connecting");
+
   await defer();
 
   harness.transport.connectImplementation = outsideConnect;
@@ -524,11 +526,13 @@ harness.makeClientConnectingAfterHandshake = async () => {
 
   harness.transport.connectImplementation = () => {
     harness.transport.stateImplementation = () => "connected";
-    harness.transport.emit("connecting");
-    harness.transport.emit("connect");
   };
 
   harness.clientWrapper.connect();
+
+  harness.transport.emit("connecting");
+  harness.transport.emit("connect");
+
   await defer();
 
   harness.transport.connectImplementation = outsideConnect;
@@ -536,29 +540,27 @@ harness.makeClientConnectingAfterHandshake = async () => {
 
 harness.makeClientConnected = async () => {
   const outsideConnect = harness.transport.connectImplementation;
-  const outsideSend = harness.transport.sendImplementation;
 
   harness.transport.connectImplementation = () => {
     harness.transport.stateImplementation = () => "connected";
-    harness.transport.emit("connecting");
-    harness.transport.emit("connect");
-  };
-  harness.transport.sendImplementation = () => {
-    harness.transport.emit(
-      "message",
-      JSON.stringify({
-        MessageType: "HandshakeResponse",
-        Success: true,
-        Version: "0.1"
-      })
-    );
   };
 
   harness.clientWrapper.connect();
+
+  harness.transport.emit("connecting");
+  harness.transport.emit("connect");
+  harness.transport.emit(
+    "message",
+    JSON.stringify({
+      MessageType: "HandshakeResponse",
+      Success: true,
+      Version: "0.1"
+    })
+  );
+
   await defer();
 
   harness.transport.connectImplementation = outsideConnect;
-  harness.transport.sendImplementation = outsideSend;
 };
 
 harness.makeClientConnectTimeoutTransport = async () => {
@@ -568,16 +570,22 @@ harness.makeClientConnectTimeoutTransport = async () => {
 
   harness.transport.connectImplementation = () => {
     harness.transport.stateImplementation = () => "connecting";
-    harness.transport.emit("connecting");
   };
+
   harness.clientWrapper.connect();
+
+  harness.transport.emit("connecting");
+
   await defer();
 
   harness.transport.disconnectImplementation = () => {
     harness.transport.stateImplementation = () => "disconnected";
-    harness.transport.emit("disconnect", new Error("TIMEOUT: ..."));
   };
+
   jasmine.clock().tick(Number.MAX_SAFE_INTEGER);
+
+  harness.transport.emit("disconnect", new Error("TIMEOUT: ..."));
+
   await defer();
 
   harness.transport.connectImplementation = outsideConnect;
@@ -599,26 +607,22 @@ harness.makeOpenFeed = async (fn, fa, fd) => {
   // Only to be called when the client is connected
   // Assumes the client is not already interacting with the fn/fa combo
 
-  const outsideSend = harness.transport.sendImplementation;
-
-  harness.transport.sendImplementation = () => {
-    harness.transport.emit(
-      "message",
-      JSON.stringify({
-        MessageType: "FeedOpenResponse",
-        FeedName: fn,
-        FeedArgs: fa,
-        Success: true,
-        FeedData: fd
-      })
-    );
-  };
-
   const feed = harness.clientWrapper.feed(fn, fa);
   feed.wrapper.desireOpen();
+
+  harness.transport.emit(
+    "message",
+    JSON.stringify({
+      MessageType: "FeedOpenResponse",
+      FeedName: fn,
+      FeedArgs: fa,
+      Success: true,
+      FeedData: fd
+    })
+  );
+
   await defer();
 
-  harness.transport.sendImplementation = outsideSend;
   return feed;
 };
 

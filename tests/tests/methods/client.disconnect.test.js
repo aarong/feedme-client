@@ -158,7 +158,7 @@ describe("The client.disconnect() function", () => {
           });
         });
 
-        it("transport throws on call to transport.disconnect()", async () => {
+        it("transport throws on call to transport.disconnect(), after which state is disconnected", async () => {
           const mockTransport = harness.mockTransport();
           harness.initClient({
             transport: mockTransport,
@@ -168,6 +168,85 @@ describe("The client.disconnect() function", () => {
           await harness.makeClientConnectingBeforeHandshake();
 
           mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "disconnected";
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connecting' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connecting -> disconnected is valid after a deferral
+          curState.state = { ReturnValue: "disconnected" };
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect(), after which state is connecting (no change)", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport,
+            connectTimeoutMs: 0
+          });
+
+          await harness.makeClientConnectingBeforeHandshake();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "connecting";
             throw new Error("SOME_ERROR: ...");
           };
 
@@ -211,6 +290,158 @@ describe("The client.disconnect() function", () => {
             Phase: "DoneSync",
             State: curState
           });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect(), after which state is connected", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport,
+            connectTimeoutMs: 0
+          });
+
+          await harness.makeClientConnectingBeforeHandshake();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "connected";
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'connecting' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connecting -> connected is valid after a deferral
+          // Handshake is not complete, so client state is connecting
+          curState.state = { ReturnValue: "connecting" };
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect() due to a synchronous emission, after which state is disconnected", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          await harness.makeClientConnectingBeforeHandshake();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "disconnected";
+            mockTransport.emit("disconnect");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously (call to disconnect failed)
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connecting' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connecting -> disconnected is valid after a deferral
+          curState.state = { ReturnValue: "disconnected" };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -525,132 +756,65 @@ describe("The client.disconnect() function", () => {
         });
       });
 
-      describe("valid transport behavior - post-disconnect state is disconnected", () => {
-        it("transport emits disconnect synchronously", async () => {
-          const mockTransport = harness.mockTransport();
-          harness.initClient({
-            transport: mockTransport
-          });
-
-          await harness.makeClientConnectingBeforeHandshake();
-
-          mockTransport.disconnectImplementation = () => {
-            mockTransport.stateImplementation = () => "disconnected";
-          };
-
-          const trace = await harness.trace(() => {
-            harness.clientWrapper.disconnect();
-          });
-
-          expect(trace[0]).toEqual({
-            Phase: "Start",
-            State: jasmine.any(Object)
-          });
-
-          const curState = trace[0].State;
-
-          expect(trace[1]).toEqual({
-            Invocation: "CallTransportMethod",
-            State: curState,
-            Method: "disconnect",
-            Args: [],
-            Context: toBe(mockTransport)
-          });
-
-          curState.state = { ReturnValue: "disconnected" };
-
-          expect(trace[2]).toEqual({
-            Invocation: "ExitClientMethod",
-            State: curState,
-            Method: "disconnect",
-            Result: { ReturnValue: undefined }
-          });
-
-          expect(trace[3]).toEqual({
-            Phase: "DoneSync",
-            State: curState
-          });
-
-          expect(trace[4]).toEqual({
-            Phase: "DoneDefer",
-            State: curState
-          });
-
-          expect(trace[5]).toEqual({
-            Phase: "DoneTimers",
-            State: curState
-          });
+      it("valid transport behavior", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
         });
 
-        it("transport does not emit disconnect synchronously", async () => {
-          const mockTransport = harness.mockTransport();
-          harness.initClient({
-            transport: mockTransport
-          });
+        await harness.makeClientConnectingBeforeHandshake();
 
-          await harness.makeClientConnectingBeforeHandshake();
+        mockTransport.disconnectImplementation = () => {
+          mockTransport.stateImplementation = () => "disconnected";
+        };
 
-          mockTransport.disconnectImplementation = () => {
-            mockTransport.stateImplementation = () => "disconnected";
-            mockTransport.emit("disconnect");
-          };
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.disconnect();
+        });
 
-          const trace = await harness.trace(() => {
-            harness.clientWrapper.disconnect();
-          });
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
 
-          expect(trace[0]).toEqual({
-            Phase: "Start",
-            State: jasmine.any(Object)
-          });
+        const curState = trace[0].State;
 
-          const curState = trace[0].State;
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "disconnect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
 
-          expect(trace[1]).toEqual({
-            Invocation: "CallTransportMethod",
-            State: curState,
-            Method: "disconnect",
-            Args: [],
-            Context: toBe(mockTransport)
-          });
+        curState.state = { ReturnValue: "disconnected" };
 
-          curState.state = { ReturnValue: "disconnected" };
+        expect(trace[2]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "disconnect",
+          Result: { ReturnValue: undefined }
+        });
 
-          expect(trace[2]).toEqual({
-            Invocation: "ExitClientMethod",
-            State: curState,
-            Method: "disconnect",
-            Result: { ReturnValue: undefined }
-          });
+        expect(trace[3]).toEqual({
+          Phase: "DoneSync",
+          State: curState
+        });
 
-          expect(trace[3]).toEqual({
-            Phase: "DoneSync",
-            State: curState
-          });
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
 
-          expect(trace[4]).toEqual({
-            Invocation: "EmitClientEvent",
-            State: curState,
-            Event: "disconnect",
-            Args: [],
-            Context: toBe(harness.clientActual)
-          });
-
-          expect(trace[5]).toEqual({
-            Phase: "DoneDefer",
-            State: curState
-          });
-
-          expect(trace[6]).toEqual({
-            Phase: "DoneTimers",
-            State: curState
-          });
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
         });
       });
     });
 
     describe("client is connecting - transport connected but handshake pending", () => {
-      describe("invalid transport behavior - post-disconnect state is not disconnected", () => {
+      describe("invalid transport behavior", () => {
         it("transport throws on pre-disconnect state check", async () => {
           const mockTransport = harness.mockTransport();
           harness.initClient({
@@ -759,7 +923,7 @@ describe("The client.disconnect() function", () => {
           });
         });
 
-        it("transport throws on call to transport.disconnect()", async () => {
+        it("transport throws on call to transport.disconnect(), after which state is disconnected", async () => {
           const mockTransport = harness.mockTransport();
           harness.initClient({
             transport: mockTransport,
@@ -769,6 +933,169 @@ describe("The client.disconnect() function", () => {
           await harness.makeClientConnectingAfterHandshake();
 
           mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "disconnected";
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connected' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connected -> disconnected is valid after deferral
+          curState.state = { ReturnValue: "disconnected" };
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect(), after which state is connecting", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport,
+            connectTimeoutMs: 0
+          });
+
+          await harness.makeClientConnectingAfterHandshake();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "connecting";
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'connected' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state cannot go connected -> connecting even after a deferral
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            }
+          };
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect(), after which state is connected (no change)", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport,
+            connectTimeoutMs: 0
+          });
+
+          await harness.makeClientConnectingAfterHandshake();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "connected";
             throw new Error("SOME_ERROR: ...");
           };
 
@@ -812,6 +1139,79 @@ describe("The client.disconnect() function", () => {
             Phase: "DoneSync",
             State: curState
           });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect() due to a synchronous emission, after which state is disconnected", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          await harness.makeClientConnectingAfterHandshake();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "disconnected";
+            mockTransport.emit("disconnect");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously (call to disconnect failed)
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connected' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connected -> disconnected is valid after a deferral
+          curState.state = { ReturnValue: "disconnected" };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -1130,132 +1530,65 @@ describe("The client.disconnect() function", () => {
         });
       });
 
-      describe("valid transport behavior - post-disconnect state is disconnected", () => {
-        it("transport emits disconnect synchronously", async () => {
-          const mockTransport = harness.mockTransport();
-          harness.initClient({
-            transport: mockTransport
-          });
-
-          await harness.makeClientConnectingAfterHandshake();
-
-          mockTransport.disconnectImplementation = () => {
-            mockTransport.stateImplementation = () => "disconnected";
-          };
-
-          const trace = await harness.trace(() => {
-            harness.clientWrapper.disconnect();
-          });
-
-          expect(trace[0]).toEqual({
-            Phase: "Start",
-            State: jasmine.any(Object)
-          });
-
-          const curState = trace[0].State;
-
-          expect(trace[1]).toEqual({
-            Invocation: "CallTransportMethod",
-            State: curState,
-            Method: "disconnect",
-            Args: [],
-            Context: toBe(mockTransport)
-          });
-
-          curState.state = { ReturnValue: "disconnected" };
-
-          expect(trace[2]).toEqual({
-            Invocation: "ExitClientMethod",
-            State: curState,
-            Method: "disconnect",
-            Result: { ReturnValue: undefined }
-          });
-
-          expect(trace[3]).toEqual({
-            Phase: "DoneSync",
-            State: curState
-          });
-
-          expect(trace[4]).toEqual({
-            Phase: "DoneDefer",
-            State: curState
-          });
-
-          expect(trace[5]).toEqual({
-            Phase: "DoneTimers",
-            State: curState
-          });
+      it("valid transport behavior", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
         });
 
-        it("transport does not emit disconnect synchronously", async () => {
-          const mockTransport = harness.mockTransport();
-          harness.initClient({
-            transport: mockTransport
-          });
+        await harness.makeClientConnectingAfterHandshake();
 
-          await harness.makeClientConnectingAfterHandshake();
+        mockTransport.disconnectImplementation = () => {
+          mockTransport.stateImplementation = () => "disconnected";
+        };
 
-          mockTransport.disconnectImplementation = () => {
-            mockTransport.stateImplementation = () => "disconnected";
-            mockTransport.emit("disconnect");
-          };
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.disconnect();
+        });
 
-          const trace = await harness.trace(() => {
-            harness.clientWrapper.disconnect();
-          });
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
 
-          expect(trace[0]).toEqual({
-            Phase: "Start",
-            State: jasmine.any(Object)
-          });
+        const curState = trace[0].State;
 
-          const curState = trace[0].State;
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "disconnect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
 
-          expect(trace[1]).toEqual({
-            Invocation: "CallTransportMethod",
-            State: curState,
-            Method: "disconnect",
-            Args: [],
-            Context: toBe(mockTransport)
-          });
+        curState.state = { ReturnValue: "disconnected" };
 
-          curState.state = { ReturnValue: "disconnected" };
+        expect(trace[2]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "disconnect",
+          Result: { ReturnValue: undefined }
+        });
 
-          expect(trace[2]).toEqual({
-            Invocation: "ExitClientMethod",
-            State: curState,
-            Method: "disconnect",
-            Result: { ReturnValue: undefined }
-          });
+        expect(trace[3]).toEqual({
+          Phase: "DoneSync",
+          State: curState
+        });
 
-          expect(trace[3]).toEqual({
-            Phase: "DoneSync",
-            State: curState
-          });
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
 
-          expect(trace[4]).toEqual({
-            Invocation: "EmitClientEvent",
-            State: curState,
-            Event: "disconnect",
-            Args: [],
-            Context: toBe(harness.clientActual)
-          });
-
-          expect(trace[5]).toEqual({
-            Phase: "DoneDefer",
-            State: curState
-          });
-
-          expect(trace[6]).toEqual({
-            Phase: "DoneTimers",
-            State: curState
-          });
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
         });
       });
     });
 
     describe("client is connected", () => {
-      describe("invalid transport behavior - post-disconnect state is not disconnected", () => {
+      describe("invalid transport behavior", () => {
         it("transport throws on pre-disconnect state check", async () => {
           const mockTransport = harness.mockTransport();
           harness.initClient({
@@ -1362,7 +1695,7 @@ describe("The client.disconnect() function", () => {
           });
         });
 
-        it("transport throws on call to transport.disconnect()", async () => {
+        it("transport throws on call to transport.disconnect(), after which state is disconnected", async () => {
           const mockTransport = harness.mockTransport();
           harness.initClient({
             transport: mockTransport
@@ -1371,6 +1704,167 @@ describe("The client.disconnect() function", () => {
           await harness.makeClientConnected();
 
           mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "disconnected";
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connected' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connected -> disconnected is valid after a deferral
+          curState.state = { ReturnValue: "disconnected" };
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect(), after which state is connecting", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          await harness.makeClientConnected();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "connecting";
+            throw new Error("SOME_ERROR: ...");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'connected' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
+                transportError: {
+                  name: "Error",
+                  message: "SOME_ERROR: ..."
+                }
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connected -> connecting is not valid after a deferral
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            }
+          };
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect(), after which state is connected (no change)", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          await harness.makeClientConnected();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "connected";
             throw new Error("SOME_ERROR: ...");
           };
 
@@ -1414,6 +1908,79 @@ describe("The client.disconnect() function", () => {
             Phase: "DoneSync",
             State: curState
           });
+
+          expect(trace[4]).toEqual({
+            Phase: "DoneDefer",
+            State: curState
+          });
+
+          expect(trace[5]).toEqual({
+            Phase: "DoneTimers",
+            State: curState
+          });
+        });
+
+        it("transport throws on call to transport.disconnect() due to a synchronous emission, after which state is disconnected", async () => {
+          const mockTransport = harness.mockTransport();
+          harness.initClient({
+            transport: mockTransport
+          });
+
+          await harness.makeClientConnected();
+
+          mockTransport.disconnectImplementation = () => {
+            mockTransport.stateImplementation = () => "disconnected";
+            mockTransport.emit("disconnect");
+          };
+
+          const trace = await harness.trace(() => {
+            harness.clientWrapper.disconnect();
+          });
+
+          expect(trace[0]).toEqual({
+            Phase: "Start",
+            State: jasmine.any(Object)
+          });
+
+          const curState = trace[0].State;
+
+          expect(trace[1]).toEqual({
+            Invocation: "CallTransportMethod",
+            State: curState,
+            Method: "disconnect",
+            Args: [],
+            Context: toBe(mockTransport)
+          });
+
+          // Transport state cannot change synchronously (call to disconnect failed)
+          curState.state = {
+            Error: {
+              name: "Error",
+              message:
+                "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connected' was expected."
+            }
+          };
+
+          expect(trace[2]).toEqual({
+            Invocation: "ExitClientMethod",
+            State: curState,
+            Method: "disconnect",
+            Result: {
+              Error: {
+                name: "Error",
+                message:
+                  "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+              }
+            }
+          });
+
+          expect(trace[3]).toEqual({
+            Phase: "DoneSync",
+            State: curState
+          });
+
+          // Transport state connected -> disconnected is valid after a deferral
+          curState.state = { ReturnValue: "disconnected" };
 
           expect(trace[4]).toEqual({
             Phase: "DoneDefer",
@@ -1727,126 +2294,59 @@ describe("The client.disconnect() function", () => {
         });
       });
 
-      describe("valid transport behavior - post-disconnect state is disconnected", () => {
-        it("transport emits disconnect synchronously", async () => {
-          const mockTransport = harness.mockTransport();
-          harness.initClient({
-            transport: mockTransport
-          });
-
-          await harness.makeClientConnected();
-
-          mockTransport.disconnectImplementation = () => {
-            mockTransport.stateImplementation = () => "disconnected";
-          };
-
-          const trace = await harness.trace(() => {
-            harness.clientWrapper.disconnect();
-          });
-
-          expect(trace[0]).toEqual({
-            Phase: "Start",
-            State: jasmine.any(Object)
-          });
-
-          const curState = trace[0].State;
-
-          expect(trace[1]).toEqual({
-            Invocation: "CallTransportMethod",
-            State: curState,
-            Method: "disconnect",
-            Args: [],
-            Context: toBe(mockTransport)
-          });
-
-          curState.state = { ReturnValue: "disconnected" };
-
-          expect(trace[2]).toEqual({
-            Invocation: "ExitClientMethod",
-            State: curState,
-            Method: "disconnect",
-            Result: { ReturnValue: undefined }
-          });
-
-          expect(trace[3]).toEqual({
-            Phase: "DoneSync",
-            State: curState
-          });
-
-          expect(trace[4]).toEqual({
-            Phase: "DoneDefer",
-            State: curState
-          });
-
-          expect(trace[5]).toEqual({
-            Phase: "DoneTimers",
-            State: curState
-          });
+      it("valid transport behavior", async () => {
+        const mockTransport = harness.mockTransport();
+        harness.initClient({
+          transport: mockTransport
         });
 
-        it("transport does not emit disconnect synchronously", async () => {
-          const mockTransport = harness.mockTransport();
-          harness.initClient({
-            transport: mockTransport
-          });
+        await harness.makeClientConnected();
 
-          await harness.makeClientConnected();
+        mockTransport.disconnectImplementation = () => {
+          mockTransport.stateImplementation = () => "disconnected";
+        };
 
-          mockTransport.disconnectImplementation = () => {
-            mockTransport.stateImplementation = () => "disconnected";
-            mockTransport.emit("disconnect");
-          };
+        const trace = await harness.trace(() => {
+          harness.clientWrapper.disconnect();
+        });
 
-          const trace = await harness.trace(() => {
-            harness.clientWrapper.disconnect();
-          });
+        expect(trace[0]).toEqual({
+          Phase: "Start",
+          State: jasmine.any(Object)
+        });
 
-          expect(trace[0]).toEqual({
-            Phase: "Start",
-            State: jasmine.any(Object)
-          });
+        const curState = trace[0].State;
 
-          const curState = trace[0].State;
+        expect(trace[1]).toEqual({
+          Invocation: "CallTransportMethod",
+          State: curState,
+          Method: "disconnect",
+          Args: [],
+          Context: toBe(mockTransport)
+        });
 
-          expect(trace[1]).toEqual({
-            Invocation: "CallTransportMethod",
-            State: curState,
-            Method: "disconnect",
-            Args: [],
-            Context: toBe(mockTransport)
-          });
+        curState.state = { ReturnValue: "disconnected" };
 
-          curState.state = { ReturnValue: "disconnected" };
+        expect(trace[2]).toEqual({
+          Invocation: "ExitClientMethod",
+          State: curState,
+          Method: "disconnect",
+          Result: { ReturnValue: undefined }
+        });
 
-          expect(trace[2]).toEqual({
-            Invocation: "ExitClientMethod",
-            State: curState,
-            Method: "disconnect",
-            Result: { ReturnValue: undefined }
-          });
+        expect(trace[3]).toEqual({
+          Phase: "DoneSync",
+          State: curState
+        });
 
-          expect(trace[3]).toEqual({
-            Phase: "DoneSync",
-            State: curState
-          });
+        expect(trace[4]).toEqual({
+          Phase: "DoneDefer",
+          State: curState
+        });
 
-          expect(trace[4]).toEqual({
-            Invocation: "EmitClientEvent",
-            State: curState,
-            Event: "disconnect",
-            Args: [],
-            Context: toBe(harness.clientActual)
-          });
-
-          expect(trace[5]).toEqual({
-            Phase: "DoneDefer",
-            State: curState
-          });
-
-          expect(trace[6]).toEqual({
-            Phase: "DoneTimers",
-            State: curState
-          });
+        expect(trace[5]).toEqual({
+          Phase: "DoneTimers",
+          State: curState
         });
       });
     });

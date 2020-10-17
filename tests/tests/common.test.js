@@ -729,12 +729,9 @@ describe("The harness object", () => {
         { Feed: "Data" }
       );
 
-      const transportErr = new Error("FAILURE: ...");
-      transportErr.customData = "transport_specific_data";
-
       const trace = await harness.trace(() => {
         harness.transport.stateImplementation = () => "disconnected";
-        harness.transport.emit("disconnect", transportErr);
+        harness.transport.emit("disconnect", new Error("SOME_ERROR: ..."));
       });
 
       expect(trace[0]).toEqual({
@@ -778,8 +775,11 @@ describe("The harness object", () => {
         Args: [
           {
             name: "Error",
-            message: "FAILURE: ...",
-            customData: "transport_specific_data"
+            message: "FAILURE: The transport connection failed.",
+            transportError: {
+              name: "Error",
+              message: "SOME_ERROR: ..."
+            }
           }
         ],
         Context: toBe(harness.clientActual)
@@ -1030,12 +1030,7 @@ describe("The harness object", () => {
         Invocation: "CallTransportMethod",
         State: curState,
         Method: "disconnect",
-        Args: [
-          {
-            name: "Error",
-            message: "TIMEOUT: The connection attempt timed out."
-          }
-        ],
+        Args: [],
         Context: toBe(harness.transport)
       });
 

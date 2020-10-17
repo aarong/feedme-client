@@ -896,7 +896,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
       return; // stop
     }
 
-    // Disconnect event fired via the transport, which is required to relay the error argument
+    // Disconnect event fired via the transport - wrapper will relay the error argument
     this._transportWrapper.disconnect(
       new Error("HANDSHAKE_REJECTED: The server rejected the handshake.")
     );

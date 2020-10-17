@@ -1733,70 +1733,6 @@ describe("the transport 'connecting' event", () => {
     expect(connectingListener.mock.calls.length).toBe(0);
   });
 
-  it("if the library hasn't called connect() initially, it should throw", async () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-
-    const connectingListener = jest.fn();
-    wrapper.on("connecting", connectingListener);
-
-    expect(() => {
-      transport.emit("connecting");
-    }).toThrow(
-      new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
-      )
-    );
-
-    expect(connectingListener.mock.calls.length).toBe(0);
-
-    await Promise.resolve(); // Execute queued microtasks
-
-    expect(connectingListener.mock.calls.length).toBe(0);
-  });
-
-  it("if the library hasn't called connect() after disconnect, it should throw", async () => {
-    const transport = emitter({
-      state: () => "disconnected",
-      connect: () => {},
-      send: () => {},
-      disconnect: () => {}
-    });
-    const wrapper = transportWrapper(transport);
-
-    transport.connect = () => {
-      transport.state = () => "connecting";
-    };
-    wrapper.connect();
-    transport.emit("connecting");
-    transport.state = () => "disconnected";
-    transport.emit("disconnect", new Error("FAILURE: ..."));
-
-    await Promise.resolve(); // Execute queued microtasks
-
-    const connectingListener = jest.fn();
-    wrapper.on("connecting", connectingListener);
-
-    expect(() => {
-      transport.emit("connecting");
-    }).toThrow(
-      new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
-      )
-    );
-
-    expect(connectingListener.mock.calls.length).toBe(0);
-
-    await Promise.resolve(); // Execute queued microtasks
-
-    expect(connectingListener.mock.calls.length).toBe(0);
-  });
-
   it("if the emission occurred synchronously witin transport.connect(), it should throw", async () => {
     const transport = emitter({
       state: () => "disconnected",
@@ -1814,20 +1750,12 @@ describe("the transport 'connecting' event", () => {
     const connectingListener = jest.fn();
     wrapper.on("connecting", connectingListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.connect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to connect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to connect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to connect()."
+      )
     );
 
     expect(connectingListener.mock.calls.length).toBe(0);
@@ -1856,20 +1784,12 @@ describe("the transport 'connecting' event", () => {
     const connectingListener = jest.fn();
     wrapper.on("connecting", connectingListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.send("msg");
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to send()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to send()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to send()."
+      )
     );
 
     expect(connectingListener.mock.calls.length).toBe(0);
@@ -1899,20 +1819,12 @@ describe("the transport 'connecting' event", () => {
     const connectingListener = jest.fn();
     wrapper.on("connecting", connectingListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.disconnect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to disconnect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to disconnect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to disconnect()."
+      )
     );
 
     expect(connectingListener.mock.calls.length).toBe(0);
@@ -1920,6 +1832,76 @@ describe("the transport 'connecting' event", () => {
     await Promise.resolve(); // Execute queued microtasks
 
     expect(connectingListener.mock.calls.length).toBe(0);
+  });
+
+  it("if the library never called transport.connect(), it should throw", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+
+    const connectingListener = jest.fn();
+    wrapper.on("connecting", connectingListener);
+
+    expect(() => {
+      transport.emit("connecting");
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      )
+    );
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+  });
+
+  it("if the library called transport.connect() N-1 times and this is the Nth connecting emission, it should throw", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {
+        transport.state = () => "connecting";
+      },
+      send: () => {},
+      disconnect: () => {
+        transport.state = () => "disconnected";
+      }
+    });
+    const wrapper = transportWrapper(transport);
+
+    wrapper.connect();
+    wrapper.disconnect();
+    wrapper.connect();
+    wrapper.disconnect();
+
+    transport.emit("connecting");
+    transport.emit("disconnect");
+    transport.emit("connecting");
+    transport.emit("disconnect");
+
+    const connectingListener = jest.fn();
+    wrapper.on("connecting", connectingListener);
+
+    expect(() => {
+      transport.emit("connecting");
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      )
+    );
+
+    expect(connectingListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(connectingListener.mock.calls.length).toBe(2); // Two, not three
+    expect(connectingListener.mock.calls[0].length).toBe(0);
+    expect(connectingListener.mock.calls[1].length).toBe(0);
   });
 
   it("if emission was valid but the transport throws on call to state(), it should throw", async () => {
@@ -2425,11 +2407,21 @@ describe("the transport 'connect' event", () => {
       disconnect: () => {}
     });
     const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connected";
+    };
     wrapper.connect();
-    transport.state = () => "connecting";
     transport.emit("connecting");
-    transport.state = () => "disconnected";
+    transport.emit("connect");
+
+    transport.disconnect = () => {
+      transport.state = () => "disconnected";
+    };
+    wrapper.disconnect();
     transport.emit("disconnect");
+
+    await Promise.resolve(); // Execute queued microtasks
 
     const connectListener = jest.fn();
     wrapper.on("connect", connectListener);
@@ -2469,20 +2461,12 @@ describe("the transport 'connect' event", () => {
     const connectListener = jest.fn();
     wrapper.on("connect", connectListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.connect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to connect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect()."
+      )
     );
 
     expect(connectListener.mock.calls.length).toBe(0);
@@ -2512,20 +2496,12 @@ describe("the transport 'connect' event", () => {
     const connectListener = jest.fn();
     wrapper.on("connect", connectListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.send("msg");
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to send()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send()."
+      )
     );
 
     expect(connectListener.mock.calls.length).toBe(0);
@@ -2555,20 +2531,12 @@ describe("the transport 'connect' event", () => {
     const connectListener = jest.fn();
     wrapper.on("connect", connectListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.disconnect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to disconnect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect()."
+      )
     );
 
     expect(connectListener.mock.calls.length).toBe(0);
@@ -3127,12 +3095,18 @@ describe("the transport 'message' event", () => {
       disconnect: () => {}
     });
     const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connected";
+    };
     wrapper.connect();
-    transport.state = () => "connecting";
     transport.emit("connecting");
-    transport.state = () => "connected";
     transport.emit("connect");
-    transport.state = () => "disconnected";
+
+    transport.disconnect = () => {
+      transport.state = () => "disconnected";
+    };
+    wrapper.disconnect();
     transport.emit("disconnect");
 
     const messageListener = jest.fn();
@@ -3174,20 +3148,12 @@ describe("the transport 'message' event", () => {
     const messageListener = jest.fn();
     wrapper.on("message", messageListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.connect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to connect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect()."
+      )
     );
 
     expect(messageListener.mock.calls.length).toBe(0);
@@ -3218,20 +3184,12 @@ describe("the transport 'message' event", () => {
     const messageListener = jest.fn();
     wrapper.on("message", messageListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.send();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to send()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send()."
+      )
     );
 
     expect(messageListener.mock.calls.length).toBe(0);
@@ -3262,20 +3220,12 @@ describe("the transport 'message' event", () => {
     const messageListener = jest.fn();
     wrapper.on("message", messageListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.disconnect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to disconnect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect()."
+      )
     );
 
     expect(messageListener.mock.calls.length).toBe(0);
@@ -4141,12 +4091,17 @@ describe("the transport 'disconnect' event", () => {
       disconnect: () => {}
     });
     const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connecting";
+    };
     wrapper.connect();
-    transport.state = () => "connecting";
     transport.emit("connecting");
-    transport.state = () => "connected";
-    transport.emit("connect");
-    transport.state = () => "disconnected";
+
+    transport.disconnect = () => {
+      transport.state = () => "disconnected";
+    };
+    wrapper.disconnect();
     transport.emit("disconnect");
 
     await Promise.resolve(); // Execute queued microtasks
@@ -4189,20 +4144,12 @@ describe("the transport 'disconnect' event", () => {
     const disconnectListener = jest.fn();
     wrapper.on("disconnect", disconnectListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.connect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to connect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect()."
+      )
     );
 
     expect(disconnectListener.mock.calls.length).toBe(0);
@@ -4232,20 +4179,12 @@ describe("the transport 'disconnect' event", () => {
     const disconnectListener = jest.fn();
     wrapper.on("disconnect", disconnectListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.send();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to send()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send()."
+      )
     );
 
     expect(disconnectListener.mock.calls.length).toBe(0);
@@ -4275,20 +4214,12 @@ describe("the transport 'disconnect' event", () => {
     const disconnectListener = jest.fn();
     wrapper.on("disconnect", disconnectListener);
 
-    let err;
-    try {
+    expect(() => {
       wrapper.disconnect();
-    } catch (e) {
-      err = e;
-    }
-
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to disconnect()."
-    );
-    expect(err.transportError).toBeInstanceOf(Error);
-    expect(err.transportError.message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+      )
     );
 
     expect(disconnectListener.mock.calls.length).toBe(0);
@@ -4298,7 +4229,7 @@ describe("the transport 'disconnect' event", () => {
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  it("if emission was valid but the transport throws on call to state(), it should throw", async () => {
+  it("if there was no error argument and the library never called transport.disconnect(), it should throw", async () => {
     const transport = emitter({
       state: () => "disconnected",
       connect: () => {},
@@ -4309,6 +4240,97 @@ describe("the transport 'disconnect' event", () => {
     wrapper.connect();
     transport.state = () => "connecting";
     transport.emit("connecting");
+
+    transport.disconnect = () => {
+      transport.state = () => "disconnected";
+    };
+
+    const disconnectListener = jest.fn();
+    wrapper.on("disconnect", disconnectListener);
+
+    expect(() => {
+      transport.emit("disconnect");
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      )
+    );
+
+    expect(disconnectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(disconnectListener.mock.calls.length).toBe(0);
+  });
+
+  it("if there was no error argument N times and library only called transport.disconnect() N-1 times, it should throw", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {
+        transport.state = () => "connecting";
+      },
+      send: () => {},
+      disconnect: () => {
+        transport.state = () => "disconnected";
+      }
+    });
+    const wrapper = transportWrapper(transport);
+
+    wrapper.connect();
+    wrapper.disconnect(new Error("ERROR_ONE: ..."));
+    wrapper.connect();
+    wrapper.disconnect(new Error("ERROR_TWO: ..."));
+    wrapper.connect();
+
+    transport.emit("connecting");
+    transport.emit("disconnect");
+    transport.emit("connecting");
+    transport.emit("disconnect");
+    transport.emit("connecting");
+
+    const disconnectListener = jest.fn();
+    wrapper.on("disconnect", disconnectListener);
+
+    expect(() => {
+      transport.emit("disconnect");
+    }).toThrow(
+      new Error(
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      )
+    );
+
+    expect(disconnectListener.mock.calls.length).toBe(0);
+
+    await Promise.resolve(); // Execute queued microtasks
+
+    expect(disconnectListener.mock.calls.length).toBe(2); // Two, not three
+    expect(disconnectListener.mock.calls[0].length).toBe(1);
+    expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(disconnectListener.mock.calls[0][0].message).toBe("ERROR_ONE: ...");
+    expect(disconnectListener.mock.calls[1].length).toBe(1);
+    expect(disconnectListener.mock.calls[1][0]).toBeInstanceOf(Error);
+    expect(disconnectListener.mock.calls[1][0].message).toBe("ERROR_TWO: ...");
+  });
+
+  it("if emission was valid but the transport throws on call to state(), it should throw", async () => {
+    const transport = emitter({
+      state: () => "disconnected",
+      connect: () => {},
+      send: () => {},
+      disconnect: () => {}
+    });
+    const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connecting";
+    };
+    wrapper.connect();
+    transport.emit("connecting");
+
+    transport.disconnect = () => {
+      transport.state = () => "disconnected";
+    };
+    wrapper.disconnect();
 
     transport.state = () => {
       throw new Error("SOME_ERROR: ...");
@@ -4338,9 +4360,17 @@ describe("the transport 'disconnect' event", () => {
       disconnect: () => {}
     });
     const wrapper = transportWrapper(transport);
+
+    transport.connect = () => {
+      transport.state = () => "connecting";
+    };
     wrapper.connect();
-    transport.state = () => "connecting";
     transport.emit("connecting");
+
+    transport.disconnect = () => {
+      transport.state = () => "disconnected";
+    };
+    wrapper.disconnect();
 
     transport.state = () => "bad_state";
 
@@ -4362,8 +4392,489 @@ describe("the transport 'disconnect' event", () => {
     expect(disconnectListener.mock.calls.length).toBe(0);
   });
 
-  describe("if there was an error argument", () => {
+  describe("if there was an error argument originating from the transport", () => {
     describe("if the previous emission was connecting", () => {
+      describe("if emission was valid and transport returns 'disconnected' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {
+              transport.state = () => "disconnected";
+            }
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
+            )
+          );
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
+            )
+          );
+        });
+      });
+
+      describe("if emission was valid and transport returns 'connecting' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(wrapper.state()).toBe("connecting");
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(wrapper.state()).toBe("connected");
+        });
+      });
+
+      describe("if emission was valid and transport returns 'connected' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            )
+          );
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(wrapper.state()).toBe("connected");
+        });
+      });
+    });
+
+    describe("if the previous emission was connect", () => {
       describe("if emission was valid and transport returns 'disconnected' state", () => {
         it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
           const transport = emitter({
@@ -4373,16 +4884,1007 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
           transport.state = () => "disconnected";
 
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
+            )
+          );
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
+            )
+          );
+        });
+      });
+
+      describe("if emission was valid and transport returns 'connecting' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(wrapper.state()).toBe("connecting");
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(wrapper.state()).toBe("connected");
+        });
+      });
+
+      describe("if emission was valid and transport returns 'connected' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            )
+          );
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(wrapper.state()).toBe("connected");
+        });
+      });
+    });
+
+    describe("if the previous emission was message", () => {
+      describe("if emission was valid and transport returns 'disconnected' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
+            )
+          );
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
+            )
+          );
+        });
+      });
+
+      describe("if emission was valid and transport returns 'connecting' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(wrapper.state()).toBe("connecting");
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(wrapper.state()).toBe("connected");
+        });
+      });
+
+      describe("if emission was valid and transport returns 'connected' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connected");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "disconnected";
+
+          expect(wrapper.state()).toBe("disconnected");
+        });
+
+        it("should return success, asynchronously emit disconnect, and reject a deferred state of connecting", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connected");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connecting";
+
+          expect(() => {
+            wrapper.state();
+          }).toThrow(
+            new Error(
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
+            )
+          );
+        });
+
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of connected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {}
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          transport.state = () => "disconnected"; // Transport disconnects and event is queued
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connected");
+
+          expect(disconnectListener.mock.calls.length).toBe(0);
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          expect(disconnectListener.mock.calls.length).toBe(1);
+          expect(disconnectListener.mock.calls[0].length).toBe(1);
+          expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
+          expect(disconnectListener.mock.calls[0][0].message).toBe(
+            "FAILURE: The transport connection failed."
+          );
+          expect(
+            disconnectListener.mock.calls[0][0].transportError
+          ).toBeInstanceOf(Error);
+          expect(
+            disconnectListener.mock.calls[0][0].transportError.message
+          ).toBe("SOME_ERROR: ...");
+
+          await Promise.resolve(); // Execute queued microtasks
+
+          transport.state = () => "connected";
+
+          expect(wrapper.state()).toBe("connected");
+        });
+      });
+    });
+  });
+
+  describe("if there was an error argument originating from the library", () => {
+    describe("if the previous emission was connecting", () => {
+      describe("if emission was valid and transport returns 'disconnected' state", () => {
+        it("should return success, asynchronously emit disconnect, and accept a deferred state of disconnected", async () => {
+          const transport = emitter({
+            state: () => "disconnected",
+            connect: () => {},
+            send: () => {},
+            disconnect: () => {
+              transport.state = () => "disconnected";
+            }
+          });
+          const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          const disconnectListener = jest.fn();
+          wrapper.on("disconnect", disconnectListener);
+
+          transport.emit("connecting");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4410,16 +5912,22 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4453,16 +5961,22 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4498,16 +6012,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4535,16 +6061,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4572,16 +6110,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4611,16 +6161,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4648,16 +6211,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4691,16 +6267,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4732,18 +6321,23 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4771,18 +6365,23 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4816,18 +6415,23 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4863,18 +6467,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4902,18 +6517,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4941,18 +6567,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -4982,18 +6619,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5021,18 +6669,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5044,7 +6703,6 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0][0].message).toBe(
             "SOME_ERROR: ..."
           );
-
           await Promise.resolve(); // Execute queued microtasks
 
           transport.state = () => "connecting";
@@ -5066,18 +6724,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5109,19 +6777,24 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5149,19 +6822,24 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5195,19 +6873,24 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5243,19 +6926,30 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5283,19 +6977,30 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5323,19 +7028,30 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5365,19 +7081,31 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connected");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5405,19 +7133,31 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connected");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5451,19 +7191,31 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect(new Error("SOME_ERROR: ..."));
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
-          transport.emit("disconnect", new Error("SOME_ERROR: ..."));
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
+          transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connected");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5494,18 +7246,26 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {
+              transport.state = () => "disconnected";
+            }
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -5530,15 +7290,21 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -5569,15 +7335,21 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -5610,16 +7382,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5643,16 +7427,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5676,16 +7472,28 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5711,16 +7519,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5744,16 +7565,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5783,16 +7617,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
           transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5820,17 +7667,22 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -5855,17 +7707,22 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -5896,17 +7753,22 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -5939,18 +7801,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -5974,18 +7847,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6009,18 +7893,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6046,18 +7941,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6081,18 +7987,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6122,18 +8039,29 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6161,18 +8089,23 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -6197,18 +8130,23 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -6239,18 +8177,23 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "disconnected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
@@ -6283,19 +8226,30 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6319,19 +8273,30 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6355,19 +8320,30 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connecting";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connecting";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
+          transport.emit("connecting");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6393,19 +8369,31 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connected");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6429,19 +8417,31 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connected");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 
@@ -6471,19 +8471,31 @@ describe("the transport 'disconnect' event", () => {
             disconnect: () => {}
           });
           const wrapper = transportWrapper(transport);
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
           wrapper.connect();
-          transport.state = () => "connecting";
-          transport.emit("connecting");
-          transport.state = () => "connected";
-          transport.emit("connect");
-          transport.emit("message", "msg");
+
+          transport.disconnect = () => {
+            transport.state = () => "disconnected";
+          };
+          wrapper.disconnect();
+
+          transport.connect = () => {
+            transport.state = () => "connected";
+          };
+          wrapper.connect();
 
           const disconnectListener = jest.fn();
           wrapper.on("disconnect", disconnectListener);
 
-          transport.state = () => "connected";
-
+          transport.emit("connecting");
+          transport.emit("connect");
+          transport.emit("message", "msg");
           transport.emit("disconnect");
+          transport.emit("connecting");
+          transport.emit("connected");
 
           expect(disconnectListener.mock.calls.length).toBe(0);
 

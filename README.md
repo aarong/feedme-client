@@ -369,7 +369,7 @@ Errors called back:
 
 * `err.message === "REJECTED: ..."`
 
-  The server rejected the action request.The error details returned by the
+  The server rejected the action request. The error details returned by the
   server are available in `err.serverErrorCode` (string) and
   `err.serverErrorData` (object).
 
@@ -421,7 +421,7 @@ Errors returned via promise rejection:
 
 - `err.message === "REJECTED: ..."`
 
-  The server rejected the action request.The error details returned by the
+  The server rejected the action request. The error details returned by the
   server are available in `err.serverErrorCode` (string) and
   `err.serverErrorData` (object).
 
