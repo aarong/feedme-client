@@ -775,7 +775,7 @@ describe("The harness object", () => {
         Args: [
           {
             name: "Error",
-            message: "FAILURE: The transport connection failed.",
+            message: "TRANSPORT_FAILURE: The transport connection failed.",
             transportError: {
               name: "Error",
               message: "SOME_ERROR: ..."

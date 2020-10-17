@@ -2591,7 +2591,10 @@ describe("The client._processDisconnect() function", () => {
     const feedSerial = feedSerializer.serialize("someFeed", { arg: "val" });
     newState._appFeedStates[feedSerial][0]._lastStateEmission = "close";
     newState._lastSessionWrapperStateEmission = "disconnect";
-    harness.sessionWrapper.emit("disconnect", new Error("FAILURE: ."));
+    harness.sessionWrapper.emit(
+      "disconnect",
+      new Error("TRANSPORT_FAILURE: .")
+    );
 
     expect(harness.client).toHaveState(newState);
   });
@@ -2662,7 +2665,10 @@ describe("The client._processDisconnect() function", () => {
     harness.sessionWrapper.emit("connecting");
     harness.sessionWrapper.emit("connect");
     harness.sessionWrapper.mockClear();
-    harness.sessionWrapper.emit("disconnect", new Error("FAILURE: ."));
+    harness.sessionWrapper.emit(
+      "disconnect",
+      new Error("TRANSPORT_FAILURE: .")
+    );
 
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(1);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -4076,7 +4082,7 @@ describe("The client._considerFeedState() function", () => {
   });
 
   it(`if connected, opening the feed, it times out, and then returns
-  late failure: feeds should emit opening, close(TIMEOUT), close(ERR)`, () => {
+  late TRANSPORT_FAILURE: feeds should emit opening, close(TIMEOUT), close(ERR)`, () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -4159,7 +4165,7 @@ describe("The client._considerFeedState() function", () => {
   });
 
   it(`if connected, opening the feed, it does not time out and returns
-  failure: feeds should emit opening, close(ERR)`, () => {
+  TRANSPORT_FAILURE: feeds should emit opening, close(ERR)`, () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -4255,7 +4261,7 @@ describe("The client._considerFeedState() function", () => {
   });
 
   it(`if connected, opening the feed, it times out, and then returns
-  late failure: don't change state (closed on timeout)`, () => {
+  late TRANSPORT_FAILURE: don't change state (closed on timeout)`, () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -4299,7 +4305,7 @@ describe("The client._considerFeedState() function", () => {
   });
 
   it(`if connected, opening the feed, it does not time out and returns
-  failure: ._appFeedStates[ser][i]._lastStateEmission/_desiredState = close/d`, () => {
+  TRANSPORT_FAILURE: ._appFeedStates[ser][i]._lastStateEmission/_desiredState = close/d`, () => {
     const harness = harnessFactory();
     harness.client.connect();
     harness.sessionWrapper.emit("connecting");
@@ -5264,7 +5270,7 @@ describe("The client._considerFeedState() function", () => {
         expect(feedListener.close.mock.calls[0].length).toBe(1);
         expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(feedListener.close.mock.calls[0][0].message).toBe(
-          "NOT_CONNECTED: The transport disconnected."
+          "NOT_CONNECTED: The client disconnected."
         );
         expect(feedListener.action.mock.calls.length).toBe(0);
       });

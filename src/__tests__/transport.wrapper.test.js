@@ -286,7 +286,7 @@ describe("the state() function", () => {
     wrapper.connect();
     transport.emit("connecting");
     transport.state = () => "disconnected";
-    transport.emit("disconnect", new Error("FAILURE: ..."));
+    transport.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
 
     transport.state = () => "connecting";
 
@@ -314,7 +314,7 @@ describe("the state() function", () => {
     wrapper.connect();
     transport.emit("connecting");
     transport.state = () => "disconnected";
-    transport.emit("disconnect", new Error("FAILURE: ..."));
+    transport.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
 
     transport.state = () => "connected";
 
@@ -4427,7 +4427,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4473,7 +4473,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4525,7 +4525,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4585,7 +4585,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4637,7 +4637,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4689,7 +4689,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4744,7 +4744,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4797,7 +4797,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4856,7 +4856,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4907,7 +4907,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -4954,7 +4954,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5007,7 +5007,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5068,7 +5068,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5121,7 +5121,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5174,7 +5174,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5229,7 +5229,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5282,7 +5282,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5340,7 +5340,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5392,7 +5392,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5440,7 +5440,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5494,7 +5494,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5556,7 +5556,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5610,7 +5610,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5664,7 +5664,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5721,7 +5721,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5776,7 +5776,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError
@@ -5837,7 +5837,7 @@ describe("the transport 'disconnect' event", () => {
           expect(disconnectListener.mock.calls[0].length).toBe(1);
           expect(disconnectListener.mock.calls[0][0]).toBeInstanceOf(Error);
           expect(disconnectListener.mock.calls[0][0].message).toBe(
-            "FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed."
           );
           expect(
             disconnectListener.mock.calls[0][0].transportError

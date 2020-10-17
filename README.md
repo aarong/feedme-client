@@ -257,7 +257,7 @@ The `options` argument is an object with the following properties:
 Returns the current client state:
 
 - `"disconnected"` - The client is not connected to the server and is not
-  currently attempting to connect. A connection attempt may be scheduled,
+  currently attempting to connect. A connection attempt may be pending,
   depending on configuration.
 
 - `"connecting"` - The client is attempting to connect to the server and perform
@@ -479,15 +479,18 @@ are invoked with no arguments.
 If the disconnect resulted from an error condition then listeners are passed an
 `Error` object (`err`). The following errors are possible:
 
-- `err.message === "TIMEOUT: ..."` - The transport failed to connect to the
+- `err.message === "TIMEOUT: ..."` - The transport was unable to connect to the
   server within `options.connectTimeoutMs`. Another connection attempt may be
-  scheduled, depending on configuration.
+  pending, depending on configuration.
 
 - `err.message === "HANDSHAKE_REJECTED: ..."` - The transport connected to the
   server but the handshake failed. The client will not reattempt the connection
   automatically.
 
-- `err.message === "FAILURE: ..."` - The transport connection failed.
+- `err.message === "TRANSPORT_FAILURE: ..."` - The transport failed to establish
+  a connection to the server or lost its connection unexpectedly.
+
+  - `err.transportError` (object) contains the error reported by the transport.
 
 ##### badServerMessage
 

@@ -243,7 +243,7 @@ export default function transportWrapperFactory(transport) {
  * @event disconnect
  * @memberof TransportWrapper
  * @instance
- * @param {?Error} err "FAILURE: ..." if the transport emitted an error
+ * @param {?Error} err "TRANSPORT_FAILURE: ..." if the transport emitted an error
  *                     Otherwise the error (or lack thereof) passed by library to wrapper.disconnect()
  */
 
@@ -606,7 +606,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
 
   let err;
   if (args.length > 0) {
-    err = new Error("FAILURE: The transport connection failed.");
+    err = new Error("TRANSPORT_FAILURE: The transport connection failed.");
     [err.transportError] = args;
   } else {
     err = this._disconnectCalls.shift(); // undefined if requested by application

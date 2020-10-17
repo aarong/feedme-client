@@ -887,7 +887,8 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     this._connectTimeoutTimer = null;
   }
 
-  // You were connecting or connected, so no connect retry attempts are scheduled
+  // Previous session state emission was connecting or connect
+  // So no connect retry attempts are scheduled
 
   // Emit with correct number of args
   if (err) {
@@ -919,7 +920,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     this._informServerFeedClosed(
       feedName,
       feedArgs,
-      Error("NOT_CONNECTED: The transport disconnected.")
+      Error("NOT_CONNECTED: The client disconnected.")
     );
   });
 
@@ -961,7 +962,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     // and the session therefore behaves in the same manner
     if (
       err &&
-      _startsWith(err.message, "FAILURE:") &&
+      _startsWith(err.message, "TRANSPORT_FAILURE:") &&
       this._options.reconnect
     ) {
       this.connect(); // Resets connection retry counts
@@ -1143,7 +1144,7 @@ protoClientSync._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
     appFeed._emitClose(
       new Error("NOT_CONNECTED: The client is not connected.")
     );
-    return;
+    return; // Stop
   }
 
   // Act according to the server feed state and perform the appropriate emission(s)
@@ -1340,7 +1341,7 @@ protoClientSync._informServerFeedClosed = function _informServerFeedClosed(
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
-    return;
+    return; // Stop
   }
 
   // Inform feed objects as appropriate
@@ -1366,7 +1367,7 @@ protoClientSync._informServerFeedOpening = function _informServerFeedOpening(
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
-    return;
+    return; // Stop
   }
 
   // Inform feed objects as appropriate
@@ -1394,7 +1395,7 @@ protoClientSync._informServerFeedOpen = function _informServerFeedOpen(
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
-    return;
+    return; // Stop
   }
 
   // Inform feed objects as appropriate
@@ -1423,7 +1424,7 @@ protoClientSync._informServerFeedClosing = function _informServerFeedClosing(
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
-    return;
+    return; // Stop
   }
 
   // Inform feed objects as appropriate
@@ -1457,7 +1458,7 @@ protoClientSync._informServerActionRevelation = function _informServerActionReve
   // Are there any non-destroyed feed objects?
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   if (!this._appFeeds[feedSerial]) {
-    return;
+    return; // Stop
   }
 
   // Inform feed objects as appropriate
@@ -1504,7 +1505,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
 
   // Do nothing if the session is not connected
   if (this._sessionWrapper.state() !== "connected") {
-    return;
+    return; // Stop
   }
 
   // Get the actual state of the feed
@@ -1570,7 +1571,7 @@ protoClientSync._considerFeedState = function _considerFeedState(
         this._informServerFeedClosed(
           feedName,
           feedArgs,
-          new Error("NOT_CONNECTED: The transport disconnected.")
+          new Error("NOT_CONNECTED: The client disconnected.")
         );
       }
 
@@ -1737,7 +1738,7 @@ protoFeedSync._serverFeedClosed = function _serverFeedClosed(err) {
 
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
-    return;
+    return; // Stop
   }
 
   // Desired state is open
@@ -1771,7 +1772,7 @@ protoFeedSync._serverFeedOpening = function _serverFeedOpening() {
 
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
-    return;
+    return; // Stop
   }
 
   // Desired state is open
@@ -1796,7 +1797,7 @@ protoFeedSync._serverFeedOpen = function _serverFeedOpen(feedData) {
 
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
-    return;
+    return; // Stop
   }
 
   // Desired state is open
@@ -1829,7 +1830,7 @@ protoFeedSync._serverFeedClosing = function _serverFeedClosing(err) {
 
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
-    return;
+    return; // Stop
   }
 
   // Desired state is open
@@ -1864,7 +1865,7 @@ protoFeedSync._serverActionRevelation = function _serverActionRevelation(
 
   // Do nothing if feed is desired closed
   if (this._desiredState === "closed") {
-    return;
+    return; // Stop
   }
 
   // Desired state is open

@@ -205,7 +205,7 @@ export default function sessionSyncFactory(transportWrapper) {
  *
  *                     Error('HANDSHAKE_REJECTED: ...')
  *
- *                     Error('FAILURE: ...')
+ *                     Error('TRANSPORT_FAILURE: ...')
  */
 
 /**

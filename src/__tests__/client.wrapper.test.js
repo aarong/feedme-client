@@ -1086,7 +1086,7 @@ it("On disconnect, any outstanding action callbacks should be invoked before dis
   wrapper.action("some_action", { action: "args" }, actionCb);
 
   underlyingActionCb();
-  underlying.emit("disconnect", new Error("FAILURE: ..."));
+  underlying.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
 
   expect(actionCb.mock.calls.length).toBe(0);
   expect(disconnectListener.mock.calls.length).toBe(0);
@@ -1122,7 +1122,7 @@ it("On disconnect, any outstanding action rejections should be invoked before di
   wrapper.action("some_action", { action: "args" }).then(actionSettle);
 
   underlyingActionCb();
-  underlying.emit("disconnect", new Error("FAILURE: ..."));
+  underlying.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
 
   expect(actionSettle.mock.calls.length).toBe(0);
   expect(disconnectListener.mock.calls.length).toBe(0);
@@ -1160,7 +1160,7 @@ it("On disconnect, any feed close events should be invoked before disconnect eve
   feed.on("close", closeListener);
 
   underlyingFeed.emit("close", new Error("DISCONNECTED: ..."));
-  underlying.emit("disconnect", new Error("FAILURE: ..."));
+  underlying.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
 
   expect(closeListener.mock.calls.length).toBe(0);
   expect(disconnectListener.mock.calls.length).toBe(0);
@@ -1207,7 +1207,7 @@ it("On disconnect, any action callbacks should be invoked before feed close and 
 
   underlyingActionCb(new Error("DISCONNECTED: ..."));
   underlyingFeed.emit("close", new Error("DISCONNECTED: ..."));
-  underlying.emit("disconnect", new Error("FAILURE: ..."));
+  underlying.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
 
   expect(actionCb.mock.calls.length).toBe(0);
   expect(closeListener.mock.calls.length).toBe(0);
