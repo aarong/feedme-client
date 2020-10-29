@@ -133,6 +133,84 @@ describe("The clientWrapper.disconnect() function", () => {
   });
 });
 
+describe("The clientWrapper.destroy() function", () => {
+  it("should call the underlying with the correct args", () => {
+    const mockFn = jest.fn();
+    const wrapper = clientWrapper(
+      emitter({
+        destroy: mockFn
+      })
+    );
+    wrapper.destroy("some", "args");
+    expect(mockFn.mock.calls.length).toBe(1);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0]).toBe("some");
+    expect(mockFn.mock.calls[0][1]).toBe("args");
+  });
+
+  it("should relay error if the underlying throws", () => {
+    const err = new Error("SOME_ERROR");
+    const wrapper = clientWrapper(
+      emitter({
+        destroy: () => {
+          throw err;
+        }
+      })
+    );
+    expect(() => {
+      wrapper.destroy();
+    }).toThrow(err);
+  });
+
+  it("should relay return value if the underlying succeeds", () => {
+    const wrapper = clientWrapper(
+      emitter({
+        destroy: () => "some_value"
+      })
+    );
+    expect(wrapper.destroy()).toBe("some_value");
+  });
+});
+
+describe("The clientWrapper.destroyed() function", () => {
+  it("should call the underlying with the correct args", () => {
+    const mockFn = jest.fn();
+    const wrapper = clientWrapper(
+      emitter({
+        destroyed: mockFn
+      })
+    );
+    wrapper.destroyed("some", "args");
+    expect(mockFn.mock.calls.length).toBe(1);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0]).toBe("some");
+    expect(mockFn.mock.calls[0][1]).toBe("args");
+  });
+
+  it("should relay error if the underlying throws", () => {
+    const err = new Error("SOME_ERROR");
+    const wrapper = clientWrapper(
+      emitter({
+        destroyed: () => {
+          throw err;
+        }
+      })
+    );
+    expect(() => {
+      wrapper.destroyed();
+    }).toThrow(err);
+  });
+
+  it("should relay return value if the underlying succeeds", () => {
+    const wrapper = clientWrapper(
+      emitter({
+        destroyed: () => "some_value"
+      })
+    );
+    expect(wrapper.destroyed()).toBe("some_value");
+  });
+});
+
 describe("The clientWrapper.action() function", () => {
   describe("callback style", () => {
     it("should throw if passed an invalid callback", () => {
@@ -876,6 +954,26 @@ describe("The client badClientMessage event", () => {
     wrapper.on("badClientMessage", listener);
 
     underlying.emit("badClientMessage", "some", "args");
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve();
+
+    expect(listener.mock.calls.length).toBe(1);
+    expect(listener.mock.calls[0].length).toBe(2);
+    expect(listener.mock.calls[0][0]).toBe("some");
+    expect(listener.mock.calls[0][1]).toBe("args");
+  });
+});
+
+describe("The client transportError event", () => {
+  it("should be emitted asynchronously", async () => {
+    const underlying = emitter({});
+    const wrapper = clientWrapper(underlying);
+    const listener = jest.fn();
+    wrapper.on("transportError", listener);
+
+    underlying.emit("transportError", "some", "args");
 
     expect(listener.mock.calls.length).toBe(0);
 

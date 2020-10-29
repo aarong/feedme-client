@@ -16,6 +16,7 @@ This documentation is for developers of the Feedme client library itself.
   - [Fundamentals](#fundamentals)
   - [Transport Events](#transport-events)
   - [Transport Methods](#transport-methods)
+  - [Transport Errors](#transport-errors)
 
 <!-- /TOC -->
 
@@ -225,10 +226,7 @@ between the client and the server. A transport object is injected into the
 client library at initialization.
 
 Transport objects must implement the following interface and behavior in order
-to function correctly with the library. The library aims to detect invalid
-behavior and throws an `Error` with `err.message === "TRANSPORT_ERROR: ..."` if
-the transport behaves unexpectedly. If the transport has thrown an unexpected
-error, then it is exposed as `err.transportError`.
+to function correctly with the library.
 
 See the
 [Feedme WebSocket Transport](https://github.com/aarong/feedme-transport-ws) for
@@ -240,10 +238,6 @@ Transport objects are always in one of three states: `disconnected`,
 `connecting`, or `connected`. Once connected, transport objects must be able to
 exchange string messages with the server. Messages must be received by the other
 side in the order that they were sent.
-
-Transport objects must be traditional Javascript event emitters. They must
-implement `transport.on(eventName, eventHandler)` and must emit events to
-subscribed handlers as described below.
 
 Connection timeout functionality is controlled by the library and transports
 should generally not implement their own. If a transport fails to establish a
@@ -266,6 +260,20 @@ the transport to attempt to reconnect to the server depending on the
 configuration supplied by the application.
 
 ### Transport Events
+
+Transport objects must be traditional Javascript event emitters. The library
+must be able to subscribe event handlers using one of the following methods:
+
+- `transport.on(eventName, eventHandler)`
+- `transport.addListener(eventName, eventHandler)`
+- `transport.addEventListener(eventName, eventHandler)`
+
+The library must also be able to unsubscribe event handlers using one of the
+following methods:
+
+- `transport.off(eventName, eventHandler)`
+- `transport.removeListener(eventName, eventHandler)`
+- `transport.removeEventListener(eventName, eventHandler)`
 
 The library attaches event handlers to the following transport events:
 
@@ -292,8 +300,8 @@ The library attaches event handlers to the following transport events:
   When the transport emits a `disconnect` event due to a library call to
   `transport.disconnect()`, it must emit the event with no arguments. When the
   transport emits a `disconnect` event because its internal connection to the
-  server has failed, it must emit the event with an `err` argument (generally an
-  `Error` object) describing the nature of the failure.
+  server has failed, it must emit the event with an `Error` object argument
+  describing the nature of the failure.
 
 Transport objects must sequence event emissions as follows:
 
@@ -428,3 +436,37 @@ Transport objects must implement the following methods:
   The state reported by `transport.state()` must be `disconnected` after the
   method exits and the transport must asynchronously emit `disconnect` with no
   arguments. The call to `transport.disconnect()` must exit successfully.
+
+### Transport Errors
+
+The library aims to detect transport structure and behavior that violates the
+above requirements.
+
+- If the transport violates a requirement when the application initializes the
+  library, then the library throws an `Error` with
+  `err.message === "TRANSPORT_ERROR: ..."` to the application.
+
+- If the transport violates a requirement when the application invokes a library
+  method, then the library throws an `Error` with
+  `err.message === "TRANSPORT_ERROR: ..."` to the application.
+
+- If the transport violates a requirement when the library invokes a transport
+  method internally (i.e. not synchronously within a method called by the
+  application), then the library throws an unhandled `Error` with
+  `err.message === "TRANSPORT_ERROR: ..."`.
+
+- If the transport emits an event that violates a requirement, or emits a valid
+  event but violates a requirement during library event handler execution, then
+  the library throws an `Error` with `err.message === "TRANSPORT_ERROR: ..."` to
+  the transport. The transport must not attempt to catch and handle such errors.
+
+If a transport method threw an unexpected error, then the error is exposed as
+`err.transportError` in all of the above cases.
+
+When a transport error occurs, the library emits a `transportError` event and
+supplies the error as as an argument.
+
+It is not generally possible to recover from transport errors, as they can
+create ambiguity as to the state of transport and Feedme conversation. For this
+reason, the library instance is destroyed if a transport error arises, as
+described in the user documentation.

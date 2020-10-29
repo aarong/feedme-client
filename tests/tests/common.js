@@ -191,6 +191,7 @@ are either { ReturnValue: val }  or { Error: err }:
 
 {
   state: x,
+  destroyed: x,
   feeds: [
     {
       destroyed: x,
@@ -489,6 +490,9 @@ harness._state = () => {
   }
   const state = {};
   state.state = tryCatch(harness.clientActual.state.bind(harness.clientActual));
+  state.destroyed = tryCatch(
+    harness.clientActual.destroyed.bind(harness.clientActual)
+  );
   state.feeds = [];
   harness._feedActuals.forEach(feed => {
     state.feeds.push({

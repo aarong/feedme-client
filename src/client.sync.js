@@ -1,11 +1,13 @@
 import check from "check-types";
 import emitter from "component-emitter";
+import jsonExpressible from "json-expressible";
 import _each from "lodash/each";
 import _clone from "lodash/clone";
 import _pull from "lodash/pull";
 import _startsWith from "lodash/startsWith";
 import debug from "debug";
 import feedSerializer from "feedme-util/feedserializer";
+import feedValidator from "feedme-util/feedvalidator";
 import config from "./config";
 
 const dbgClient = debug("feedme-client");
@@ -421,6 +423,10 @@ function clientSyncFactory(options) {
     "badClientMessage",
     clientSync._processBadClientMessage.bind(clientSync)
   );
+  clientSync._sessionWrapper.on(
+    "transportError",
+    clientSync._processTransportError.bind(clientSync)
+  );
 
   return clientSync;
 }
@@ -460,6 +466,14 @@ function clientSyncFactory(options) {
 /**
  * Pass-through for session event.
  * @event badClientMessage
+ * @memberof ClientSync
+ * @instance
+ * @param {Object} diagnostics
+ */
+
+/**
+ * Pass-through for session event.
+ * @event transportError
  * @memberof ClientSync
  * @instance
  * @param {Error} err
@@ -653,25 +667,38 @@ function feedSyncFactory(clientSync, name, args) {
  * @returns {string} Passed through from session.state()
  */
 protoClientSync.state = function state() {
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   return this._sessionWrapper.state();
 };
 
 /**
- * Largely pass-through to session.connect()
- * Session events trigger client events.
  * @memberof ClientSync
  * @instance
- * @throws {Error} Passed through from session
+ * @throws {Error} "INVALID_STATE: ..."
  */
 protoClientSync.connect = function connect() {
   dbgClient("Connect requested");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Check state
+  if (this.state() !== "disconnected") {
+    throw new Error("INVALID_STATE: Already connecting or connected.");
+  }
+
   // Attempt a connect
-  this._sessionWrapper.connect(); // Cascade errors
+  this._sessionWrapper.connect();
 
   // Success
 
-  // Reset connection retries
+  // Reset connection retries and clear timer
   if (this._connectRetryTimer) {
     dbgClient("Connection retry timer cleared");
     clearTimeout(this._connectRetryTimer);
@@ -685,18 +712,26 @@ protoClientSync.connect = function connect() {
  * Session events trigger client events.
  * @memberof ClientSync
  * @instance
- * @throws {Error} Passed through from session
+ * @throws {Error} "INVALID_STATE: ..."
  */
 protoClientSync.disconnect = function disconnect() {
   dbgClient("Disconnect requested");
 
-  this._sessionWrapper.disconnect(); // No error arg - requested
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Already disconnected? Connecting/connected ok
+  if (this.state() === "disconnected") {
+    throw new Error("INVALID_STATE: Already disconnected.");
+  }
+
+  this._sessionWrapper.disconnect(); // Requested - no error argument
 };
 
 /**
  * Pass-through to session.action() plus timeout functionality.
- * Arguments are checked at the session level and errors are cascaded, except
- * callback is verified because a function is always passed to the session.
  *
  * If the server hasn't returned a response before options.actionTimeoutMs
  * then callback() receives a TIMEOUT error.
@@ -706,20 +741,48 @@ protoClientSync.disconnect = function disconnect() {
  * @param {string}          name
  * @param {Object}          args
  * @param {actionCallback} callback
- * @throws {Error} Passed through from session
+ * @throws {Error} "INVALID_ARGUMENT: ..."
  */
 protoClientSync.action = function action(name, args, callback) {
   dbgClient("Action requested");
 
-  // Check callback (function always passed to session)
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Check name
+  if (!check.nonEmptyString(name)) {
+    throw new Error("INVALID_ARGUMENT: Invalid action name.");
+  }
+
+  // Check args
+  if (!check.object(args)) {
+    throw new Error("INVALID_ARGUMENT: Invalid action arguments object.");
+  }
+  if (!jsonExpressible(args)) {
+    throw new Error(
+      "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
+    );
+  }
+
+  // Check cb
   if (!check.function(callback)) {
     throw new Error("INVALID_ARGUMENT: Invalid callback.");
+  }
+
+  // Is the session connected?
+  // Treat invalid state as an operational error and thus call back, don't throw
+  // Applications should not have to check state for each action or wrap action
+  // calls in a try/catch block (let it keep error handling in one place)
+  if (this.state() !== "connected") {
+    callback(new Error("NOT_CONNECTED: The client is not connected."));
+    return; // Stop
   }
 
   let timer;
 
   // Invoke the action
-  // Could throw an error, so done before the timeout is created
   // Session fires all action callbacks with error on disconnect
   this._sessionWrapper.action(name, args, (err, actionData) => {
     // Timer not set if actionTimeoutMs === 0
@@ -769,26 +832,13 @@ protoClientSync.action = function action(name, args, callback) {
 protoClientSync.feed = function feedFunction(feedName, feedArgs) {
   dbgClient("Feed interaction object requested");
 
-  // Check name
-  if (!check.nonEmptyString(feedName)) {
-    throw new Error("INVALID_ARGUMENT: Invalid feed name.");
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
   }
 
-  // Check args
-  if (!check.object(feedArgs)) {
-    throw new Error("INVALID_ARGUMENT: Invalid feed arguments object.");
-  }
-
-  // Check args properties
-  let valid = true;
-  _each(feedArgs, val => {
-    if (!check.string(val)) {
-      valid = false;
-    }
-  });
-  if (!valid) {
-    throw new Error("INVALID_ARGUMENT: Invalid feed arguments object.");
-  }
+  // Check arguments and relay errors
+  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Store and return a new feed object
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
@@ -798,6 +848,50 @@ protoClientSync.feed = function feedFunction(feedName, feedArgs) {
   }
   this._appFeeds[feedSerial].push(appObject);
   return appObject;
+};
+
+/**
+ * @memberof ClientSync
+ * @instance
+ * @throws {Error} "INVALID_STATE: ..."
+ */
+protoClientSync.destroy = function destroy() {
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Throw if state is not disconnected
+  if (this.state() !== "disconnected") {
+    throw new Error("INVALID_STATE: Not disconnected.");
+  }
+
+  // Destroy the session
+  this._sessionWrapper.destroy();
+
+  // Desire all feeds closed and destroy all feeds
+  // Do not destroy the feeds as you iterate through the array (removes from array)
+  const appFeeds = [];
+  _each(this._appFeeds, arr => {
+    _each(arr, appFeed => {
+      if (appFeed._desiredState === "open") {
+        this._appFeedDesireClosed(appFeed);
+      }
+      appFeeds.push(appFeed);
+    });
+  });
+  _each(appFeeds, appFeed => {
+    appFeed.destroy();
+  });
+};
+
+/**
+ * @memberof ClientSync
+ * @instance
+ * @returns {boolean}
+ */
+protoClientSync.destroyed = function destroyed() {
+  return this._sessionWrapper.destroyed();
 };
 
 /**
@@ -890,13 +984,6 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   // Previous session state emission was connecting or connect
   // So no connect retry attempts are scheduled
 
-  // Emit with correct number of args
-  if (err) {
-    this.emit("disconnect", err);
-  } else {
-    this.emit("disconnect");
-  }
-
   // Reset feed reopen counts/timers
   // Other timers are reset on action/feedOpen callbacks
   this._reopenCounts = {};
@@ -913,7 +1000,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   //  - If server feed is closing, fired via session.feedClose() callback
   //  - If server feed is closed (intentional or REJECTED) the session has no way to inform
   //    And the client has no way to determine which feeds those are
-  //    So all feeds are informed here, and duplicate events are already filtered
+  //    So all feeds are informed here, and duplicate events are filtered
   //    out by the feed objects.
   _each(this._appFeeds, (arr, ser) => {
     const { feedName, feedArgs } = feedSerializer.unserialize(ser);
@@ -924,49 +1011,56 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     );
   });
 
-  // Failure on connecting - retries
-  if (this._lastSessionWrapperStateEmission === "connecting") {
-    // Schedule a connection retry on TIMEOUT or DISCONNECT but not HANDSHAKE_REJECTED
-    if (err && !_startsWith(err.message, "HANDSHAKE_REJECTED:")) {
-      // Only schedule if configured and below the configured retry threshold
-      if (
-        this._options.connectRetryMs >= 0 &&
-        (this._options.connectRetryMaxAttempts === 0 ||
-          this._connectRetryCount < this._options.connectRetryMaxAttempts)
-      ) {
-        const retryMs = Math.min(
-          this._options.connectRetryMs +
-            this._connectRetryCount * this._options.connectRetryBackoffMs,
-          this._options.connectRetryMaxMs
-        ); // May be zero
-        this._connectRetryCount += 1;
-        dbgClient("Connection retry timer created");
-        this._connectRetryTimer = setTimeout(() => {
-          dbgClient("Connect retry timer fired");
-          this._connectRetryTimer = null;
-          // Perform another connection attempt if the session is still disconnected
-          // Can't guarantee session state due to event deferral (handlers clear timers)
-          if (this._sessionWrapper.state() === "disconnected") {
-            this._sessionWrapper.connect(); // Not client.connect(), which would reset the retry count
-          }
-        }, retryMs);
-      }
-    }
+  // Emit with correct number of args - after feed closures
+  if (err) {
+    this.emit("disconnect", err);
+  } else {
+    this.emit("disconnect");
   }
 
-  // Failure on connected - reconnects
-  if (this._lastSessionWrapperStateEmission === "connect") {
-    // Reconnect if this was a transport issue, not a call to disconnect()
-    // No need to verify that the session state is currently disconnected
-    // The transport is required to remain disconnected when it loses a connection
-    // and the session therefore behaves in the same manner
-    if (
-      err &&
-      _startsWith(err.message, "TRANSPORT_FAILURE:") &&
-      this._options.reconnect
-    ) {
-      this.connect(); // Resets connection retry counts
-    }
+  // Failure when connecting
+  // Schedule a connection retry on TIMEOUT and TRANSPORT_FAILURE,
+  // but not HANDSHAKE_REJECTED, DESTROYED, or intentional disconnect
+  // Only schedule if configured and below the configured retry threshold
+  if (
+    this._lastSessionWrapperStateEmission === "connecting" &&
+    err &&
+    (_startsWith(err.message, "TIMEOUT:") ||
+      _startsWith(err.message, "TRANSPORT_FAILURE:")) &&
+    this._options.connectRetryMs >= 0 &&
+    (this._options.connectRetryMaxAttempts === 0 ||
+      this._connectRetryCount < this._options.connectRetryMaxAttempts)
+  ) {
+    const retryMs = Math.min(
+      this._options.connectRetryMs +
+        this._connectRetryCount * this._options.connectRetryBackoffMs,
+      this._options.connectRetryMaxMs
+    ); // May be zero
+    this._connectRetryCount += 1;
+    dbgClient("Connection retry timer created");
+    this._connectRetryTimer = setTimeout(() => {
+      dbgClient("Connect retry timer fired");
+      this._connectRetryTimer = null;
+      // Perform another connection attempt if the session is still disconnected
+      // Can't guarantee session state due to event deferral (handlers clear timers)
+      if (this._sessionWrapper.state() === "disconnected") {
+        this._sessionWrapper.connect(); // Not client.connect(), which would reset the retry count
+      }
+    }, retryMs);
+  }
+
+  // Failure when connected
+  // Only attempt to reconnect if this was a transport issue, not a call to disconnect() or DESTROYED
+  // No need to verify that the session state is currently disconnected
+  // The transport is required to remain disconnected when it loses a connection
+  // and the session therefore behaves in the same manner
+  if (
+    this._lastSessionWrapperStateEmission === "connect" &&
+    err &&
+    _startsWith(err.message, "TRANSPORT_FAILURE:") &&
+    this._options.reconnect
+  ) {
+    this.connect();
   }
 
   this._lastSessionWrapperStateEmission = "disconnect";
@@ -1116,6 +1210,19 @@ protoClientSync._processBadClientMessage = function _processBadClientMessage(
   dbgClient("Observed session badClientMessage event");
 
   this.emit("badClientMessage", diagnostics);
+};
+
+/**
+ * Processes a session transportError event. Pass-through.
+ * @memberof ClientSync
+ * @instance
+ * @private
+ * @param {Error} err
+ */
+protoClientSync._processTransportError = function _processTransportError(err) {
+  dbgClient("Observed session processTransportError event");
+
+  this.emit("transportError", err);
 };
 
 /**
@@ -1639,7 +1746,11 @@ protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
 protoFeedSync.desireOpen = function desireOpen() {
   dbgFeed("Desire open requested");
 
-  this._checkDestroyed();
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+
   this._clientSync._appFeedDesireOpen(this);
 };
 
@@ -1652,7 +1763,11 @@ protoFeedSync.desireOpen = function desireOpen() {
 protoFeedSync.desireClosed = function desireClosed() {
   dbgFeed("Desire closed requested");
 
-  this._checkDestroyed();
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+
   this._clientSync._appFeedDesireClosed(this);
 };
 
@@ -1664,7 +1779,11 @@ protoFeedSync.desireClosed = function desireClosed() {
  * @throws {Error} "DESTROYED: ..."
  */
 protoFeedSync.desiredState = function desiredState() {
-  this._checkDestroyed();
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+
   return this._clientSync._appFeedDesiredState(this);
 };
 
@@ -1676,7 +1795,11 @@ protoFeedSync.desiredState = function desiredState() {
  * @throws {Error} "DESTROYED: ..."
  */
 protoFeedSync.state = function state() {
-  this._checkDestroyed();
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+
   return this._clientSync._appFeedState(this);
 };
 
@@ -1689,7 +1812,12 @@ protoFeedSync.state = function state() {
  */
 protoFeedSync.data = function data() {
   dbgFeed("Feed data requested");
-  this._checkDestroyed();
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+
   return this._clientSync._appFeedData(this);
 };
 
@@ -1702,7 +1830,11 @@ protoFeedSync.data = function data() {
 protoFeedSync.destroy = function destroy() {
   dbgFeed("Destroy requested");
 
-  this._checkDestroyed();
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The feed object has been destroyed.");
+  }
+
   this._clientSync._appFeedDestroy(this);
   delete this._clientSync;
 };
@@ -1930,17 +2062,5 @@ protoFeedSync._emitOpen = function _emitOpen(feedData) {
 };
 
 // Internal helper
-
-/**
- * Throw an error if the feed has been destroyed.
- * @memberof FeedSync
- * @instance
- * @private
- */
-protoFeedSync._checkDestroyed = function destroy() {
-  if (!this._clientSync) {
-    throw new Error("DESTROYED: The feed object has been destroyed.");
-  }
-};
 
 export default clientSyncFactory;

@@ -211,6 +211,84 @@ describe("The sessionWrapper.feedData() function", () => {
   });
 });
 
+describe("The sessionWrapper.destroy() function", () => {
+  it("should call the underlying with the correct args", () => {
+    const mockFn = jest.fn();
+    const wrapper = sessionWrapper(
+      emitter({
+        destroy: mockFn
+      })
+    );
+    wrapper.destroy("some", "args");
+    expect(mockFn.mock.calls.length).toBe(1);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0]).toBe("some");
+    expect(mockFn.mock.calls[0][1]).toBe("args");
+  });
+
+  it("should relay error if the underlying throws", () => {
+    const err = new Error("SOME_ERROR");
+    const wrapper = sessionWrapper(
+      emitter({
+        destroy: () => {
+          throw err;
+        }
+      })
+    );
+    expect(() => {
+      wrapper.destroy();
+    }).toThrow(err);
+  });
+
+  it("should relay return value if the underlying succeeds", () => {
+    const wrapper = sessionWrapper(
+      emitter({
+        destroy: () => "some_value"
+      })
+    );
+    expect(wrapper.destroy()).toBe("some_value");
+  });
+});
+
+describe("The sessionWrapper.destroyed() function", () => {
+  it("should call the underlying with the correct args", () => {
+    const mockFn = jest.fn();
+    const wrapper = sessionWrapper(
+      emitter({
+        destroyed: mockFn
+      })
+    );
+    wrapper.destroyed("some", "args");
+    expect(mockFn.mock.calls.length).toBe(1);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0]).toBe("some");
+    expect(mockFn.mock.calls[0][1]).toBe("args");
+  });
+
+  it("should relay error if the underlying throws", () => {
+    const err = new Error("SOME_ERROR");
+    const wrapper = sessionWrapper(
+      emitter({
+        destroyed: () => {
+          throw err;
+        }
+      })
+    );
+    expect(() => {
+      wrapper.destroyed();
+    }).toThrow(err);
+  });
+
+  it("should relay return value if the underlying succeeds", () => {
+    const wrapper = sessionWrapper(
+      emitter({
+        destroyed: () => "some_value"
+      })
+    );
+    expect(wrapper.destroyed()).toBe("some_value");
+  });
+});
+
 describe("The sessionWrapper.action() function", () => {
   it("should throw on non-function argument", () => {
     const wrapper = sessionWrapper(emitter({}));
@@ -803,6 +881,26 @@ describe("The sessionWrapper badClientMessage event", () => {
     wrapper.on("badClientMessage", listener);
 
     underlying.emit("badClientMessage", "some", "args");
+
+    expect(listener.mock.calls.length).toBe(0);
+
+    await Promise.resolve();
+
+    expect(listener.mock.calls.length).toBe(1);
+    expect(listener.mock.calls[0].length).toBe(2);
+    expect(listener.mock.calls[0][0]).toBe("some");
+    expect(listener.mock.calls[0][1]).toBe("args");
+  });
+});
+
+describe("The sessionWrapper transportError event", () => {
+  it("should be emitted asynchronously", async () => {
+    const underlying = emitter({});
+    const wrapper = sessionWrapper(underlying);
+    const listener = jest.fn();
+    wrapper.on("transportError", listener);
+
+    underlying.emit("transportError", "some", "args");
 
     expect(listener.mock.calls.length).toBe(0);
 

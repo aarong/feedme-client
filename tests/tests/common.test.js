@@ -1,5 +1,44 @@
 import { tryCatch, toBe, replaceErrors, harness } from "./common";
 
+it("some test", cb => {
+  jasmine.clock().uninstall();
+  const executionOrder = [];
+
+  let numDeferred = 0;
+  const epsilon = 20; // 0 doesn't work, 1 doesn't work, 2+ works
+  function defer(fn) {
+    setTimeout(() => {
+      fn();
+      numDeferred -= 1;
+    }, numDeferred * epsilon);
+    numDeferred += 1;
+  }
+
+  defer(() => {
+    executionOrder.push("defer 1");
+    Promise.resolve().then(() => {
+      executionOrder.push("promise 1");
+      Promise.resolve().then(() => {
+        executionOrder.push("promise 2");
+      });
+    });
+  });
+
+  defer(() => {
+    executionOrder.push("defer 2");
+  });
+
+  setTimeout(() => {
+    expect(executionOrder).toEqual([
+      "defer 1",
+      "promise 1",
+      "promise 2",
+      "defer 2"
+    ]);
+    cb();
+  }, 1000);
+});
+
 describe("The tryCatch() function", () => {
   it("should call specified function with supplied arguments", () => {
     const fn = jasmine.createSpy();
@@ -105,6 +144,7 @@ describe("The harness object", () => {
 
       const curState = {
         state: { ReturnValue: "disconnected" },
+        destroyed: { ReturnValue: false },
         feeds: []
       };
 

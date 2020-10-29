@@ -1,113 +1,113 @@
-// import { harness } from "../common";
+// // import { harness } from "../common";
 
-describe("The feed.desireOpen() function", () => {
-  describe("invalid application invocation", () => {
-    it("feed is destroyed", () => {});
+// describe("The feed.desireOpen() function", () => {
+//   describe("invalid application invocation", () => {
+//     it("feed is destroyed", () => {});
 
-    it("feed is already desired open", () => {});
-  });
+//     it("feed is already desired open", () => {});
+//   });
 
-  describe("valid application invocation", () => {
-    describe("client is disconnected", () => {
-      describe("invalid transport behavior", () => {
-        it("transport throws on initial state check", () => {});
+//   describe("valid application invocation", () => {
+//     describe("client is disconnected", () => {
+//       describe("invalid transport behavior", () => {
+//         it("transport throws on initial state check", () => {});
 
-        it("transport returns invalid value on initial state check", () => {});
-      });
+//         it("transport returns invalid value on initial state check", () => {});
+//       });
 
-      it("valid transport behavior", () => {});
-    });
+//       it("valid transport behavior", () => {});
+//     });
 
-    describe("client is connecting - transport is connecting", () => {
-      describe("invalid transport behavior", () => {
-        it("transport throws on initial state check", () => {});
+//     describe("client is connecting - transport is connecting", () => {
+//       describe("invalid transport behavior", () => {
+//         it("transport throws on initial state check", () => {});
 
-        it("transport returns invalid value on initial state check", () => {});
-      });
+//         it("transport returns invalid value on initial state check", () => {});
+//       });
 
-      it("valid transport behavior", () => {});
-    });
+//       it("valid transport behavior", () => {});
+//     });
 
-    describe("client is connecting - transport is connected and handshake is pending", () => {
-      describe("invalid transport behavior", () => {
-        it("transport throws on initial state check", () => {});
+//     describe("client is connecting - transport is connected and handshake is pending", () => {
+//       describe("invalid transport behavior", () => {
+//         it("transport throws on initial state check", () => {});
 
-        it("transport returns invalid value on initial state check", () => {});
-      });
+//         it("transport returns invalid value on initial state check", () => {});
+//       });
 
-      it("valid transport behavior", () => {});
-    });
+//       it("valid transport behavior", () => {});
+//     });
 
-    describe("client is connected", () => {
-      describe("server feed is closed", () => {
-        describe("invalid transport behavior", () => {
-          it("transport throws on pre-send state check", () => {});
+//     describe("client is connected", () => {
+//       describe("server feed is closed", () => {
+//         describe("invalid transport behavior", () => {
+//           it("transport throws on pre-send state check", () => {});
 
-          it("transport returns invalid value on pre-send state check", () => {});
+//           it("transport returns invalid value on pre-send state check", () => {});
 
-          it("transport throws on call to transport.send()", () => {});
+//           it("transport throws on call to transport.send()", () => {});
 
-          it("transport throws on post-send state check", () => {});
+//           it("transport throws on post-send state check", () => {});
 
-          it("transport returns invalid value on post-send state check", () => {});
+//           it("transport returns invalid value on post-send state check", () => {});
 
-          it("transport returns 'connecting' on post-send state check", () => {});
+//           it("transport returns 'connecting' on post-send state check", () => {});
 
-          it("transport emits disconnect synchronously", () => {});
+//           it("transport emits disconnect synchronously", () => {});
 
-          it("transport emits connecting synchronously", () => {});
+//           it("transport emits connecting synchronously", () => {});
 
-          it("transport emits connect synchronously", () => {});
+//           it("transport emits connect synchronously", () => {});
 
-          it("transport emits message synchronously", () => {});
-        });
+//           it("transport emits message synchronously", () => {});
+//         });
 
-        describe("valid transport behavior", () => {
-          it("post-send transport state is disconnected", () => {});
+//         describe("valid transport behavior", () => {
+//           it("post-send transport state is disconnected", () => {});
 
-          it("post-send transport state is connected", () => {});
-        });
-      });
+//           it("post-send transport state is connected", () => {});
+//         });
+//       });
 
-      describe("server feed is opening", () => {
-        describe("invalid transport behavior", () => {
-          it("transport throws on pre-send state check", () => {});
+//       describe("server feed is opening", () => {
+//         describe("invalid transport behavior", () => {
+//           it("transport throws on pre-send state check", () => {});
 
-          it("transport returns invalid value on pre-send state check", () => {});
-        });
+//           it("transport returns invalid value on pre-send state check", () => {});
+//         });
 
-        it("valid transport behavior", () => {});
-      });
+//         it("valid transport behavior", () => {});
+//       });
 
-      describe("server feed is open", () => {
-        describe("invalid transport behavior", () => {
-          it("transport throws on pre-send state check", () => {});
+//       describe("server feed is open", () => {
+//         describe("invalid transport behavior", () => {
+//           it("transport throws on pre-send state check", () => {});
 
-          it("transport returns invalid value on pre-send state check", () => {});
-        });
+//           it("transport returns invalid value on pre-send state check", () => {});
+//         });
 
-        it("valid transport behavior", () => {});
-      });
+//         it("valid transport behavior", () => {});
+//       });
 
-      describe("server feed is closing", () => {
-        describe("invalid transport behavior", () => {
-          it("transport throws on pre-send state check", () => {});
+//       describe("server feed is closing", () => {
+//         describe("invalid transport behavior", () => {
+//           it("transport throws on pre-send state check", () => {});
 
-          it("transport returns invalid value on pre-send state check", () => {});
-        });
+//           it("transport returns invalid value on pre-send state check", () => {});
+//         });
 
-        it("valid transport behavior", () => {});
-      });
+//         it("valid transport behavior", () => {});
+//       });
 
-      describe("server feed is terminated", () => {
-        describe("invalid transport behavior", () => {
-          it("transport throws on pre-send state check", () => {});
+//       describe("server feed is terminated", () => {
+//         describe("invalid transport behavior", () => {
+//           it("transport throws on pre-send state check", () => {});
 
-          it("transport returns invalid value on pre-send state check", () => {});
-        });
+//           it("transport returns invalid value on pre-send state check", () => {});
+//         });
 
-        it("valid transport behavior", () => {});
-      });
-    });
-  });
-});
+//         it("valid transport behavior", () => {});
+//       });
+//     });
+//   });
+// });

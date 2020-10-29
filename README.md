@@ -33,6 +33,8 @@ Library contributors and transport developers should see the
       - [client.action(...) - Callback Style](#clientaction---callback-style)
       - [client.action(...) - Promise Style](#clientaction---promise-style)
       - [client.feed(...)](#clientfeed)
+      - [client.destroy()](#clientdestroy)
+      - [client.destroyed()](#clientdestroyed)
     - [Client Events](#client-events)
       - [connecting](#connecting)
       - [connect](#connect)
@@ -272,6 +274,10 @@ Errors thrown:
 
   The transport behaved unexpectedly.
 
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has been destroyed.
+
 ##### client.connect()
 
 Initiates an attempt to connect to the server and perform a handshake. The
@@ -287,6 +293,10 @@ Errors thrown:
 
   The transport behaved unexpectedly.
 
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has been destroyed.
+
 ##### client.disconnect()
 
 Disconnects from the server. The client state must be either `connecting` or
@@ -301,6 +311,10 @@ Errors thrown:
 - `err.message === "TRANSPORT_ERROR: ..."`
 
   The transport behaved unexpectedly.
+
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has been destroyed.
 
 ##### client.action(...) - Callback Style
 
@@ -347,6 +361,10 @@ Errors thrown:
 - `err.message === "TRANSPORT_ERROR: ..."`
 
   The transport behaved unexpectedly.
+
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has been destroyed.
 
 Errors called back:
 
@@ -401,6 +419,10 @@ Errors thrown:
 
   The transport behaved unexpectedly.
 
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has been destroyed.
+
 Errors returned via promise rejection:
 
 - `err.message === "TIMEOUT: ..."`
@@ -449,6 +471,39 @@ Errors thrown:
 
   There was a problem with one or more of the supplied arguments.
 
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has been destroyed.
+
+##### client.destroy()
+
+Destroys the client instance and all feed objects so that they may be safely
+disposed of. Returns nothing.
+
+The client instance may emit one or more previously-deferred events, execute a
+previously-deferred callback, or settle a previously-deferred promise subsequent
+to destruction, but it will not queue any further invocations on the
+application.
+
+Destroying the client instance detaches library event handlers from the
+transport, but it does not detach application event handlers from the library.
+
+Errors thrown:
+
+- `err.message === "INVALID_STATE: ..."`
+
+  The client is not disconnected.
+
+- `err.message === "DESTROYED: ..."`
+
+  The client instance has already been destroyed.
+
+##### client.destroyed()
+
+Returns a `boolean` indicating whether the client has been destroyed.
+
+Errors thrown: None
+
 #### Client Events
 
 Library methods may cause certain events to be emitted synchronously, so the
@@ -490,7 +545,7 @@ If the disconnect resulted from an error condition then listeners are passed an
 - `err.message === "TRANSPORT_FAILURE: ..."` - The transport failed to establish
   a connection to the server or lost its connection unexpectedly.
 
-  - `err.transportError` (object) contains the error reported by the transport.
+  - `err.transportError` (Error) contains the error reported by the transport.
 
 ##### badServerMessage
 
@@ -593,13 +648,13 @@ Errors thrown:
 
   The feed object's desired state is already `open`.
 
-- `err.message === "DESTROYED: ..."`
-
-  The feed object has been destroyed.
-
 - `err.message === "TRANSPORT_ERROR: ..."`
 
   The transport behaved unexpectedly.
+
+- `err.message === "DESTROYED: ..."`
+
+  The feed object has been destroyed.
 
 ##### feed.desireClosed()
 
@@ -615,13 +670,13 @@ Errors thrown:
 
   The feed object's desired state is already `closed`.
 
-- `err.message === "DESTROYED: ..."`
-
-  The feed object has been destroyed.
-
 - `err.message === "TRANSPORT_ERROR: ..."`
 
   The transport behaved unexpectedly.
+
+- `err.message === "DESTROYED: ..."`
+
+  The feed object has been destroyed.
 
 ##### feed.desiredState()
 
@@ -641,13 +696,13 @@ be `closed`.
 
 Errors thrown:
 
-- `err.message === "DESTROYED: ..."`
-
-  The feed object has been destroyed.
-
 - `err.message === "TRANSPORT_ERROR: ..."`
 
   The transport behaved unexpectedly.
+
+- `err.message === "DESTROYED: ..."`
+
+  The feed object has been destroyed.
 
 ##### feed.data()
 
@@ -660,17 +715,22 @@ Errors thrown:
 
   The feed object's actual state is not `open`.
 
-- `err.message === "DESTROYED: ..."`
-
-  The feed object has been destroyed.
-
 - `err.message === "TRANSPORT_ERROR: ..."`
 
   The transport behaved unexpectedly.
 
+- `err.message === "DESTROYED: ..."`
+
+  The feed object has been destroyed.
+
 ##### feed.destroy()
 
 Destroys the feed object so that it may be safely disposed of. Returns nothing.
+
+The feed object may emit one or more previously-deferred events subsequent to
+destruction, but it will not queue any further events.
+
+Destroying a feed object does not remove application event handlers.
 
 Errors thrown:
 

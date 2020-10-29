@@ -12,6 +12,7 @@ describe("The main module", () => {
       main({
         transport: {
           on: () => {},
+          off: () => {},
           connect: () => {},
           disconnect: () => {},
           send: () => {},

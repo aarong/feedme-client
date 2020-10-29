@@ -3,15 +3,26 @@ import emitter from "component-emitter";
 import debug from "debug";
 import _includes from "lodash/includes";
 import _startsWith from "lodash/startsWith";
+import _each from "lodash/each";
 import defer from "./defer";
 
 const dbg = debug("feedme-client:transport-wrapper");
 
 /**
- * Wrapper that verifies that the app-provided transport object has the required
- * functionality and behavior. The wrapper assumes that the library interacts
- * with the transport according to the commitments laid out in the developer
- * documentation.
+ * Wrapper that verifies that the app-provided transport object implements the
+ * required functionality and behavior. If a problem is detected, the transport
+ * wrapper destroys itself, emits transportError, and throws TRANSPORT_ERROR.
+ * The wrapper can also be destroyed from the outside by the application.
+ *
+ * The wrapper has the same structure and behavior as laid out in the transport
+ * requirements, with a few minor additions:
+ *
+ * - It exposes a destroy() function
+ * - It emits a transportError event if the transport violates a requirement.
+ * - It accepts an error argument on disconnect(err) and attaches it to the
+ *   resulting disconnect event
+ *
+ * Transport structure/behavior validation:
  *
  * - Transport API surface is validated on intialization
  *
@@ -85,16 +96,35 @@ export default function transportWrapperFactory(transport) {
     throw new Error("INVALID_ARGUMENT: Transport is not an object.");
   }
 
-  // Check that the transport exposes the required API
+  // Check that the transport exposes the required API (excluding emitter API)
   if (
-    !check.function(transport.on) ||
     !check.function(transport.state) ||
     !check.function(transport.connect) ||
     !check.function(transport.send) ||
     !check.function(transport.disconnect)
   ) {
     throw new Error(
-      "TRANSPORT_ERROR: Transport does not implement the required API."
+      "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect()."
+    );
+  }
+
+  // Check that the transport exposes the required event emitter API
+  if (
+    !check.function(transport.on) &&
+    !check.function(transport.addListener) &&
+    !check.function(transport.addEventListener)
+  ) {
+    throw new Error(
+      "TRANSPORT_ERROR: Transport does not implement on(), addListener(), or addEventListener()."
+    );
+  }
+  if (
+    !check.function(transport.off) &&
+    !check.function(transport.removeListener) &&
+    !check.function(transport.removeEventListener)
+  ) {
+    throw new Error(
+      "TRANSPORT_ERROR: Transport does not implement off(), removeListener(), or removeEventListener()."
     );
   }
 
@@ -102,11 +132,12 @@ export default function transportWrapperFactory(transport) {
   const transportWrapper = Object.create(proto);
 
   /**
-   * Transport object being wrapped.
+   * Transport object being wrapped. Null if the transport wrapper has been
+   * destroyed.
    * @memberof TransportWrapper
    * @instance
    * @private
-   * @type {Object}
+   * @type {?Object}
    */
   transportWrapper._transport = transport;
 
@@ -185,27 +216,40 @@ export default function transportWrapperFactory(transport) {
   // Check that the transport state is valid and disconnected
   transportWrapper.state(); // Cascade errors
 
+  /**
+   * Transport event handler functions. Saved for removal on destroy.
+   * @memberof TransportWrapper
+   * @instance
+   * @private
+   * @type {Object}
+   */
+  transportWrapper._listeners = {
+    connecting: transportWrapper._processTransportConnecting.bind(
+      transportWrapper
+    ),
+    connect: transportWrapper._processTransportConnect.bind(transportWrapper),
+    message: transportWrapper._processTransportMessage.bind(transportWrapper),
+    disconnect: transportWrapper._processTransportDisconnect.bind(
+      transportWrapper
+    )
+  };
+
   // Try to listen for transport events
+  let onFunction;
+  if (check.function(transport.on)) {
+    onFunction = transport.on;
+  } else if (check.function(transport.addListener)) {
+    onFunction = transport.addListener;
+  } else if (check.function(transport.addEventListener)) {
+    onFunction = transport.addEventListener;
+  }
   try {
-    transportWrapper._transport.on(
-      "connecting",
-      transportWrapper._processTransportConnecting.bind(transportWrapper)
-    );
-    transportWrapper._transport.on(
-      "connect",
-      transportWrapper._processTransportConnect.bind(transportWrapper)
-    );
-    transportWrapper._transport.on(
-      "message",
-      transportWrapper._processTransportMessage.bind(transportWrapper)
-    );
-    transportWrapper._transport.on(
-      "disconnect",
-      transportWrapper._processTransportDisconnect.bind(transportWrapper)
-    );
+    _each(transportWrapper._listeners, (handler, evt) => {
+      onFunction.bind(transport)(evt, handler);
+    });
   } catch (e) {
     const err = Error(
-      "TRANSPORT_ERROR: Transport threw an error on call to on()."
+      "TRANSPORT_ERROR: Transport threw an error when subscribing event listeners."
     );
     err.transportError = e;
     throw err;
@@ -248,11 +292,24 @@ export default function transportWrapperFactory(transport) {
  */
 
 /**
+ * Emitted when the transport does something invalid (aside from on initialization).
+ * @event transportError
+ * @memberof TransportWrapper
+ * @instance
+ * @param {Error} err "TRANSPORT_ERROR: ..."
+ */
+
+/**
  * @memberof TransportWrapper
  * @instance
  * @throws {Error} "TRANSPORT_ERROR: ...""
  */
 proto.state = function state() {
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Try to get state
   const transportState = this._runTransportMethod("state"); // Cascade errors
 
@@ -263,17 +320,21 @@ proto.state = function state() {
     transportState !== "connecting" &&
     transportState !== "connected"
   ) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state().`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Ensure that transport returned a permissable state
   if (!_includes(this._permittedStates, transportState)) {
     const permittedStates = `'${this._permittedStates.join("' or '")}'`;
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport returned state '${transportState}' on call to state() when ${permittedStates} was expected.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Success
@@ -312,10 +373,21 @@ proto.state = function state() {
 /**
  * @memberof TransportWrapper
  * @instance
+ * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.connect = function connect() {
   dbg("Connect requested");
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Is the state disconnected?
+  if (this.state() !== "disconnected") {
+    throw new Error("INVALID_STATE: Not disconnected.");
+  }
 
   // Try to connect
   this._runTransportMethod("connect"); // Cascade errors
@@ -331,10 +403,27 @@ proto.connect = function connect() {
 /**
  * @memberof TransportWrapper
  * @instance
+ * @throws {Error} "INVALID_ARGUMENT: ...
+ * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto.send = function send(msg) {
   dbg("Send requested");
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Check message
+  if (!check.string(msg)) {
+    throw new Error("INVALID_ARGUMENT: Invalid message.");
+  }
+
+  // Is the state connected?
+  if (this.state() !== "connected") {
+    throw new Error("INVALID_STATE: Not connected.");
+  }
 
   // Try to send
   this._runTransportMethod("send", msg); // Cascade errors
@@ -350,10 +439,27 @@ proto.send = function send(msg) {
  * @memberof TransportWrapper
  * @instance
  * @param {?Error} err
+ * @throws {Error} "INVALID_ARGUMENT: ..."
+ * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "TRANSPORT_ERROR: ..."
  */
-proto.disconnect = function disconnect(err) {
+proto.disconnect = function disconnect(...args) {
   dbg("Disconnect requested");
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Check error, if provided
+  if (args.length >= 1 && !check.instance(args[0], Error)) {
+    throw new Error("INVALID_ARGUMENT: Invalid error object.");
+  }
+
+  // Is the state connecting or connected?
+  if (this.state() === "disconnected") {
+    throw new Error("INVALID_STATE: Already disconnected.");
+  }
 
   // Try to disconnect
   this._runTransportMethod("disconnect"); // Cascade errors
@@ -363,42 +469,35 @@ proto.disconnect = function disconnect(err) {
   this.state(); // Cascade errors
 
   // Save the error (or undefined) for disconnect emission
-  this._disconnectCalls.push(err);
+  this._disconnectCalls.push(args[0]);
 };
 
 /**
- * Try to run a transport method, catching and throwing if there are
- * any synchronous event emissions or other errors.
+ * Outward facing function to destroy the transport wrapper.
  * @memberof TransportWrapper
  * @instance
- * @param {?Error} err
- * @throws {Error} "TRANSPORT_ERROR: ..."
+ * @throws {Error} "INVALID_STATE: ..."
+ * @throws {Error} "DESTROYED: ..."
  */
-proto._runTransportMethod = function _runTransportMethod(method, ...args) {
-  // Save the _methodRunning value on start and restore it to its previous value
-  // on completion. The state() method is run within all of the transport event
-  // handlers, and if the transport emits synchronously within a method call,
-  // you don't want to forget about the initial method invocation
-  let returnValue;
-  const prevMethodRunning = this._methodRunning;
-  this._methodRunning = method;
-  try {
-    returnValue = this._transport[method](...args);
-  } catch (e) {
-    // If it's a TRANSPORT_ERROR then emit it without wrapping (synchronous emission)
-    if (_startsWith(e.message, "TRANSPORT_ERROR:")) {
-      throw e;
-    } else {
-      const throwErr = new Error(
-        `TRANSPORT_ERROR: Transport threw an error on call to ${method}().`
-      );
-      throwErr.transportError = e;
-      throw throwErr;
-    }
-  } finally {
-    this._methodRunning = prevMethodRunning;
+proto.destroy = function destroy() {
+  dbg("Destroy requested");
+
+  // Is the state disconnected?
+  if (this.state() !== "disconnected") {
+    throw new Error("INVALID_STATE: Not disconnected.");
   }
-  return returnValue;
+
+  this._destroy(); // No transport error; cascade errors
+};
+
+/**
+ * Returns true if the wrapper has been destroyed and false otherwise.
+ * @memberof TransportWrapper
+ * @instance
+ * @returns {boolean}
+ */
+proto.destroyed = function destroyed() {
+  return !this._transport;
 };
 
 /**
@@ -412,32 +511,45 @@ proto._processTransportConnecting = function _processTransportConnecting(
 ) {
   dbg("Observed transport connecting event");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Were the emission arguments valid?
   if (args.length > 0) {
-    throw new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event."
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the emission sequence valid?
   if (this._lastEmission !== "disconnect") {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'connecting' event following a '${this._lastEmission}' emission.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to ${this._methodRunning}().`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Did the library call transport.connect()?
   if (this._connectCalls === 0) {
-    throw new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Update permitted states and validate the current state
@@ -463,25 +575,36 @@ proto._processTransportConnecting = function _processTransportConnecting(
 proto._processTransportConnect = function _processTransportConnect(...args) {
   dbg("Observed transport connect event");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Were the emission arguments valid?
   if (args.length > 0) {
-    throw new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event."
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the emission sequence valid?
   if (this._lastEmission !== "connecting") {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was '${this._lastEmission}'.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to ${this._methodRunning}().`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Update permitted states and validate the current state
@@ -501,36 +624,50 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
  * @memberof TransportWrapper
  * @instance
  * @private
+ * @throws {Error} "TRANSPORT_ERROR: ..."
  */
 proto._processTransportMessage = function _processTransportMessage(...args) {
   dbg("Observed transport message event");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Valid arguments?
   if (args.length !== 1) {
-    throw new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
     );
+    this._destroy(err);
+    throw err;
   }
 
   // String argument?
   if (!check.string(args[0])) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a non-string argument '${args[0]}' with a 'message' event.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the emission sequence valid?
   if (this._lastEmission !== "connect" && this._lastEmission !== "message") {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was '${this._lastEmission}'.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to ${this._methodRunning}().`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Update permitted states and validate the current state
@@ -557,40 +694,55 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
 ) {
   dbg("Observed transport disconnect event");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Valid arguments?
   if (args.length > 1) {
-    throw new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event."
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Error valid if specified?
   if (args.length === 1 && !check.instance(args[0], Error)) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a non-Error argument '${args[0]}' with a 'disconnect' event.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the emission sequence valid?
   if (this._lastEmission === "disconnect") {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
-    throw new Error(
+    const err = new Error(
       `TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to ${this._methodRunning}().`
     );
+    this._destroy(err);
+    throw err;
   }
 
   // If there is no error argument then there must be an entry in disconnectErrors
   // That is, there must have been a call to transport.disconnect()
   if (args.length === 0 && this._disconnectCalls.length === 0) {
-    throw new Error(
+    const err = new Error(
       "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
     );
+    this._destroy(err);
+    throw err;
   }
 
   // Update permitted states and validate the current state
@@ -615,5 +767,119 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
     defer(this.emit.bind(this), "disconnect", err);
   } else {
     defer(this.emit.bind(this), "disconnect");
+  }
+};
+
+/**
+ * Try to run a transport method, catching and throwing if there are
+ * any synchronous event emissions or other errors.
+ * @memberof TransportWrapper
+ * @instance
+ * @param {?Error} err
+ * @throws {Error} "TRANSPORT_ERROR: ..."
+ */
+proto._runTransportMethod = function _runTransportMethod(method, ...args) {
+  // Save the _methodRunning value on start and restore it to its previous value
+  // on completion. The state() method is run within all of the transport event
+  // handlers, and if the transport emits synchronously within a method call,
+  // you don't want to forget about the initial method invocation
+  let returnValue;
+  const prevMethodRunning = this._methodRunning;
+  this._methodRunning = method;
+  try {
+    returnValue = this._transport[method](...args);
+  } catch (e) {
+    // If it's a TRANSPORT_ERROR then emit it without wrapping
+    // This occurs for synchronous emissions within method calls
+    if (_startsWith(e.message, "TRANSPORT_ERROR:")) {
+      // Already emitted transportError
+      throw e;
+    } else {
+      const err = new Error(
+        `TRANSPORT_ERROR: Transport threw an error on call to ${method}().`
+      );
+      err.transportError = e;
+      this._destroy(err);
+      throw err;
+    }
+  } finally {
+    this._methodRunning = prevMethodRunning;
+  }
+  return returnValue;
+};
+
+/**
+ * Internal function to destroy the transport wrapper.
+ * @memberof TransportWrapper
+ * @instance
+ * @param {?Error} transportError Present if there was a transport error
+ *                                Missing if requested by the application
+ * @throws {Error} "DESTROYED: ..."
+ */
+proto._destroy = function _destroy(transportError) {
+  dbg("Destroying the transport wrapper");
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Drop transport reference
+  const transport = this._transport;
+  this._transport = null;
+
+  // Try to stop listening for transport events
+  let offFunction;
+  if (check.function(transport.off)) {
+    offFunction = transport.off;
+  } else if (check.function(transport.removeListener)) {
+    offFunction = transport.removeListener;
+  } else if (check.function(transport.removeEventListener)) {
+    offFunction = transport.removeEventListener;
+  }
+  try {
+    _each(this._listeners, (handler, evt) => {
+      offFunction.bind(transport)(evt, handler);
+    });
+  } catch (e) {
+    // Suppress
+  }
+
+  // Try to get the transport state and suppress any errors
+  let transportState;
+  try {
+    transportState = transport.state();
+  } catch (e) {
+    // Suppress
+  }
+
+  // Disconnect the transport unless reported disconnected state and suppress any errors
+  // Event handlers already disconnected
+
+  if (transportState !== "disconnected") {
+    try {
+      transport.disconnect();
+    } catch (e) {
+      // Suppress
+    }
+  }
+
+  // Emit disconnect if previous emission was not disconnected
+  if (this._lastEmission !== "disconnect") {
+    let err;
+    if (transportError) {
+      err = new Error(
+        "DESTROYED: The transport violated a library requirement."
+      );
+      err.transportError = transportError;
+    } else {
+      err = new Error("DESTROYED: The client instance has been destroyed.");
+    }
+    defer(this.emit.bind(this), "disconnect", err);
+  }
+
+  // Emit transportError if there was one
+  if (transportError) {
+    defer(this.emit.bind(this), "transportError", transportError);
   }
 };

@@ -38,7 +38,8 @@ function clientWrapperFactory(clientSync) {
     "connect",
     "disconnect",
     "badServerMessage",
-    "badClientMessage"
+    "badClientMessage",
+    "transportError"
   ];
   evts.forEach(evt => {
     clientWrapper._clientSync.on(evt, (...args) => {
@@ -181,7 +182,21 @@ function feedWrapperFactory(feedSync) {
  * @instance
  */
 
-["state", "connect", "disconnect"].forEach(method => {
+/**
+ * Routed directly to ClientSync.
+ * @method destroy
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to ClientSync.
+ * @method destroyed
+ * @memberof ClientWrapper
+ * @instance
+ */
+
+["state", "connect", "disconnect", "destroy", "destroyed"].forEach(method => {
   clientWrapperProto[method] = function callMethod(...args) {
     return this._clientSync[method](...args);
   };

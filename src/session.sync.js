@@ -22,7 +22,7 @@ const dbg = debug("feedme-client:session");
 /**
  * SessionSync objects are to be accessed via SessionWrapper. SessionSync objects
  * emit all events and invoke all callbacks synchronously and rely on the
- * Session Wrapper to defer and queue those dependent invocations.
+ * SessionWrapper to defer and queue those dependent invocations.
  *
  * API for a Feedme conversation with the server.
  *
@@ -30,7 +30,7 @@ const dbg = debug("feedme-client:session");
  * - Keeps track of the server feed states
  * - Transparently handles the handshake
  * - Applies feed deltas and performs hash verification
- * - Extremely patient - no timeouts
+ * - Infinitely patient - no timeouts
  *
  * The session must not assume the transport state in its event handlers
  * or after performing operations on the transport. Checked explicitly where
@@ -162,6 +162,10 @@ export default function sessionSyncFactory(transportWrapper) {
     "disconnect",
     sessionSync._processTransportDisconnect.bind(sessionSync)
   );
+  sessionSync._transportWrapper.on(
+    "transportError",
+    sessionSync._processTransportError.bind(sessionSync)
+  );
 
   return sessionSync;
 }
@@ -186,13 +190,14 @@ export default function sessionSyncFactory(transportWrapper) {
 /**
  * Emitted on:
  * - Outside calls to .disconnect()
- * - Failure to establish a transport connection
+ * - Failure to establish a transport connection initially
  * - Server rejection of the handshake
  * - Unexpected failure of the tranport connection once connected
  *
  * All waiting callbacks are fired on disconnect
- * - actionCallbacks and feedOpenCallbacks are called with error NOT_CONNECTED
- * - feedCloseCallbacks are called with no error
+ * - First actionCallbacks with error NOT_CONNECTED
+ * - Then feedOpenCallbacks with error NOT_CONNECTED
+ * - Then feedCloseCallbacks with no error
  * @event disconnect
  * @memberof SessionSync
  * @instance
@@ -341,6 +346,14 @@ export default function sessionSyncFactory(transportWrapper) {
  * @param {Object} diagnostics Server-reported debugging information
  */
 
+/**
+ * Emitted when there is a transport error.
+ * @event transportError
+ * @memberof SessionSync
+ * @instance
+ * @param {Error} err Error("TRANSPORT_ERROR: ...")
+ */
+
 // Callbacks
 
 /**
@@ -386,10 +399,17 @@ export default function sessionSyncFactory(transportWrapper) {
  * connecting through the handshake.
  * @memberof SessionSync
  * @instance
+ * @throws {Error} Cascaded from transport wrapper
  * @returns {string} 'disconnected', 'connecting', or 'connected'
  */
 proto.state = function state() {
-  const transportState = this._transportWrapper.state();
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  const transportState = this._transportWrapper.state(); // Cascade errors
+
   if (transportState === "connected" && !this._handshakeComplete) {
     return "connecting";
   }
@@ -399,8 +419,8 @@ proto.state = function state() {
 /**
  * Connects to the server via the transport.
  *
- * When the transport has connected, a handshake will be attempted internally
- * before a session "connected" event is emitted.
+ * When the transport has connected, a handshake is attempted before a session
+ * "connected" event is emitted.
  * @memberof SessionSync
  * @instance
  * @throws {Error} "INVALID_STATE: ..."
@@ -408,44 +428,56 @@ proto.state = function state() {
 proto.connect = function connect() {
   dbg("Connect requested");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Error if session is not disconnected
   if (this.state() !== "disconnected") {
     throw new Error("INVALID_STATE: Already connecting or connected.");
   }
 
-  this._transportWrapper.connect(); // Transport events fire session events
+  this._transportWrapper.connect();
 };
 
 /**
  * Disconnects from the server, passing along an error if provided.
  *
- * If called with an error, then that error is passed to the transport
+ * If called with an error, then that error is passed to the transport wrapper
  * and emitted with its disconnect event.
  * @memberof SessionSync
  * @instance
+ * @param {?Error} err
+ * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  */
-proto.disconnect = function disconnect(err) {
+proto.disconnect = function disconnect(...args) {
   dbg("Disconnect requested");
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Validate error if supplied
+  if (args.length >= 1 && !check.instance(args[0], Error)) {
+    throw new Error("INVALID_ARGUMENT: Invalid error object.");
+  }
 
   // Error if state is already disconnected (connecting/connected ok)
   if (this.state() === "disconnected") {
     throw new Error("INVALID_STATE: Already disconnected.");
   }
 
-  // Call transport disconnect with correct number of events
-  // Transport events fire session events
-  if (err) {
-    this._transportWrapper.disconnect(err);
-  } else {
-    this._transportWrapper.disconnect();
-  }
+  // Call transport disconnect with error if supplied
+  this._transportWrapper.disconnect(...args);
 };
 
 /**
  * Performs an action on the server.
  *
- * A callback is guaranteed - on disconnect at the latest.
+ * Callback invokation is guaranteed on disconnect at the latest.
  * @memberof SessionSync
  * @instance
  * @param {string} name
@@ -457,6 +489,11 @@ proto.disconnect = function disconnect(err) {
 
 proto.action = function action(name, args, callback) {
   dbg("Action requested");
+
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
 
   // Check name
   if (!check.nonEmptyString(name)) {
@@ -479,12 +516,8 @@ proto.action = function action(name, args, callback) {
   }
 
   // Transport connected and handshake complete?
-  // Treat invalid state as an operational error and thus call back, don't throw
-  // Applications should not have to check state for each action or wrap action
-  // calls in a try/catch block (keep error handling in one place)
   if (this.state() !== "connected") {
-    callback(new Error("NOT_CONNECTED: The client is not connected."));
-    return; // Stop
+    throw new Error("INVALID_STATE: The client is not connected.");
   }
 
   // Generate a unique callback id
@@ -508,7 +541,7 @@ proto.action = function action(name, args, callback) {
 /**
  * Opens a feed on the server.
  *
- * A callback is guaranteed - on disconnect at the latest.
+ * Callback invocation is guaranteed on disconnect at the latest.
  *
  * If the feed is opened successfully then any subsequent failure, other than
  * from an explicit call to feedClose(), will result in a a sequence of
@@ -526,8 +559,13 @@ proto.action = function action(name, args, callback) {
 proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
   dbg("Feed open requested");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Check cb
   if (!check.function(cb)) {
@@ -562,7 +600,7 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
 /**
  * Closes a feed on the server.
  *
- * A callback is guaranteed - on disconnect at the latest.
+ * Callback invocation is guaranteed on disconnect at the latest.
  *
  * If a FeedTermination is received before the FeedCloseResponse, then the
  * FeedCloseResponse is awaited and the callback is fired upon receipt. In that
@@ -580,8 +618,13 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
 proto.feedClose = function feedClose(feedName, feedArgs, cb) {
   dbg("Feed close requested");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Check cb
   if (!check.function(cb)) {
@@ -640,8 +683,13 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
 proto.feedState = function feedState(feedName, feedArgs) {
   dbg("Feed state requested");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Transport connected and handshake complete?
   if (this.state() !== "connected") {
@@ -675,8 +723,13 @@ proto.feedState = function feedState(feedName, feedArgs) {
 proto.feedData = function feedData(feedName, feedArgs) {
   dbg("Feed data requested");
 
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
   // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs);
+  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Transport connected and handshake complete?
   if (this.state() !== "connected") {
@@ -691,6 +744,37 @@ proto.feedData = function feedData(feedName, feedArgs) {
   // Return
   const feedSerial = feedSerializer.serialize(feedName, feedArgs);
   return Object.freeze(this._feedData[feedSerial]);
+};
+
+/**
+ * @memberof SessionSync
+ * @instance
+ * @throws {Error} "INVALID_STATE: ..."
+ */
+proto.destroy = function destroy() {
+  // Throw if destroyed
+  if (this.destroyed()) {
+    throw new Error("DESTROYED: The client instance has been destroyed.");
+  }
+
+  // Throw if state is not disconnected
+  if (this.state() !== "disconnected") {
+    throw new Error("INVALID_STATE: Not disconnected.");
+  }
+
+  // Since the session is disconnected, you know that all session state has
+  // already been reset
+
+  this._transportWrapper.destroy();
+};
+
+/**
+ * @memberof SessionSync
+ * @instance
+ * @returns {boolean}
+ */
+proto.destroyed = function destroyed() {
+  return this._transportWrapper.destroyed();
 };
 
 // Transport event handlers
@@ -808,6 +892,23 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
   } else {
     this.emit("disconnect");
   }
+};
+
+/**
+ * Relay a transport transportError event.
+ * @memberof SessionSync
+ * @instance
+ * @private
+ * @param {Error} err Error passed by the transport
+ */
+proto._processTransportError = function _processTransportError(err) {
+  dbg("Observed transportWrapper transportError event");
+
+  // The previous transport wrapper event is guaranteed to have been 'disconnect',
+  // or there may never have been an attempt to connect the session.
+  // So session state is already reset and you just relay the event.
+
+  this.emit("transportError", err);
 };
 
 /**

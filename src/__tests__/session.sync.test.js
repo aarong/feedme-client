@@ -33,8 +33,7 @@ verifying no change (errors, events, state, transport calls, return values).
     No need to worry about events, state change, transport calls, or callbacks.
     Test that each "type" of state results in the correct error being thrown or
     return value being returned. This means that a given code path may
-    have multiple tests - for example, session.id should throw when disconnected or
-    connecting and return when connected. Also test internal helper functions.
+    have multiple tests. Also test internal helper functions.
 
 State: Session members
     ._transportWrapper (check transport state)
@@ -54,6 +53,7 @@ State: Session members
         .action()
         .feedOpen()
         .feedClose()
+        .destroy()
     Transport-triggered
         ._processTransportConnecting()
         ._processTransportConnect()
@@ -66,13 +66,14 @@ State: Session members
             ._processFeedCloseResponse()
             ._processActionRevelation()
             ._processFeedTermination()
+        ._processTransportError()
 
 2. State-getting functionality
     Session functions
         .state()
-        .id()
         .feedState()
         .feedData()
+        .destroyed()
     Internal helper functions:
         ._feedState()
 
@@ -106,6 +107,9 @@ const harnessFactory = function harnessFactory() {
   t.disconnect = jest.fn();
   t.state = jest.fn();
   t.state.mockReturnValue("disconnected");
+  t.destroy = jest.fn();
+  t.destroyed = jest.fn();
+  t.destroyed.mockReturnValue(false);
   harness.transportWrapper = t;
 
   // Function to reset mock transport functions
@@ -114,6 +118,8 @@ const harnessFactory = function harnessFactory() {
     t.send.mockClear();
     t.disconnect.mockClear();
     t.state.mockClear();
+    t.destroy.mockClear();
+    t.destroyed.mockClear();
   };
 
   // Create the session
@@ -165,7 +171,8 @@ harnessProto.createSessionListener = function createSessionListener() {
     unexpectedFeedClosing: jest.fn(),
     unexpectedFeedClosed: jest.fn(),
     badServerMessage: jest.fn(),
-    badClientMessage: jest.fn()
+    badClientMessage: jest.fn(),
+    transportError: jest.fn()
   };
   l.mockClear = function mockClear() {
     l.connecting.mock.mockClear();
@@ -176,6 +183,7 @@ harnessProto.createSessionListener = function createSessionListener() {
     l.unexpectedFeedClosed.mockClear();
     l.badServerMessage.mock.mockClear();
     l.badClientMessage.mock.mockClear();
+    l.transportError.mock.mockClear();
   };
   this.session.on("connecting", l.connecting);
   this.session.on("connect", l.connect);
@@ -185,6 +193,7 @@ harnessProto.createSessionListener = function createSessionListener() {
   this.session.on("unexpectedFeedClosed", l.unexpectedFeedClosed);
   this.session.on("badServerMessage", l.badServerMessage);
   this.session.on("badClientMessage", l.badClientMessage);
+  this.session.on("transportError", l.transportError);
   return l;
 };
 
@@ -381,6 +390,7 @@ describe("The factory function", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -398,6 +408,14 @@ describe("The .connect() function", () => {
   let harness;
   beforeEach(() => {
     harness = harnessFactory();
+  });
+
+  it("should throw if destroyed", () => {
+    harness.session.destroy();
+    harness.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness.session.connect();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
   it("should throw an error if the transport state is not disconnected", () => {
@@ -422,6 +440,7 @@ describe("The .connect() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -443,6 +462,7 @@ describe("The .connect() function", () => {
       expect(harness.transportWrapper.connect.mock.calls[0].length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -461,6 +481,21 @@ describe("The .disconnect() function", () => {
   beforeEach(() => {
     harness = harnessFactory();
     harness.connectSession();
+  });
+
+  it("should throw if destroyed", () => {
+    const harness2 = harnessFactory();
+    harness2.session.destroy();
+    harness2.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness2.session.disconnect();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
+  });
+
+  it("should throw on non-Error argument", () => {
+    expect(() => {
+      harness.session.disconnect("not_an_error");
+    }).toThrow(new Error("INVALID_ARGUMENT: Invalid error object."));
   });
 
   it("should throw an error if the state is already disconnected", () => {
@@ -486,6 +521,7 @@ describe("The .disconnect() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -507,6 +543,7 @@ describe("The .disconnect() function", () => {
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(1);
       expect(harness.transportWrapper.disconnect.mock.calls[0].length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     it("should call transport.disconnect() - with error", () => {
@@ -538,6 +575,15 @@ describe("The .action() function", () => {
     harness.connectSession();
   });
 
+  it("should throw if destroyed", () => {
+    const harness2 = harnessFactory();
+    harness2.session.destroy();
+    harness2.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness2.session.action();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
+  });
+
   it("should throw an error for invalid action names", () => {
     expect(() => {
       harness.session.action(undefined, {}, () => {});
@@ -564,66 +610,14 @@ describe("The .action() function", () => {
     }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
-  describe("can return success - not connected", () => {
-    // Events
-
-    it("should emit no events", () => {
-      const harness2 = harnessFactory();
-      const sessionListener = harness.createSessionListener();
-      harness2.session.action("myAction", { arg: "val" }, () => {});
-
-      expect(sessionListener.connecting.mock.calls.length).toBe(0);
-      expect(sessionListener.connect.mock.calls.length).toBe(0);
-      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
-      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
-      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
-      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
-      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
-      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
-    });
-
-    // State
-
-    it("should not change the state", () => {
-      const harness2 = harnessFactory();
-      const newState = harness.getSessionState();
-      harness2.session.action("myAction", { arg: "val" }, () => {});
-      expect(harness.session).toHaveState(newState);
-    });
-
-    // Transport
-
-    it("should do nothing on the transport", () => {
-      const harness2 = harnessFactory();
-      harness2.session.action("myAction", { arg: "val" }, () => {});
-      expect(harness2.transportWrapper.connect.mock.calls.length).toBe(0);
-      expect(harness2.transportWrapper.disconnect.mock.calls.length).toBe(0);
-      expect(harness2.transportWrapper.send.mock.calls.length).toBe(0);
-    });
-
-    // Callbacks
-
-    it("should call back NOT_CONNECTED error", () => {
-      const harness2 = harnessFactory();
-      const cb = jest.fn();
-      harness2.session.action("myAction", { arg: "val" }, cb);
-      expect(cb.mock.calls.length).toBe(1);
-      expect(cb.mock.calls[0].length).toBe(1);
-      expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
-      expect(cb.mock.calls[0][0].message).toBe(
-        "NOT_CONNECTED: The client is not connected."
-      );
-      expect(cb.mock.instances[0]).toBe(undefined);
-    });
-
-    // Return value
-
-    it("should return nothing", () => {
-      expect(harness.session.action("myAction", {}, () => {})).toBeUndefined();
-    });
+  it("should throw an error if not connected", () => {
+    const harness2 = harnessFactory();
+    expect(() => {
+      harness2.session.action("myAction", {}, []);
+    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
-  describe("can return success - connected", () => {
+  describe("can return success", () => {
     // Events
 
     it("should emit no events", () => {
@@ -638,6 +632,7 @@ describe("The .action() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -668,6 +663,7 @@ describe("The .action() function", () => {
         ActionArgs: { arg: "val" },
         CallbackId: "1"
       });
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -686,6 +682,15 @@ describe("The .feedOpen() function", () => {
   beforeEach(() => {
     harness = harnessFactory();
     harness.connectSession();
+  });
+
+  it("should throw if destroyed", () => {
+    const harness2 = harnessFactory();
+    harness2.session.destroy();
+    harness2.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness2.session.feedOpen();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
   it("should throw an error for invalid feed names", () => {
@@ -736,6 +741,7 @@ describe("The .feedOpen() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -768,6 +774,7 @@ describe("The .feedOpen() function", () => {
         FeedName: "myFeed",
         FeedArgs: { arg: "val" }
       });
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -788,6 +795,15 @@ describe("The .feedClose() function", () => {
   beforeEach(() => {
     harness = harnessFactory();
     harness.connectSession();
+  });
+
+  it("should throw if destroyed", () => {
+    const harness2 = harnessFactory();
+    harness2.session.destroy();
+    harness2.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness2.session.feedClose();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
   it("should throw an error for invalid feed names", () => {
@@ -839,6 +855,7 @@ describe("The .feedClose() function", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -876,6 +893,7 @@ describe("The .feedClose() function", () => {
         FeedName: "myFeed",
         FeedArgs: { arg: "val" }
       });
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -888,6 +906,81 @@ describe("The .feedClose() function", () => {
       expect(
         harness.session.feedClose("myFeed", { arg: "val" }, () => {})
       ).toBeUndefined();
+    });
+  });
+});
+
+describe("The .destroy() function", () => {
+  it("should throw if destroyed", () => {
+    const harness = harnessFactory();
+    harness.session.destroy();
+    harness.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness.session.destroy();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
+  });
+
+  it("should throw an error if the transport state is not disconnected", () => {
+    const harness = harnessFactory();
+    harness.connectSession();
+    expect(() => {
+      harness.session.destroy();
+    }).toThrow(new Error("INVALID_STATE: Not disconnected."));
+  });
+
+  describe("can return success", () => {
+    // Events
+
+    it("should emit no events", () => {
+      const harness = harnessFactory();
+      const sessionListener = harness.createSessionListener();
+
+      harness.session.destroy();
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
+    });
+
+    // State
+
+    it("should not change the state", () => {
+      const harness = harnessFactory();
+
+      const newState = harness.getSessionState();
+
+      harness.session.destroy();
+
+      expect(harness.session).toHaveState(newState);
+    });
+
+    // Transport
+
+    it("should call transportWrapper.destroy()", () => {
+      const harness = harnessFactory();
+
+      harness.session.destroy();
+
+      expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(1);
+      expect(harness.transportWrapper.destroy.mock.calls[0].length).toBe(0);
+    });
+
+    // Callbacks - N/A
+
+    // Return value
+
+    it("should return nothing", () => {
+      const harness = harnessFactory();
+      expect(harness.session.destroy()).toBeUndefined();
     });
   });
 });
@@ -916,6 +1009,7 @@ describe("The transport connecting event", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -936,6 +1030,7 @@ describe("The transport connecting event", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -969,6 +1064,7 @@ describe("The transport connect event", () => {
         expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
         expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
         expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+        expect(sessionListener.transportError.mock.calls.length).toBe(0);
       });
 
       // State
@@ -1002,6 +1098,7 @@ describe("The transport connect event", () => {
           MessageType: "Handshake",
           Versions: ["0.1"]
         });
+        expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
       });
 
       // Callbacks - N/A
@@ -1023,6 +1120,7 @@ describe("The transport connect event", () => {
         expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
         expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
         expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+        expect(sessionListener.transportError.mock.calls.length).toBe(0);
       });
 
       // State
@@ -1049,6 +1147,7 @@ describe("The transport connect event", () => {
         expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
         expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
         expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+        expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
       });
 
       // Callbacks - N/A
@@ -1114,6 +1213,7 @@ describe("The transport disconnect(err) event", () => {
       ).toBe("NOT_CONNECTED: The transport disconnected.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should emit disconnect(HANDSHAKE_REJECTED) for open feeds if the handshake failed", () => {
@@ -1150,6 +1250,7 @@ describe("The transport disconnect(err) event", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should emit disconnect() and unexpectedFeedClosing/Closed for open feeds if requested", () => {
@@ -1195,6 +1296,7 @@ describe("The transport disconnect(err) event", () => {
       ).toBe("NOT_CONNECTED: The transport disconnected.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1226,6 +1328,7 @@ describe("The transport disconnect(err) event", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks
@@ -1262,6 +1365,69 @@ describe("The transport disconnect(err) event", () => {
   });
 });
 
+describe("The transport transportError(err) event", () => {
+  // Mock a connected session
+  let harness;
+  beforeEach(() => {
+    harness = harnessFactory();
+    harness.connectSession();
+  });
+
+  describe("runs successfully", () => {
+    // Events
+
+    it("should emit transportError", () => {
+      const err = new Error("SOME_ERROR: ...");
+      const sessionListener = harness.createSessionListener();
+
+      harness.transportWrapper.emit("transportError", err);
+
+      expect(sessionListener.connecting.mock.calls.length).toBe(0);
+      expect(sessionListener.connect.mock.calls.length).toBe(0);
+      expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+      expect(sessionListener.actionRevelation.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosing.mock.calls.length).toBe(0);
+      expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
+      expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(1);
+      expect(sessionListener.transportError.mock.calls[0].length).toBe(1);
+      expect(sessionListener.transportError.mock.calls[0][0]).toBe(err);
+    });
+
+    // State
+
+    it("should not change the state", () => {
+      const newState = harness.getSessionState();
+
+      harness.transportWrapper.emit(
+        "transportError",
+        new Error("SOME_ERROR: ...")
+      );
+
+      expect(harness.session).toHaveState(newState);
+    });
+
+    // Transport
+
+    it("should make no transport calls", () => {
+      harness.transportWrapper.mockClear();
+
+      harness.transportWrapper.emit(
+        "transportError",
+        new Error("SOME_ERROR: ...")
+      );
+
+      expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
+    });
+
+    // Callbacks - N/A
+  });
+});
+
 describe("The transport message(msg) event", () => {
   // Mock a connected session
   let harness;
@@ -1295,6 +1461,7 @@ describe("The transport message(msg) event", () => {
       sessionListener.badServerMessage.mock.calls[0][0].parseError
     ).toBeTruthy();
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit badServerMessage(err) if message is structurally invalid", () => {
@@ -1322,6 +1489,7 @@ describe("The transport message(msg) event", () => {
       sessionListener.badServerMessage.mock.calls[0][0].parseError
     ).toBeTruthy();
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully", () => {
@@ -1366,6 +1534,7 @@ describe("The ViolationResponse processor", () => {
       expect(sessionListener.badClientMessage.mock.calls[0][0]).toEqual(
         msg.Diagnostics
       );
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1386,6 +1555,7 @@ describe("The ViolationResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -1441,6 +1611,7 @@ describe("The HandshakeResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating a successful handshake result", () => {
@@ -1461,6 +1632,7 @@ describe("The HandshakeResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1483,6 +1655,7 @@ describe("The HandshakeResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -1504,6 +1677,7 @@ describe("The HandshakeResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1535,6 +1709,7 @@ describe("The HandshakeResponse processor", () => {
         "HANDSHAKE_REJECTED: The server rejected the handshake."
       );
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A (never connected, so none could be registered)
@@ -1558,6 +1733,7 @@ describe("The HandshakeResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1587,6 +1763,7 @@ describe("The HandshakeResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A (never connected, so none could be registered)
@@ -1645,6 +1822,7 @@ describe("The ActionResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating a successful action result", () => {
@@ -1663,6 +1841,7 @@ describe("The ActionResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // // State
@@ -1685,6 +1864,7 @@ describe("The ActionResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks
@@ -1717,6 +1897,7 @@ describe("The ActionResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1739,6 +1920,7 @@ describe("The ActionResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks
@@ -1811,6 +1993,7 @@ describe("The FeedOpenResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating successful FeedOpen", () => {
@@ -1829,6 +2012,7 @@ describe("The FeedOpenResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1856,6 +2040,7 @@ describe("The FeedOpenResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks
@@ -1888,6 +2073,7 @@ describe("The FeedOpenResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -1912,6 +2098,7 @@ describe("The FeedOpenResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks
@@ -1973,6 +2160,7 @@ describe("The FeedCloseResponse processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully communicating successful FeedClose", () => {
@@ -1991,6 +2179,7 @@ describe("The FeedCloseResponse processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2014,6 +2203,7 @@ describe("The FeedCloseResponse processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks
@@ -2071,6 +2261,7 @@ describe("The ActionRevelation processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msg);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should do nothing if the feed is closing (no violation)", () => {
@@ -2087,6 +2278,7 @@ describe("The ActionRevelation processor", () => {
     expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
     expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if delta writing fails", () => {
@@ -2134,6 +2326,7 @@ describe("The ActionRevelation processor", () => {
     expect(
       sessionListener.badServerMessage.mock.calls[0][0].deltaError
     ).toBeTruthy();
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should eventually emit unexpectedFeedClosed(fn, fa) if delta writing fails", () => {
@@ -2169,6 +2362,7 @@ describe("The ActionRevelation processor", () => {
     });
     expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should emit badServerMessage(err) and unexpectedFeedClosing(fn, fa) if MD5 verification fails", () => {
@@ -2210,6 +2404,7 @@ describe("The ActionRevelation processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(badMsg);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   it("should eventually emit unexpectedFeedClosed(fn, fa) if MD5 verification fails", () => {
@@ -2244,6 +2439,7 @@ describe("The ActionRevelation processor", () => {
     });
     expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully - with MD5", () => {
@@ -2284,6 +2480,7 @@ describe("The ActionRevelation processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2307,6 +2504,7 @@ describe("The ActionRevelation processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -2363,6 +2561,7 @@ describe("The ActionRevelation processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2413,6 +2612,7 @@ describe("The ActionRevelation processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -2459,6 +2659,7 @@ describe("The FeedTermination processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msg);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
   describe("can run successfully", () => {
@@ -2519,6 +2720,7 @@ describe("The FeedTermination processor", () => {
       ).toBe("TERMINATED: The server terminated the feed.");
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     it("should emit nothing if the feed was closing", () => {
@@ -2534,6 +2736,7 @@ describe("The FeedTermination processor", () => {
       expect(sessionListener.unexpectedFeedClosed.mock.calls.length).toBe(0);
       expect(sessionListener.badServerMessage.mock.calls.length).toBe(0);
       expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+      expect(sessionListener.transportError.mock.calls.length).toBe(0);
     });
 
     // State
@@ -2570,6 +2773,7 @@ describe("The FeedTermination processor", () => {
       expect(harness.transportWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.disconnect.mock.calls.length).toBe(0);
       expect(harness.transportWrapper.send.mock.calls.length).toBe(0);
+      expect(harness.transportWrapper.destroy.mock.calls.length).toBe(0);
     });
 
     // Callbacks - N/A
@@ -2583,6 +2787,14 @@ describe("the state() function", () => {
   let harness;
   beforeEach(() => {
     harness = harnessFactory();
+  });
+
+  it("should throw if destroyed", () => {
+    harness.session.destroy();
+    harness.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness.session.state();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
   it("should return correctly through transport connect and handshake cycle", () => {
@@ -2604,6 +2816,14 @@ describe("the feedState() function", () => {
   let harness;
   beforeEach(() => {
     harness = harnessFactory();
+  });
+
+  it("should throw if destroyed", () => {
+    harness.session.destroy();
+    harness.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness.session.feedState();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
   it("should throw an error for invalid feed names", () => {
@@ -2649,6 +2869,14 @@ describe("the feedData() function", () => {
     harness = harnessFactory();
   });
 
+  it("should throw if destroyed", () => {
+    harness.session.destroy();
+    harness.transportWrapper.destroyed.mockReturnValue(true);
+    expect(() => {
+      harness.session.feedData();
+    }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
+  });
+
   it("should throw an error for invalid feed names", () => {
     expect(() => {
       harness.session.feedData(undefined, {});
@@ -2689,6 +2917,15 @@ describe("the feedData() function", () => {
     expect(() => {
       harness.session.feedData("myFeed", { arg: "val" });
     }).toThrow(new Error("INVALID_FEED_STATE: Feed is not open."));
+  });
+});
+
+describe("the destroyed() function", () => {
+  it("should return correctly", () => {
+    const harness = harnessFactory();
+    expect(harness.session.destroyed()).toBe(false);
+    harness.transportWrapper.destroyed.mockReturnValue(true);
+    expect(harness.session.destroyed()).toBe(true);
   });
 });
 

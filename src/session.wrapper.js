@@ -41,7 +41,8 @@ export default function sessionWrapperFactory(sessionSync) {
     "unexpectedFeedClosing",
     "unexpectedFeedClosed",
     "badServerMessage",
-    "badClientMessage"
+    "badClientMessage",
+    "transportError"
   ];
   evts.forEach(evt => {
     sessionWrapper._sessionSync.on(evt, (...args) => {
@@ -168,7 +169,28 @@ export default function sessionWrapperFactory(sessionSync) {
  * @instance
  */
 
-["state", "connect", "disconnect", "feedState", "feedData"].forEach(method => {
+/**
+ * Routed directly to SessionSync.
+ * @method destroy
+ * @memberof SessionWrapper
+ * @instance
+ */
+
+/**
+ * Routed directly to SessionSync.
+ * @method destroyed
+ * @memberof SessionWrapper
+ * @instance
+ */
+[
+  "state",
+  "connect",
+  "disconnect",
+  "feedState",
+  "feedData",
+  "destroy",
+  "destroyed"
+].forEach(method => {
   proto[method] = function callMethod(...args) {
     return this._sessionSync[method](...args);
   };
