@@ -221,6 +221,8 @@ git push origin my-new-feature
 
 ## Transport API
 
+See previous draft
+
 Transport objects abstract away the specifics of the messaging connection
 between the client and the server. A transport object is injected into the
 client library at initialization.
