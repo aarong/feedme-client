@@ -31,6 +31,7 @@ const dbgFeed = debug("feedme-client:feed");
  * - All feed object methods pass through to client functionality until destroyed
  * - State is stored within the feed objects and is accessed and modified by the client
  *
+ * Application-provided argument types are validated.
  * @typedef {Object} ClientSync
  * @extends emitter
  */
@@ -741,8 +742,8 @@ protoClientSync.action = function action(name, args, callback) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
   }
 
-  // Check name
-  if (!check.nonEmptyString(name)) {
+  // Check name (empty is spec-valid)
+  if (!check.string(name)) {
     throw new Error("INVALID_ARGUMENT: Invalid action name.");
   }
 

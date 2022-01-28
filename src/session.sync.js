@@ -1,9 +1,7 @@
-import check from "check-types";
 import emitter from "component-emitter";
 import _each from "lodash/each";
 import _cloneDeep from "lodash/cloneDeep";
 import debug from "debug";
-import jsonExpressible from "json-expressible";
 import parseServerMessage from "feedme-util/parseservermessage";
 import FeedNameArgs from "feedme-util/feednameargs";
 import deltaWriter from "feedme-util/deltawriter";
@@ -28,6 +26,8 @@ const dbg = debug("feedme-client:session");
  * or after performing operations on the transport. Checked explicitly where
  * applicable, Specifically, state is verified on connect before transmitting
  * a Handshake message, and on failed HandshakeResponse before disconnecting.
+ *
+ * No argument type checking (internal only).
  * @typedef {Object} SessionSync
  * @extends emitter
  */
@@ -438,7 +438,6 @@ proto.connect = function connect() {
  * @memberof SessionSync
  * @instance
  * @param {?Error} err
- * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  */
 proto.disconnect = function disconnect(...args) {
@@ -447,11 +446,6 @@ proto.disconnect = function disconnect(...args) {
   // Throw if destroyed
   if (this.destroyed()) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
-  }
-
-  // Validate error if supplied
-  if (args.length >= 1 && !check.instance(args[0], Error)) {
-    throw new Error("INVALID_ARGUMENT: Invalid error object.");
   }
 
   // Error if state is already disconnected (connecting/connected ok)
@@ -472,7 +466,6 @@ proto.disconnect = function disconnect(...args) {
  * @param {string} name
  * @param {Object} args
  * @param {actionCallback} cb
- * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  */
 
@@ -482,26 +475,6 @@ proto.action = function action(name, args, callback) {
   // Throw if destroyed
   if (this.destroyed()) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
-  }
-
-  // Check name
-  if (!check.nonEmptyString(name)) {
-    throw new Error("INVALID_ARGUMENT: Invalid action name.");
-  }
-
-  // Check args
-  if (!check.object(args)) {
-    throw new Error("INVALID_ARGUMENT: Invalid action arguments object.");
-  }
-  if (!jsonExpressible(args)) {
-    throw new Error(
-      "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
-    );
-  }
-
-  // Check cb
-  if (!check.function(callback)) {
-    throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
   // Transport connected and handshake complete?
@@ -540,7 +513,6 @@ proto.action = function action(name, args, callback) {
  * @instance
  * @param {FeedNameArgs} feedNameArgs
  * @param {feedOpenCallback} cb
- * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
@@ -550,11 +522,6 @@ proto.feedOpen = function feedOpen(feedNameArgs, cb) {
   // Throw if destroyed
   if (this.destroyed()) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
-  }
-
-  // Check cb
-  if (!check.function(cb)) {
-    throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
   // Check session state
@@ -595,7 +562,6 @@ proto.feedOpen = function feedOpen(feedNameArgs, cb) {
  * @instance
  * @param {FeedNameArgs} feedNameArgs
  * @param {feedCloseCallback} cb
- * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
@@ -605,11 +571,6 @@ proto.feedClose = function feedClose(feedNameArgs, cb) {
   // Throw if destroyed
   if (this.destroyed()) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
-  }
-
-  // Check cb
-  if (!check.function(cb)) {
-    throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
   // Check session state
@@ -658,7 +619,6 @@ proto.feedClose = function feedClose(feedNameArgs, cb) {
  * @param {FeedNameArgs} feedNameArgs
  * @param {Object} feedArgs
  * @returns {string} 'opening', 'open', 'closing', or 'closed'
- * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  */
 proto.feedState = function feedState(feedNameArgs) {
@@ -694,7 +654,6 @@ proto.feedState = function feedState(feedNameArgs) {
  * @param {string} feedName
  * @param {Object} feedArgs
  * @returns {Object} Frozen
- * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */

@@ -488,12 +488,6 @@ describe("The .disconnect() function", () => {
     }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
-  it("should throw on non-Error argument", () => {
-    expect(() => {
-      harness.session.disconnect("not_an_error");
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid error object."));
-  });
-
   it("should throw an error if the state is already disconnected", () => {
     harness.session.disconnect();
     harness.transportWrapper.state.mockReturnValue("disconnected");
@@ -580,39 +574,6 @@ describe("The .action() function", () => {
     }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
   });
 
-  it("should throw an error for invalid action names", () => {
-    expect(() => {
-      harness.session.action(undefined, {}, () => {});
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid action name."));
-  });
-
-  it("should throw an error for invalid action args", () => {
-    expect(() => {
-      harness.session.action("myAction", "junk", () => {});
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid action arguments object."));
-  });
-
-  it("should throw an error for non-JSON-expressible action args", () => {
-    expect(() => {
-      harness.session.action("myAction", { arg: undefined }, () => {});
-    }).toThrow(
-      new Error("INVALID_ARGUMENT: Action arguments must be JSON-expressible.")
-    );
-  });
-
-  it("should throw an error for invalid callbacks", () => {
-    expect(() => {
-      harness.session.action("myAction", {}, []);
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
-  });
-
-  it("should throw an error if not connected", () => {
-    const harness2 = harnessFactory();
-    expect(() => {
-      harness2.session.action("myAction", {}, []);
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
-  });
-
   describe("can return success", () => {
     // Events
 
@@ -687,13 +648,6 @@ describe("The .feedOpen() function", () => {
     expect(() => {
       harness2.session.feedOpen();
     }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
-  });
-
-  it("should throw an error for invalid callbacks", () => {
-    expect(() => {
-      const feedNameArgs = FeedNameArgs("myFeed", { arg: "val" });
-      harness.session.feedOpen(feedNameArgs, []);
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
   it("should throw an error if not connected", () => {
@@ -791,13 +745,6 @@ describe("The .feedClose() function", () => {
     expect(() => {
       harness2.session.feedClose();
     }).toThrow(new Error("DESTROYED: The client instance has been destroyed."));
-  });
-
-  it("should throw an error for invalid callbacks", () => {
-    expect(() => {
-      const feedNameArgs = FeedNameArgs("myFeed", { arg: "val" });
-      harness.session.feedClose(feedNameArgs, []);
-    }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
   it("should throw an error if not connected", () => {
