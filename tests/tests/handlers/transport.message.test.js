@@ -16,7 +16,7 @@ describe("The transport message event handler", () => {
 
     describe("valid FeedCloseResponse message structure", () => {});
 
-    describe("valid ActionRevelation message structure", () => {});
+    describe("valid FeedAction message structure", () => {});
 
     describe("valid FeedTermination message structure", () => {});
   });

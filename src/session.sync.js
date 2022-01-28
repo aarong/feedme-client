@@ -4,18 +4,10 @@ import _each from "lodash/each";
 import _cloneDeep from "lodash/cloneDeep";
 import debug from "debug";
 import jsonExpressible from "json-expressible";
-import validateServerMessage from "feedme-util/validateservermessage";
-import validateViolationResponse from "feedme-util/validateviolationresponse";
-import validateHandshakeResponse from "feedme-util/validatehandshakeresponse";
-import validateActionResponse from "feedme-util/validateactionresponse";
-import validateFeedOpenResponse from "feedme-util/validatefeedopenresponse";
-import validateFeedCloseResponse from "feedme-util/validatefeedcloseresponse";
-import validateActionRevelation from "feedme-util/validateactionrevelation";
-import validateFeedTermination from "feedme-util/validatefeedtermination";
-import feedValidator from "feedme-util/feedvalidator";
+import parseServerMessage from "feedme-util/parseservermessage";
+import FeedNameArgs from "feedme-util/feednameargs";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
-import feedSerializer from "feedme-util/feedserializer";
 
 const dbg = debug("feedme-client:session");
 
@@ -214,13 +206,12 @@ export default function sessionSyncFactory(transportWrapper) {
  */
 
 /**
- * Emitted when a compliant ActionRevelation message is received.
- * If a feed referenced by an ActionRevelation is closing then there is no emission.
- * @event actionRevelation
+ * Emitted when a compliant FeedAction message is received.
+ * If a feed referenced by an FeedAction is closing then there is no emission.
+ * @event feedAction
  * @memberof SessionSync
  * @instance
- * @param {string} feedName
- * @param {Object} feedArgs
+ * @param {FeedNameArgs} feedNameArgs
  * @param {string} actionName
  * @param {Object} actionData
  * @param {Object} newFeedData Frozen
@@ -241,7 +232,7 @@ export default function sessionSyncFactory(transportWrapper) {
  *   unexpectedFeedClosing/Closed emission and the feedClose() callback
  *   is fired when the FeedCloseResponse message is received.
  *
- * - An invalid ActionRevelation is is received (delta or hash problem).
+ * - An invalid FeedAction is is received (delta or hash problem).
  *   In this case, unexpectedFeedClosed is fired when FeedCloseResponse is
  *   received (can't re-open yet). The server has violated the spec, so
  *   badServerMessage is also emitted.
@@ -252,14 +243,13 @@ export default function sessionSyncFactory(transportWrapper) {
  * @event unexpectedFeedClosing
  * @memberof SessionSync
  * @instance
- * @param {string} feedName
- * @param {Object} feedArgs
+ * @param {FeedNameArgs} feedNameArgs
  * @param {Error} err Error("TERMINATED: ...")
  *
  *                      err.serverErrorCode (string)
  *                      err.serverErrorData (object)
  *
- *                    Error("BAD_ACTION_REVELATION: ...")
+ *                    Error("BAD_FEED_ACTION: ...")
  *
  *                    Error("NOT_CONNECTED: ...")
  */
@@ -274,14 +264,13 @@ export default function sessionSyncFactory(transportWrapper) {
  * @event unexpectedFeedClosed
  * @memberof SessionSync
  * @instance
- * @param {string} feedName
- * @param {Object} feedArgs
+ * @param {FeedNameArgs} feedNameArgs
  * @param {Error} err Error("TERMINATED: ...")
  *
  *                      err.serverErrorCode (string)
  *                      err.serverErrorData (object)
  *
- *                    Error("BAD_ACTION_REVELATION: ...")
+ *                    Error("BAD_FEED_ACTION: ...")
  *
  *                    Error("NOT_CONNECTED: ...")
  */
@@ -309,7 +298,7 @@ export default function sessionSyncFactory(transportWrapper) {
  *                        - ActionResponse referencing an unrecognized callback id
  *                        - FeedOpenResponse referencing a feed not understood to be opening
  *                        - FeedCloseResponse referencing a feed not understood to be closing or terminated
- *                        - ActionRevelation referencing a feed not understood to be open
+ *                        - FeedAction referencing a feed not understood to be open
  *                        - FeedTermination referencing a feed not understood to be open
  *
  *                      err.serverMessage (object)
@@ -546,26 +535,22 @@ proto.action = function action(name, args, callback) {
  * If the feed is opened successfully then any subsequent failure, other than
  * from an explicit call to feedClose(), will result in a a sequence of
  * unexpectedFeedClosing/Closed events being emitted. This occurs on feed
- * termination, bad action revelation, and disconnect.
+ * termination, bad feed action notification, and disconnect.
  * @memberof SessionSync
  * @instance
- * @param {string} feedName
- * @param {Object} feedArgs
+ * @param {FeedNameArgs} feedNameArgs
  * @param {feedOpenCallback} cb
  * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
-proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
+proto.feedOpen = function feedOpen(feedNameArgs, cb) {
   dbg("Feed open requested");
 
   // Throw if destroyed
   if (this.destroyed()) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
   }
-
-  // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Check cb
   if (!check.function(cb)) {
@@ -578,12 +563,12 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
   }
 
   // Check feed state
-  if (this._feedState(feedName, feedArgs) !== "closed") {
+  if (this._feedState(feedNameArgs) !== "closed") {
     throw new Error("INVALID_FEED_STATE: Feed is not closed.");
   }
 
   // Save the callback
-  const feedSerial = feedSerializer.serialize(feedName, feedArgs);
+  const feedSerial = feedNameArgs.serial();
   this._feedStates[feedSerial] = "opening";
   this._feedOpenCallbacks[feedSerial] = cb;
 
@@ -591,8 +576,8 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
   this._transportWrapper.send(
     JSON.stringify({
       MessageType: "FeedOpen",
-      FeedName: feedName,
-      FeedArgs: feedArgs
+      FeedName: feedNameArgs.name(),
+      FeedArgs: feedNameArgs.args()
     })
   );
 };
@@ -608,23 +593,19 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, cb) {
  * becomes "terminated".
  * @memberof SessionSync
  * @instance
- * @param {string} feedName
- * @param {Object} feedArgs
+ * @param {FeedNameArgs} feedNameArgs
  * @param {feedCloseCallback} cb
  * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
-proto.feedClose = function feedClose(feedName, feedArgs, cb) {
+proto.feedClose = function feedClose(feedNameArgs, cb) {
   dbg("Feed close requested");
 
   // Throw if destroyed
   if (this.destroyed()) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
   }
-
-  // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
 
   // Check cb
   if (!check.function(cb)) {
@@ -637,12 +618,12 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
   }
 
   // Check feed state
-  if (this._feedState(feedName, feedArgs) !== "open") {
+  if (this._feedState(feedNameArgs) !== "open") {
     throw new Error("INVALID_FEED_STATE: Feed is not open.");
   }
 
   // Delete the data and save the callback
-  const feedSerial = feedSerializer.serialize(feedName, feedArgs);
+  const feedSerial = feedNameArgs.serial();
   this._feedStates[feedSerial] = "closing";
   delete this._feedData[feedSerial];
   this._feedCloseCallbacks[feedSerial] = cb;
@@ -651,8 +632,8 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
   this._transportWrapper.send(
     JSON.stringify({
       MessageType: "FeedClose",
-      FeedName: feedName,
-      FeedArgs: feedArgs
+      FeedName: feedNameArgs.name(),
+      FeedArgs: feedNameArgs.args()
     })
   );
 };
@@ -674,13 +655,13 @@ proto.feedClose = function feedClose(feedName, feedArgs, cb) {
  * @memberof SessionSync
  * @instance
  * @private
- * @param {string} feedName
+ * @param {FeedNameArgs} feedNameArgs
  * @param {Object} feedArgs
  * @returns {string} 'opening', 'open', 'closing', or 'closed'
  * @throws {Error} "INVALID_ARGUMENT: ..."
  * @throws {Error} "INVALID_STATE: ..."
  */
-proto.feedState = function feedState(feedName, feedArgs) {
+proto.feedState = function feedState(feedNameArgs) {
   dbg("Feed state requested");
 
   // Throw if destroyed
@@ -688,16 +669,13 @@ proto.feedState = function feedState(feedName, feedArgs) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
   }
 
-  // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
-
   // Transport connected and handshake complete?
   if (this.state() !== "connected") {
     throw new Error("INVALID_STATE: Not connected.");
   }
 
   // Return
-  const state = this._feedState(feedName, feedArgs);
+  const state = this._feedState(feedNameArgs);
   if (state === "terminated") {
     return "closing";
   }
@@ -709,7 +687,7 @@ proto.feedState = function feedState(feedName, feedArgs) {
  * and the feed is open.
  *
  * An INVALID_STATE error is thrown if the feed is closing. It may be closing
- * due to a bad action revelation, in which case the feed data is unknown.
+ * due to a bad feed action notification, in which case the feed data is unknown.
  * @memberof SessionSync
  * @instance
  * @private
@@ -720,7 +698,7 @@ proto.feedState = function feedState(feedName, feedArgs) {
  * @throws {Error} "INVALID_STATE: ..."
  * @throws {Error} "INVALID_FEED_STATE: ..."
  */
-proto.feedData = function feedData(feedName, feedArgs) {
+proto.feedData = function feedData(feedNameArgs) {
   dbg("Feed data requested");
 
   // Throw if destroyed
@@ -728,21 +706,18 @@ proto.feedData = function feedData(feedName, feedArgs) {
     throw new Error("DESTROYED: The client instance has been destroyed.");
   }
 
-  // Check arguments and relay errors
-  feedValidator.validate(feedName, feedArgs); // INVALID_ARGUMENT
-
   // Transport connected and handshake complete?
   if (this.state() !== "connected") {
     throw new Error("INVALID_STATE: Not connected.");
   }
 
   // Is the feed open?
-  if (this._feedState(feedName, feedArgs) !== "open") {
+  if (this._feedState(feedNameArgs) !== "open") {
     throw new Error("INVALID_FEED_STATE: Feed is not open.");
   }
 
   // Return
-  const feedSerial = feedSerializer.serialize(feedName, feedArgs);
+  const feedSerial = feedNameArgs.serial();
   return Object.freeze(this._feedData[feedSerial]);
 };
 
@@ -877,9 +852,9 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
       feedOpenCallbacks[feedSerial](cbErr); // Error
     } else if (feedState === "open") {
       dbg("Emitting unexpectedFeedClosing/Closed for open feed");
-      const { feedName, feedArgs } = feedSerializer.unserialize(feedSerial);
-      this.emit("unexpectedFeedClosing", feedName, feedArgs, cbErr);
-      this.emit("unexpectedFeedClosed", feedName, feedArgs, cbErr);
+      const feedNameArgs = FeedNameArgs(feedSerial);
+      this.emit("unexpectedFeedClosing", feedNameArgs, cbErr);
+      this.emit("unexpectedFeedClosed", feedNameArgs, cbErr);
     } else {
       dbg("Returning success to feedClose() callback");
       feedCloseCallbacks[feedSerial](); // Success (closing or terminated)
@@ -921,37 +896,19 @@ proto._processTransportError = function _processTransportError(err) {
 proto._processTransportMessage = function _processTransportMessage(msg) {
   dbg("Observed transportWrapper message event");
 
-  // Try to parse JSON and validate message structure
-  // No need to check JSON-expressibility (coming from JSON)
-  let val;
-  try {
-    val = JSON.parse(msg);
-    validateServerMessage.check(val);
-    if (val.MessageType === "ViolationResponse") {
-      validateViolationResponse.check(val, false);
-    } else if (val.MessageType === "HandshakeResponse") {
-      validateHandshakeResponse.check(val, false);
-    } else if (val.MessageType === "ActionResponse") {
-      validateActionResponse.check(val, false);
-    } else if (val.MessageType === "FeedOpenResponse") {
-      validateFeedOpenResponse.check(val, false);
-    } else if (val.MessageType === "FeedCloseResponse") {
-      validateFeedCloseResponse.check(val, false);
-    } else if (val.MessageType === "ActionRevelation") {
-      validateActionRevelation.check(val, false);
-    } else {
-      validateFeedTermination.check(val, false);
-    }
-  } catch (e) {
+  // Parse and validate message
+  const result = parseServerMessage(msg);
+  if (!result.valid) {
+    dbg("Invalid JSON or schema violation");
     const err = new Error("INVALID_MESSAGE: Invalid JSON or schema violation.");
     err.serverMessage = msg; // string
-    err.parseError = e;
+    err.reason = result.errorMessage;
     this.emit("badServerMessage", err);
     return; // Stop
   }
 
   // Route to the appropriate message handler
-  this[`_process${val.MessageType}`](val);
+  this[`_process${result.message.MessageType}`](result.message);
 };
 
 // Feedme message handlers
@@ -981,6 +938,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
   // Is a handshake response expected?
   if (this._handshakeComplete) {
+    dbg("Unexpected message");
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected HandshakeResponse.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
@@ -989,9 +947,11 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
   // Was the handshake successful?
   if (msg.Success) {
+    dbg("Success");
     this._handshakeComplete = true;
     this.emit("connect");
   } else {
+    dbg("Failure");
     // Transport state is not guaranteed in event handlers - ensure not already disconnected
     if (this._transportWrapper.state() !== "connected") {
       return; // stop
@@ -1018,6 +978,7 @@ proto._processActionResponse = function _processActionResponse(msg) {
 
   // Is this action response expected?
   if (!actionCallback) {
+    dbg("Unexpected message");
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected ActionResponse.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
@@ -1029,8 +990,10 @@ proto._processActionResponse = function _processActionResponse(msg) {
 
   // Call back the action result
   if (msg.Success) {
+    dbg("Success");
     actionCallback(undefined, Object.freeze(msg.ActionData));
   } else {
+    dbg("Failure");
     const err = new Error("REJECTED: Server rejected the action request.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
@@ -1048,10 +1011,12 @@ proto._processActionResponse = function _processActionResponse(msg) {
 proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
   dbg("Received FeedOpenResponse message");
 
-  const feedSerial = feedSerializer.serialize(msg.FeedName, msg.FeedArgs);
+  const feedNameArgs = FeedNameArgs(msg.FeedName, msg.FeedArgs);
+  const feedSerial = feedNameArgs.serial();
 
   // Is the feed understood to be opening?
-  if (this._feedState(msg.FeedName, msg.FeedArgs) !== "opening") {
+  if (this._feedState(feedNameArgs) !== "opening") {
+    dbg("Unexpected message");
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedOpenResponse.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
@@ -1064,10 +1029,12 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
 
   // Update the state and call the callback
   if (msg.Success) {
+    dbg("Success");
     this._feedStates[feedSerial] = "open";
     this._feedData[feedSerial] = msg.FeedData;
     feedOpenCallback(undefined, msg.FeedData);
   } else {
+    dbg("Failure");
     delete this._feedStates[feedSerial]; // Closed
     const err = new Error("REJECTED: Server rejected the feed open request.");
     err.serverErrorCode = msg.ErrorCode;
@@ -1091,10 +1058,11 @@ proto._processFeedOpenResponse = function _processFeedOpenResponse(msg) {
 proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
   dbg("Received FeedCloseResponse message");
 
-  const feedSerial = feedSerializer.serialize(msg.FeedName, msg.FeedArgs);
+  const feedNameArgs = FeedNameArgs(msg.FeedName, msg.FeedArgs);
+  const feedSerial = feedNameArgs.serial();
 
   // Is the feed closing or terminated?
-  const feedState = this._feedState(msg.FeedName, msg.FeedArgs);
+  const feedState = this._feedState(feedNameArgs);
   if (feedState !== "closing" && feedState !== "terminated") {
     dbg("Unexpected message");
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedCloseResponse.");
@@ -1113,7 +1081,7 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
 };
 
 /**
- * Processes an ActionRevelation from the server.
+ * Processes an FeedAction from the server.
  *
  * If the feed state is closing then the server has not violated the
  * spec, but you need to discard the message because you may not have the
@@ -1123,15 +1091,17 @@ proto._processFeedCloseResponse = function _processFeedCloseResponse(msg) {
  * @private
  * @param {Object} msg Schema-valid message object.
  */
-proto._processActionRevelation = function _processActionRevelation(msg) {
-  dbg("Received ActionRevelation message");
+proto._processFeedAction = function _processFeedAction(msg) {
+  dbg("Received FeedAction message");
 
-  const feedSerial = feedSerializer.serialize(msg.FeedName, msg.FeedArgs);
+  const feedNameArgs = FeedNameArgs(msg.FeedName, msg.FeedArgs);
+  const feedSerial = feedNameArgs.serial();
 
   // Is the feed open or closing?
-  const feedState = this._feedState(msg.FeedName, msg.FeedArgs);
+  const feedState = this._feedState(feedNameArgs);
   if (feedState !== "open" && feedState !== "closing") {
-    const err = new Error("UNEXPECTED_MESSAGE: Unexpected ActionRevelation.");
+    dbg("Unexpected message");
+    const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedAction.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
     return; // Stop
@@ -1139,7 +1109,7 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
 
   // Discard if the feed is closing
   if (feedState === "closing") {
-    dbg("Discarding ActionRevelation message referencing closing feed.");
+    dbg("Discarding FeedAction message referencing closing feed.");
     return;
   }
 
@@ -1152,31 +1122,23 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
     try {
       newData = deltaWriter.apply(newData, msg.FeedDeltas[i]);
     } catch (e) {
+      dbg("Invalid feed delta");
+
       const unexpError = new Error(
-        "BAD_ACTION_REVELATION: The server passed an invalid feed delta."
+        "BAD_FEED_ACTION: The server passed an invalid feed delta."
       );
 
       // Close the feed and emit closed on completion
-      this.feedClose(msg.FeedName, msg.FeedArgs, () => {
-        this.emit(
-          "unexpectedFeedClosed",
-          msg.FeedName,
-          msg.FeedArgs,
-          unexpError
-        );
+      this.feedClose(feedNameArgs, () => {
+        this.emit("unexpectedFeedClosed", feedNameArgs, unexpError);
       });
 
       // Emit unexpectedFeedClosing
-      this.emit(
-        "unexpectedFeedClosing",
-        msg.FeedName,
-        msg.FeedArgs,
-        unexpError
-      );
+      this.emit("unexpectedFeedClosing", feedNameArgs, unexpError);
 
       // Emit badServerMessage
       const err = new Error(
-        "INVALID_DELTA: Received ActionRevelation with contextually invalid feed delta."
+        "INVALID_DELTA: Received FeedAction with contextually invalid feed delta."
       );
       err.deltaError = e;
       err.serverMessage = msg;
@@ -1190,27 +1152,18 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
   if (msg.FeedMd5) {
     const newMd5 = md5Calculator.calculate(newData);
     if (newMd5 !== msg.FeedMd5) {
+      dbg("Invalid feed data hash");
       const unexpError = new Error(
-        "BAD_ACTION_REVELATION: Hash verification failed."
+        "BAD_FEED_ACTION: Hash verification failed."
       );
 
       // Close the feed and emit closed on completion
-      this.feedClose(msg.FeedName, msg.FeedArgs, () => {
-        this.emit(
-          "unexpectedFeedClosed",
-          msg.FeedName,
-          msg.FeedArgs,
-          unexpError
-        );
+      this.feedClose(feedNameArgs, () => {
+        this.emit("unexpectedFeedClosed", feedNameArgs, unexpError);
       });
 
       // Emit unexpectedFeedClosing
-      this.emit(
-        "unexpectedFeedClosing",
-        msg.FeedName,
-        msg.FeedArgs,
-        unexpError
-      );
+      this.emit("unexpectedFeedClosing", feedNameArgs, unexpError);
 
       // Emit badServerMessage
       const err = new Error("INVALID_HASH: Feed data MD5 verification failed.");
@@ -1224,11 +1177,10 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
   // Update the feed data and freeze it
   this._feedData[feedSerial] = Object.freeze(newData);
 
-  // Emit actionRevelation
+  // Emit feedAction
   this.emit(
-    "actionRevelation",
-    msg.FeedName,
-    msg.FeedArgs,
+    "feedAction",
+    feedNameArgs,
     msg.ActionName,
     msg.ActionData,
     newData,
@@ -1257,11 +1209,13 @@ proto._processActionRevelation = function _processActionRevelation(msg) {
 proto._processFeedTermination = function _processFeedTermination(msg) {
   dbg("Received FeedTermination message");
 
-  const feedSerial = feedSerializer.serialize(msg.FeedName, msg.FeedArgs);
+  const feedNameArgs = FeedNameArgs(msg.FeedName, msg.FeedArgs);
+  const feedSerial = feedNameArgs.serial();
 
   // Is the feed open or closing?
-  const feedState = this._feedState(msg.FeedName, msg.FeedArgs);
+  const feedState = this._feedState(feedNameArgs);
   if (feedState !== "open" && feedState !== "closing") {
+    dbg("Unexpected message");
     const err = new Error("UNEXPECTED_MESSAGE: Unexpected FeedTermination.");
     err.serverMessage = msg;
     this.emit("badServerMessage", err);
@@ -1274,8 +1228,8 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
     const err = new Error("TERMINATED: The server terminated the feed.");
     err.serverErrorCode = msg.ErrorCode;
     err.serverErrorData = msg.ErrorData;
-    this.emit("unexpectedFeedClosing", msg.FeedName, msg.FeedArgs, err);
-    this.emit("unexpectedFeedClosed", msg.FeedName, msg.FeedArgs, err);
+    this.emit("unexpectedFeedClosing", feedNameArgs, err);
+    this.emit("unexpectedFeedClosed", feedNameArgs, err);
   } else {
     this._feedStates[feedSerial] = "terminated";
     // Feed data deleted on feedClose()
@@ -1290,11 +1244,10 @@ proto._processFeedTermination = function _processFeedTermination(msg) {
  * @memberof SessionSync
  * @instance
  * @private
- * @param {string} feedName
- * @param {Object} feedArgs
+ * @param {FeedNameArgs} feedNameArgs
  * @returns 'closed', 'opening', 'open', 'closing', or 'terminated
  */
-proto._feedState = function _feedState(name, args) {
-  const serial = feedSerializer.serialize(name, args);
+proto._feedState = function _feedState(feedNameArgs) {
+  const serial = feedNameArgs.serial();
   return this._feedStates[serial] || "closed";
 };

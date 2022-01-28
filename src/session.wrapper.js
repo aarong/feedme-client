@@ -37,7 +37,7 @@ export default function sessionWrapperFactory(sessionSync) {
     "connecting",
     "connect",
     "disconnect",
-    "actionRevelation",
+    "feedAction",
     "unexpectedFeedClosing",
     "unexpectedFeedClosed",
     "badServerMessage",
@@ -76,7 +76,7 @@ export default function sessionWrapperFactory(sessionSync) {
 
 /**
  * Deferred and queued from SessionSync.
- * @event actionRevelation
+ * @event feedAction
  * @memberof SessionWrapper
  * @instance
  */
@@ -219,13 +219,13 @@ proto.action = function action(actionName, actionArgs, callback) {
  * @memberof SessionWrapper
  * @instance
  */
-proto.feedOpen = function feedOpen(feedName, feedArgs, callback) {
+proto.feedOpen = function feedOpen(feedNameArgs, callback) {
   // Validate the callback if present (function always passed to wrapped object)
   if (!check.function(callback)) {
     throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
-  this._sessionSync.feedOpen(feedName, feedArgs, (...args) => {
+  this._sessionSync.feedOpen(feedNameArgs, (...args) => {
     defer(callback, ...args);
   });
 };
@@ -236,13 +236,13 @@ proto.feedOpen = function feedOpen(feedName, feedArgs, callback) {
  * @memberof SessionWrapper
  * @instance
  */
-proto.feedClose = function feedClose(feedName, feedArgs, callback) {
+proto.feedClose = function feedClose(feedNameArgs, callback) {
   // Validate the callback if present (function always passed to wrapped object)
   if (!check.function(callback)) {
     throw new Error("INVALID_ARGUMENT: Invalid callback.");
   }
 
-  this._sessionSync.feedClose(feedName, feedArgs, (...args) => {
+  this._sessionSync.feedClose(feedNameArgs, (...args) => {
     defer(callback, ...args);
   });
 };

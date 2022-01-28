@@ -227,22 +227,22 @@ The `options` argument is an object with the following properties:
 - `options.reopenMaxAttempts` - Optional integer. Defaults to 3.
 
   Specifies the maximum number of times to reopen a feed when it fails due to a
-  bad action revelation (that is, an invalid delta or hash mismatch).
+  bad feed action notification (that is, an invalid delta or hash mismatch).
 
   If set less than zero, then the client will always attempt to reopen feeds
-  when there is a bad action revelation.
+  when there is a bad feed action notification.
 
   If set to 0, then the client will not attempt to reopen a feed when there is a
-  bad action revelation. This configuration is not recommended. If there is a
-  subsequent disconnect/reconnect or a valid call to `feed.desireOpen()`, then
-  the client will attempt to reopen the feed at that time.
+  bad feed action notification. This configuration is not recommended. If there
+  is a subsequent disconnect/reconnect or a valid call to `feed.desireOpen()`,
+  then the client will attempt to reopen the feed at that time.
 
   If set greater than 0, then the client will immediately attempt to reopen a
-  feed when there is a bad action revelation, provided that there have been
-  fewer than `reopenMaxAttempts` tries over the past `reopenTrailingMs`. When at
-  the threshold, the client will wait until the number failures over the past
-  `reopenTrailingMs` falls back below `reopenMaxAttempts` and then attempt to
-  reopen the feed. Counters are reset when the client disconnects.
+  feed when there is a bad feed action notification, provided that there have
+  been fewer than `reopenMaxAttempts` tries over the past `reopenTrailingMs`.
+  When at the threshold, the client will wait until the number failures over the
+  past `reopenTrailingMs` falls back below `reopenMaxAttempts` and then attempt
+  to reopen the feed. Counters are reset when the client disconnects.
 
 - `options.reopenTrailingMs` - Optional non-negative integer. Defaults to 60000.
 
@@ -560,7 +560,7 @@ possible:
 
   - `err.serverMessage` (string) contains the server message.
 
-  - `err.parseError` (object) contains the message parsing error.
+  - `err.reason` (string) describes the problem in additional detail.
 
 - `err.message === "UNEXPECTED_MESSAGE: ..."` - The server transmitted a message
   that was invalid given the state of the conversation.
@@ -602,8 +602,8 @@ When multiple feed objects point to the same server feed (that is, they share
 the same feed name-argument combination), the library will try to keep the
 server feed open if any of the feed objects has its desired state set to `open`.
 If all feed objects are desired `closed`, the library will close the server
-feed. The library will emit relevant action revelations only on feed objects
-that have their desired state set to `open`.
+feed. The library will emit relevant feed action notifications only on feed
+objects that have their desired state set to `open`.
 
 #### Desired vs Actual State
 
@@ -818,10 +818,10 @@ an `Error` object (`err`) as an argument. The following errors are possible:
   a feed object associated with the feed receives a valid call to
   `feed.desireOpen()`.
 
-- `err.message === "BAD_ACTION_REVELATION: ..."`
+- `err.message === "BAD_FEED_ACTION: ..."`
 
-  The server transmitted an action revelation with an invalid delta operation or
-  a non-matching feed data hash.
+  The server transmitted a feed action notification with an invalid delta
+  operation or a non-matching feed data hash.
 
   The client will attempt to reopen the feed as configured.
 

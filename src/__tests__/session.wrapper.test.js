@@ -1,5 +1,6 @@
 import check from "check-types";
 import emitter from "component-emitter";
+import FeedNameArgs from "feedme-util/feednameargs";
 import sessionWrapper from "../session.wrapper";
 
 // Session wrapper functions
@@ -438,7 +439,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
   it("should throw on non-function argument", () => {
     const wrapper = sessionWrapper(emitter({}));
     expect(() => {
-      wrapper.feedOpen("some_feed", { feed: "args" }, 123);
+      wrapper.feedOpen(FeedNameArgs("some_feed", { feed: "args" }), 123);
     }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
@@ -449,12 +450,15 @@ describe("The sessionWrapper.feedOpen() function", () => {
         feedOpen: mockFn
       })
     );
-    wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, () => {});
+    wrapper.feedOpen(
+      FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+      () => {}
+    );
     expect(mockFn.mock.calls.length).toBe(1);
-    expect(mockFn.mock.calls[0].length).toBe(3);
-    expect(mockFn.mock.calls[0][0]).toBe("some_feedOpen");
-    expect(mockFn.mock.calls[0][1]).toEqual({ feedOpen: "args" });
-    expect(check.function(mockFn.mock.calls[0][2])).toBe(true);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0].name()).toBe("some_feedOpen");
+    expect(mockFn.mock.calls[0][0].args()).toEqual({ feedOpen: "args" });
+    expect(check.function(mockFn.mock.calls[0][1])).toBe(true);
   });
 
   it("should relay error if the underlying throws", () => {
@@ -467,7 +471,10 @@ describe("The sessionWrapper.feedOpen() function", () => {
       })
     );
     expect(() => {
-      wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, () => {});
+      wrapper.feedOpen(
+        FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+        () => {}
+      );
     }).toThrow(err);
   });
 
@@ -478,20 +485,26 @@ describe("The sessionWrapper.feedOpen() function", () => {
       })
     );
     expect(
-      wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, () => {})
+      wrapper.feedOpen(
+        FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+        () => {}
+      )
     ).toBe(undefined);
   });
 
   it("should callback async if underlying calls back success sync", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedOpen: (an, aa, cb) => {
+        feedOpen: (fna, cb) => {
           cb(undefined, { feedOpen: "data" });
         }
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, mockCb);
+    wrapper.feedOpen(
+      FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -507,7 +520,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
   it("should callback async if underlying calls back success async", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedOpen: (an, aa, cb) => {
+        feedOpen: (fna, cb) => {
           Promise.resolve().then(() => {
             cb(undefined, { feedOpen: "data" });
           });
@@ -515,7 +528,10 @@ describe("The sessionWrapper.feedOpen() function", () => {
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, mockCb);
+    wrapper.feedOpen(
+      FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -535,13 +551,16 @@ describe("The sessionWrapper.feedOpen() function", () => {
   it("should callback async if underlying calls back failure sync", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedOpen: (an, aa, cb) => {
+        feedOpen: (fna, cb) => {
           cb(new Error("SOME_ERROR: ..."));
         }
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, mockCb);
+    wrapper.feedOpen(
+      FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -557,7 +576,7 @@ describe("The sessionWrapper.feedOpen() function", () => {
   it("should callback async if underlying calls back failure async", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedOpen: (an, aa, cb) => {
+        feedOpen: (fna, cb) => {
           Promise.resolve().then(() => {
             cb(new Error("SOME_ERROR: ..."));
           });
@@ -565,7 +584,10 @@ describe("The sessionWrapper.feedOpen() function", () => {
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedOpen("some_feedOpen", { feedOpen: "args" }, mockCb);
+    wrapper.feedOpen(
+      FeedNameArgs("some_feedOpen", { feedOpen: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -587,7 +609,7 @@ describe("The sessionWrapper.feedClose() function", () => {
   it("should throw on non-function argument", () => {
     const wrapper = sessionWrapper(emitter({}));
     expect(() => {
-      wrapper.feedClose("some_feed", { feed: "args" }, 123);
+      wrapper.feedClose(FeedNameArgs("some_feed", { feed: "args" }), 123);
     }).toThrow(new Error("INVALID_ARGUMENT: Invalid callback."));
   });
 
@@ -598,12 +620,15 @@ describe("The sessionWrapper.feedClose() function", () => {
         feedClose: mockFn
       })
     );
-    wrapper.feedClose("some_feedClose", { feedClose: "args" }, () => {});
+    wrapper.feedClose(
+      FeedNameArgs("some_feedClose", { feedClose: "args" }),
+      () => {}
+    );
     expect(mockFn.mock.calls.length).toBe(1);
-    expect(mockFn.mock.calls[0].length).toBe(3);
-    expect(mockFn.mock.calls[0][0]).toBe("some_feedClose");
-    expect(mockFn.mock.calls[0][1]).toEqual({ feedClose: "args" });
-    expect(check.function(mockFn.mock.calls[0][2])).toBe(true);
+    expect(mockFn.mock.calls[0].length).toBe(2);
+    expect(mockFn.mock.calls[0][0].name()).toBe("some_feedClose");
+    expect(mockFn.mock.calls[0][0].args()).toEqual({ feedClose: "args" });
+    expect(check.function(mockFn.mock.calls[0][1])).toBe(true);
   });
 
   it("should relay error if the underlying throws", () => {
@@ -616,7 +641,10 @@ describe("The sessionWrapper.feedClose() function", () => {
       })
     );
     expect(() => {
-      wrapper.feedClose("some_feedClose", { feedClose: "args" }, () => {});
+      wrapper.feedClose(
+        FeedNameArgs("some_feedClose", { feedClose: "args" }),
+        () => {}
+      );
     }).toThrow(err);
   });
 
@@ -627,20 +655,26 @@ describe("The sessionWrapper.feedClose() function", () => {
       })
     );
     expect(
-      wrapper.feedClose("some_feedClose", { feedClose: "args" }, () => {})
+      wrapper.feedClose(
+        FeedNameArgs("some_feedClose", { feedClose: "args" }),
+        () => {}
+      )
     ).toBe(undefined);
   });
 
   it("should callback async if underlying calls back success sync", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedClose: (an, aa, cb) => {
+        feedClose: (fna, cb) => {
           cb(undefined, { feedClose: "data" });
         }
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedClose("some_feedClose", { feedClose: "args" }, mockCb);
+    wrapper.feedClose(
+      FeedNameArgs("some_feedClose", { feedClose: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -656,7 +690,7 @@ describe("The sessionWrapper.feedClose() function", () => {
   it("should callback async if underlying calls back success async", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedClose: (an, aa, cb) => {
+        feedClose: (fna, cb) => {
           Promise.resolve().then(() => {
             cb(undefined, { feedClose: "data" });
           });
@@ -664,7 +698,10 @@ describe("The sessionWrapper.feedClose() function", () => {
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedClose("some_feedClose", { feedClose: "args" }, mockCb);
+    wrapper.feedClose(
+      FeedNameArgs("some_feedClose", { feedClose: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -684,13 +721,16 @@ describe("The sessionWrapper.feedClose() function", () => {
   it("should callback async if underlying calls back failure sync", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedClose: (an, aa, cb) => {
+        feedClose: (fna, cb) => {
           cb(new Error("SOME_ERROR: ..."));
         }
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedClose("some_feedClose", { feedClose: "args" }, mockCb);
+    wrapper.feedClose(
+      FeedNameArgs("some_feedClose", { feedClose: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -706,7 +746,7 @@ describe("The sessionWrapper.feedClose() function", () => {
   it("should callback async if underlying calls back failure async", async () => {
     const wrapper = sessionWrapper(
       emitter({
-        feedClose: (an, aa, cb) => {
+        feedClose: (fna, cb) => {
           Promise.resolve().then(() => {
             cb(new Error("SOME_ERROR: ..."));
           });
@@ -714,7 +754,10 @@ describe("The sessionWrapper.feedClose() function", () => {
       })
     );
     const mockCb = jest.fn();
-    wrapper.feedClose("some_feedClose", { feedClose: "args" }, mockCb);
+    wrapper.feedClose(
+      FeedNameArgs("some_feedClose", { feedClose: "args" }),
+      mockCb
+    );
 
     expect(mockCb.mock.calls.length).toBe(0);
 
@@ -793,14 +836,14 @@ describe("The sessionWrapper disconnect event", () => {
   });
 });
 
-describe("The sessionWrapper actionRevelation event", () => {
+describe("The sessionWrapper feedAction event", () => {
   it("should be emitted asynchronously", async () => {
     const underlying = emitter({});
     const wrapper = sessionWrapper(underlying);
     const listener = jest.fn();
-    wrapper.on("actionRevelation", listener);
+    wrapper.on("feedAction", listener);
 
-    underlying.emit("actionRevelation", "some", "args");
+    underlying.emit("feedAction", "some", "args");
 
     expect(listener.mock.calls.length).toBe(0);
 
@@ -954,7 +997,7 @@ it("On disconnect, any outstanding action callbacks should be invoked before dis
 it("On disconnect, any outstanding feedOpen callbacks should be invoked before disconnect event", async () => {
   let underlyingFeedOpenCb;
   const underlying = emitter({
-    feedOpen: (fn, fa, cb) => {
+    feedOpen: (fna, cb) => {
       underlyingFeedOpenCb = cb;
     }
   });
@@ -971,7 +1014,7 @@ it("On disconnect, any outstanding feedOpen callbacks should be invoked before d
     order.push("callback");
   });
 
-  wrapper.feedOpen("some_feed", { feed: "args" }, feedOpenCb);
+  wrapper.feedOpen(FeedNameArgs("some_feed", { feed: "args" }), feedOpenCb);
 
   underlyingFeedOpenCb();
   underlying.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
@@ -990,7 +1033,7 @@ it("On disconnect, any outstanding feedOpen callbacks should be invoked before d
 it("On disconnect, any outstanding feedClose callbacks should be invoked before disconnect event", async () => {
   let underlyingFeedCloseCb;
   const underlying = emitter({
-    feedClose: (fn, fa, cb) => {
+    feedClose: (fna, cb) => {
       underlyingFeedCloseCb = cb;
     }
   });
@@ -1007,7 +1050,7 @@ it("On disconnect, any outstanding feedClose callbacks should be invoked before 
     order.push("callback");
   });
 
-  wrapper.feedClose("some_feed", { feed: "args" }, feedCloseCb);
+  wrapper.feedClose(FeedNameArgs("some_feed", { feed: "args" }), feedCloseCb);
 
   underlyingFeedCloseCb();
   underlying.emit("disconnect", new Error("TRANSPORT_FAILURE: ..."));
@@ -1030,7 +1073,7 @@ it("On disconnect, any action callbacks should be invoked before any feed callba
     action: (an, aa, cb) => {
       underlyingActionCb = cb;
     },
-    feedClose: (fn, fa, cb) => {
+    feedClose: (fna, cb) => {
       underlyingFeedCloseCb = cb;
     }
   });
@@ -1051,7 +1094,7 @@ it("On disconnect, any action callbacks should be invoked before any feed callba
   const feedCloseCb = jest.fn(() => {
     order.push("feed");
   });
-  wrapper.feedClose("some_feed", { feed: "args" }, feedCloseCb);
+  wrapper.feedClose(FeedNameArgs("some_feed", { feed: "args" }), feedCloseCb);
 
   underlyingActionCb();
   underlyingFeedCloseCb();
