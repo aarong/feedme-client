@@ -640,8 +640,8 @@ function feedSyncFactory(clientSync, feedNameArgs) {
  */
 
 /**
- * Emitted when an action is revealed on the server feed and the object
- * is desired open.
+ * Emitted when a feed action notification is transmitted on the feed and
+ * the feed object is desired open.
  * @event action
  * @memberof FeedSync
  * @instance
@@ -1923,7 +1923,7 @@ protoFeedSync._serverFeedClosing = function _serverFeedClosing(err) {
 };
 
 /**
- * Called by the client when an action is revealed on this feed.
+ * Called by the client when a feed action notification references this feed.
  * @memberof FeedSync
  * @instance
  * @private
