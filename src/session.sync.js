@@ -869,7 +869,8 @@ proto._processTransportMessage = function _processTransportMessage(msg) {
   }
 
   // Validate message
-  const schemaViolationMessage = validateServerMessage(value);
+  // No need to check whether JSON-expressible - just parsed
+  const schemaViolationMessage = validateServerMessage(value, false);
   if (schemaViolationMessage) {
     dbg("Schema violation");
     const err = new Error("INVALID_MESSAGE: Schema violation.");
