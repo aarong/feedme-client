@@ -2,7 +2,7 @@ import emitter from "component-emitter";
 import _each from "lodash/each";
 import _cloneDeep from "lodash/cloneDeep";
 import debug from "debug";
-import parseServerMessage from "feedme-util/parseservermessage";
+import validateServerMessage from "feedme-util/validators/server-message";
 import FeedNameArgs from "feedme-util/feednameargs";
 import deltaWriter from "feedme-util/deltawriter";
 import md5Calculator from "feedme-util/md5calculator";
@@ -855,19 +855,32 @@ proto._processTransportError = function _processTransportError(err) {
 proto._processTransportMessage = function _processTransportMessage(msg) {
   dbg("Observed transportWrapper message event");
 
-  // Parse and validate message
-  const result = parseServerMessage(msg);
-  if (!result.valid) {
-    dbg("Invalid JSON or schema violation");
-    const err = new Error("INVALID_MESSAGE: Invalid JSON or schema violation.");
+  // Parse message
+  let value;
+  try {
+    value = JSON.parse(msg);
+  } catch (e) {
+    dbg("Invalid JSON");
+    const err = new Error("INVALID_MESSAGE: Invalid JSON.");
     err.serverMessage = msg; // string
-    err.reason = result.errorMessage;
+    err.parseError = e;
+    this.emit("badServerMessage", err);
+    return; // Stop
+  }
+
+  // Validate message
+  const schemaViolationMessage = validateServerMessage(value);
+  if (schemaViolationMessage) {
+    dbg("Schema violation");
+    const err = new Error("INVALID_MESSAGE: Schema violation.");
+    err.serverMessage = value; // JSON value
+    err.schemaViolation = schemaViolationMessage;
     this.emit("badServerMessage", err);
     return; // Stop
   }
 
   // Route to the appropriate message handler
-  this[`_process${result.message.MessageType}`](result.message);
+  this[`_process${value.MessageType}`](value);
 };
 
 // Feedme message handlers
@@ -1078,9 +1091,8 @@ proto._processFeedAction = function _processFeedAction(msg) {
   // Try to apply any deltas to a clone of the pre-delta feed data
   let newData = _cloneDeep(oldData);
   for (let i = 0; i < msg.FeedDeltas.length; i += 1) {
-    try {
-      newData = deltaWriter.apply(newData, msg.FeedDeltas[i]);
-    } catch (e) {
+    const result = deltaWriter.apply(newData, msg.FeedDeltas[i]);
+    if (!result.valid) {
       dbg("Invalid feed delta");
 
       const unexpError = new Error(
@@ -1099,12 +1111,13 @@ proto._processFeedAction = function _processFeedAction(msg) {
       const err = new Error(
         "INVALID_DELTA: Received FeedAction with contextually invalid feed delta."
       );
-      err.deltaError = e;
       err.serverMessage = msg;
+      err.deltaViolation = result.reason;
       this.emit("badServerMessage", err);
 
       return; // Stop
     }
+    newData = result.feedData;
   }
 
   // Validate new feed data against the hash, if provided

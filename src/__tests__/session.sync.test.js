@@ -1389,14 +1389,14 @@ describe("The transport message(msg) event", () => {
       Error
     );
     expect(sessionListener.badServerMessage.mock.calls[0][0].message).toBe(
-      "INVALID_MESSAGE: Invalid JSON or schema violation."
+      "INVALID_MESSAGE: Invalid JSON."
     );
     expect(
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toBe("junk");
     expect(
-      check.string(sessionListener.badServerMessage.mock.calls[0][0].reason)
-    ).toBe(true);
+      sessionListener.badServerMessage.mock.calls[0][0].parseError
+    ).toBeInstanceOf(Error);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
@@ -1417,13 +1417,15 @@ describe("The transport message(msg) event", () => {
       Error
     );
     expect(sessionListener.badServerMessage.mock.calls[0][0].message).toBe(
-      "INVALID_MESSAGE: Invalid JSON or schema violation."
+      "INVALID_MESSAGE: Schema violation."
     );
     expect(
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
-    ).toEqual("{}");
+    ).toEqual({});
     expect(
-      check.string(sessionListener.badServerMessage.mock.calls[0][0].reason)
+      check.string(
+        sessionListener.badServerMessage.mock.calls[0][0].schemaViolation
+      )
     ).toBe(true);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
@@ -2264,8 +2266,10 @@ describe("The FeedAction processor", () => {
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(badMsg);
     expect(
-      sessionListener.badServerMessage.mock.calls[0][0].deltaError
-    ).toBeTruthy();
+      check.string(
+        sessionListener.badServerMessage.mock.calls[0][0].deltaViolation
+      )
+    ).toBe(true);
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
 
