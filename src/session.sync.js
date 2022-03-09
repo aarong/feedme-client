@@ -920,6 +920,17 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
   // Was the handshake successful?
   if (msg.Success) {
+    // Is the selected version valid?
+    if (msg.Version !== config.specVersion) {
+      dbg("Invalid version");
+      const err = new Error(
+        "UNEXPECTED_MESSAGE: HandshakeResponse specified invalid version."
+      );
+      err.serverMessage = msg;
+      this.emit("badServerMessage", err);
+      return; // Stop
+    }
+
     dbg("Success");
     this._handshakeComplete = true;
     this.emit("connect");

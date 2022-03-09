@@ -1507,6 +1507,11 @@ describe("The HandshakeResponse processor", () => {
   beforeEach(() => {
     harness = harnessFactory();
   });
+  const msgInvalid = {
+    MessageType: "HandshakeResponse",
+    Success: true,
+    Version: "0.123"
+  };
   const msgSuccess = {
     MessageType: "HandshakeResponse",
     Success: true,
@@ -1522,6 +1527,9 @@ describe("The HandshakeResponse processor", () => {
     harness.transportWrapper.state.mockReturnValue("connecting");
     harness.transportWrapper.emit("connect");
     harness.transportWrapper.state.mockReturnValue("connected");
+  };
+  const receiveInvalid = function receiveSuccess() {
+    harness.transportWrapper.emit("message", JSON.stringify(msgInvalid));
   };
   const receiveSuccess = function receiveSuccess() {
     harness.transportWrapper.emit("message", JSON.stringify(msgSuccess));
@@ -1549,6 +1557,29 @@ describe("The HandshakeResponse processor", () => {
     expect(
       sessionListener.badServerMessage.mock.calls[0][0].serverMessage
     ).toEqual(msgSuccess);
+    expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
+    expect(sessionListener.transportError.mock.calls.length).toBe(0);
+  });
+
+  it("should emit badServerMessage(err) if specified version invalid", () => {
+    connectAndSendHandshake();
+    const sessionListener = harness.createSessionListener();
+    receiveInvalid();
+
+    expect(sessionListener.connecting.mock.calls.length).toBe(0);
+    expect(sessionListener.connect.mock.calls.length).toBe(0);
+    expect(sessionListener.disconnect.mock.calls.length).toBe(0);
+    expect(sessionListener.badServerMessage.mock.calls.length).toBe(1);
+    expect(sessionListener.badServerMessage.mock.calls[0].length).toBe(1);
+    expect(sessionListener.badServerMessage.mock.calls[0][0]).toBeInstanceOf(
+      Error
+    );
+    expect(sessionListener.badServerMessage.mock.calls[0][0].message).toBe(
+      "UNEXPECTED_MESSAGE: HandshakeResponse specified invalid version."
+    );
+    expect(
+      sessionListener.badServerMessage.mock.calls[0][0].serverMessage
+    ).toEqual(msgInvalid);
     expect(sessionListener.badClientMessage.mock.calls.length).toBe(0);
     expect(sessionListener.transportError.mock.calls.length).toBe(0);
   });
