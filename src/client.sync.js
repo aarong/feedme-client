@@ -829,7 +829,10 @@ protoClientSync.feed = function feedFunction(feedName, feedArgs) {
   }
 
   // Check arguments and relay errors
-  const feedNameArgs = FeedNameArgs(feedName, feedArgs); // Cascade INVALID_ARGUMENT
+  const feedNameArgs = FeedNameArgs(feedName, feedArgs);
+  if (feedNameArgs.error()) {
+    throw new Error(`INVALID_ARGUMENT: ${feedNameArgs.error()}`);
+  }
 
   // Store and return a new feed object
   const feedSerial = feedNameArgs.serial();
