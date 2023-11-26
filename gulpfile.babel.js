@@ -102,7 +102,7 @@ const browserBundles = () =>
           // but names in stack traces are the minified ones
           // If you use "eval-source-maps" you get correct names in stack traces but
           // the bundle fails on older browsers
-          devtool: sourceMaps ? "source-maps" : false,
+          devtool: sourceMaps ? "source-map" : false,
 
           // Suppress file size warnings
           performance: {
