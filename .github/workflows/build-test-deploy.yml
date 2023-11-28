@@ -1,13 +1,13 @@
-name: test-build
-run-name: Build and Test
+name: build-test-deploy
+run-name: Build, Test, Deploy
 on: [push]
 jobs:
-  build-and-test:
+  build-test-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: 'latest'
-      - run: npm install
+      - run: npm ci
       - run: npm run build

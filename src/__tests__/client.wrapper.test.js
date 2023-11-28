@@ -5,6 +5,7 @@ import clientWrapper from "../client.wrapper";
 // Client wrapper methods
 
 describe("The clientWrapper() factory function", () => {
+  expect(1).toBe(2);
   it("should throw on invalid clientSync argument", () => {
     expect(() => {
       clientWrapper("junk");
