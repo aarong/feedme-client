@@ -2,6 +2,7 @@ name: deploy
 run-name: Deploy to NPM
 on:
   - push
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
 jobs:
   deploy:
     runs-on: ubuntu-latest
