@@ -1,4 +1,3 @@
-name: build-test-deploy
 run-name: Build, Test, Deploy 1
 on: [push]
 jobs:
