@@ -15,5 +15,6 @@ jobs:
       
       - uses: JS-DevTools/npm-publish@v3
         with:
+          package: build # Path
           token: ${{ secrets.NPM_TOKEN }}
  
