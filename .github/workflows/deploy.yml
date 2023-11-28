@@ -1,9 +1,9 @@
-name: Tests
+name: Deploy
+run-name: Deploy
 on:
   - push
-  - workflow_dispatch # Permit manual initiation
 jobs:
-  test:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
