@@ -1,9 +1,9 @@
-name: Deploy
-run-name: Deploy
+name: deploy
+run-name: Deploy to NPM
 on:
   - push
 jobs:
-  tests:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,3 +12,5 @@ jobs:
           node-version: 'latest'
       - run: npm ci
       - run: npm run build
+      #- run: npm run test-build-browsers
+      - run: npm coveralls
