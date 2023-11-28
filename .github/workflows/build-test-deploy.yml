@@ -1,5 +1,5 @@
 run-name: Build, Test, Deploy 1
-on: [push]
+on: [push, workflow_dispatch]
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
