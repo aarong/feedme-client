@@ -1,5 +1,5 @@
-name: build
-run-name: Build and Test
+name: CI-CD
+run-name: Build, Test, Deploy
 on:
   - push
   - workflow_dispatch # Permit manual initiation
@@ -13,9 +13,16 @@ jobs:
           node-version: 'latest'
       - run: npm ci
       - run: npm run build
-      
+
       #- run: npm run test-build-browsers
       
       - run: npm run coverage
       - name: Coveralls
         uses: coverallsapp/github-action@v2
+      
+      # Publish takes place only if new version tag
+      - uses: JS-DevTools/npm-publish@v3
+        with:
+          package: build # Path
+          token: ${{ secrets.NPM_TOKEN }}
+ 
