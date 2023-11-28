@@ -13,6 +13,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       
+      # Publish takes place only if new version tag
       - uses: JS-DevTools/npm-publish@v3
         with:
           package: build # Path
