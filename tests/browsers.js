@@ -316,7 +316,7 @@ import targets from "../targets";
       optimization: {
         minimize: false
       },
-      devtool: "source-maps",
+      devtool: "source-map",
       performance: {
         maxAssetSize: 1000000,
         maxEntrypointSize: 1000000
