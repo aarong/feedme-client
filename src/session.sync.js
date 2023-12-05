@@ -41,7 +41,7 @@ emitter(proto);
  * @static
  */
 const config = {
-  specVersion: "0.1"
+  specVersion: "0.1",
 };
 
 /**
@@ -140,23 +140,23 @@ export default function sessionSyncFactory(transportWrapper) {
   // Listen for transport events
   sessionSync._transportWrapper.on(
     "connecting",
-    sessionSync._processTransportConnecting.bind(sessionSync)
+    sessionSync._processTransportConnecting.bind(sessionSync),
   );
   sessionSync._transportWrapper.on(
     "connect",
-    sessionSync._processTransportConnect.bind(sessionSync)
+    sessionSync._processTransportConnect.bind(sessionSync),
   );
   sessionSync._transportWrapper.on(
     "message",
-    sessionSync._processTransportMessage.bind(sessionSync)
+    sessionSync._processTransportMessage.bind(sessionSync),
   );
   sessionSync._transportWrapper.on(
     "disconnect",
-    sessionSync._processTransportDisconnect.bind(sessionSync)
+    sessionSync._processTransportDisconnect.bind(sessionSync),
   );
   sessionSync._transportWrapper.on(
     "transportError",
-    sessionSync._processTransportError.bind(sessionSync)
+    sessionSync._processTransportError.bind(sessionSync),
   );
 
   return sessionSync;
@@ -495,8 +495,8 @@ proto.action = function action(name, args, callback) {
       MessageType: "Action",
       ActionName: name,
       ActionArgs: args,
-      CallbackId: callbackId
-    })
+      CallbackId: callbackId,
+    }),
   );
 };
 
@@ -544,8 +544,8 @@ proto.feedOpen = function feedOpen(feedNameArgs, cb) {
     JSON.stringify({
       MessageType: "FeedOpen",
       FeedName: feedNameArgs.name(),
-      FeedArgs: feedNameArgs.args()
-    })
+      FeedArgs: feedNameArgs.args(),
+    }),
   );
 };
 
@@ -594,8 +594,8 @@ proto.feedClose = function feedClose(feedNameArgs, cb) {
     JSON.stringify({
       MessageType: "FeedClose",
       FeedName: feedNameArgs.name(),
-      FeedArgs: feedNameArgs.args()
-    })
+      FeedArgs: feedNameArgs.args(),
+    }),
   );
 };
 
@@ -740,8 +740,8 @@ proto._processTransportConnect = function _processTransportConnect() {
     this._transportWrapper.send(
       JSON.stringify({
         MessageType: "Handshake",
-        Versions: [config.specVersion]
-      })
+        Versions: [config.specVersion],
+      }),
     );
   }
 };
@@ -799,7 +799,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(err) {
   const cbErr = new Error("NOT_CONNECTED: The transport disconnected."); // err may not exist
 
   // Send action callbacks an error
-  _each(actionCallbacks, val => {
+  _each(actionCallbacks, (val) => {
     dbg("Returning disconnect error to action() callback");
     val(cbErr);
   });
@@ -924,7 +924,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
     if (msg.Version !== config.specVersion) {
       dbg("Invalid version");
       const err = new Error(
-        "UNEXPECTED_MESSAGE: HandshakeResponse specified invalid version."
+        "UNEXPECTED_MESSAGE: HandshakeResponse specified invalid version.",
       );
       err.serverMessage = msg;
       this.emit("badServerMessage", err);
@@ -943,7 +943,7 @@ proto._processHandshakeResponse = function _processHandshakeResponse(msg) {
 
     // Disconnect event fired via the transport - wrapper will relay the error argument
     this._transportWrapper.disconnect(
-      new Error("HANDSHAKE_REJECTED: The server rejected the handshake.")
+      new Error("HANDSHAKE_REJECTED: The server rejected the handshake."),
     );
   }
 };
@@ -1108,7 +1108,7 @@ proto._processFeedAction = function _processFeedAction(msg) {
       dbg("Invalid feed delta");
 
       const unexpError = new Error(
-        "BAD_FEED_ACTION: The server passed an invalid feed delta."
+        "BAD_FEED_ACTION: The server passed an invalid feed delta.",
       );
 
       // Close the feed and emit closed on completion
@@ -1121,7 +1121,7 @@ proto._processFeedAction = function _processFeedAction(msg) {
 
       // Emit badServerMessage
       const err = new Error(
-        "INVALID_DELTA: Received FeedAction with contextually invalid feed delta."
+        "INVALID_DELTA: Received FeedAction with contextually invalid feed delta.",
       );
       err.serverMessage = msg;
       err.deltaViolation = result.reason;
@@ -1138,7 +1138,7 @@ proto._processFeedAction = function _processFeedAction(msg) {
     if (newMd5 !== msg.FeedMd5) {
       dbg("Invalid feed data hash");
       const unexpError = new Error(
-        "BAD_FEED_ACTION: Hash verification failed."
+        "BAD_FEED_ACTION: Hash verification failed.",
       );
 
       // Close the feed and emit closed on completion
@@ -1168,7 +1168,7 @@ proto._processFeedAction = function _processFeedAction(msg) {
     msg.ActionName,
     msg.ActionData,
     newData,
-    oldData
+    oldData,
   );
 };
 

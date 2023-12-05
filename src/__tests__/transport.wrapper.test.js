@@ -1,13 +1,13 @@
 import emitter from "component-emitter";
 import transportWrapper from "../transport.wrapper";
 
-const createWrapperListener = wrapper => {
+const createWrapperListener = (wrapper) => {
   const listener = {};
   ["connecting", "connect", "message", "disconnect", "transportError"].forEach(
-    evt => {
+    (evt) => {
       listener[evt] = jest.fn();
       wrapper.on(evt, listener[evt]);
-    }
+    },
   );
   return listener;
 };
@@ -26,12 +26,12 @@ describe("The factory function", () => {
         off: () => {},
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect().",
+      ),
     );
   });
 
@@ -42,12 +42,12 @@ describe("The factory function", () => {
         off: () => {},
         state: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect().",
+      ),
     );
   });
 
@@ -58,12 +58,12 @@ describe("The factory function", () => {
         off: () => {},
         state: () => {},
         connect: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect().",
+      ),
     );
   });
 
@@ -74,12 +74,12 @@ describe("The factory function", () => {
         off: () => {},
         state: () => {},
         connect: () => {},
-        send: () => {}
+        send: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect().",
+      ),
     );
   });
 
@@ -90,12 +90,12 @@ describe("The factory function", () => {
         connect: () => {},
         send: () => {},
         disconnect: () => {},
-        off: () => {}
+        off: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport does not implement on(), addListener(), or addEventListener()."
-      )
+        "TRANSPORT_ERROR: Transport does not implement on(), addListener(), or addEventListener().",
+      ),
     );
   });
 
@@ -106,12 +106,12 @@ describe("The factory function", () => {
         connect: () => {},
         send: () => {},
         disconnect: () => {},
-        on: () => {}
+        on: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport does not implement off(), removeListener(), or removeEventListener()."
-      )
+        "TRANSPORT_ERROR: Transport does not implement off(), removeListener(), or removeEventListener().",
+      ),
     );
   });
 
@@ -127,7 +127,7 @@ describe("The factory function", () => {
         },
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     } catch (e) {
       err = e;
@@ -135,7 +135,7 @@ describe("The factory function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -148,12 +148,12 @@ describe("The factory function", () => {
         state: () => "bad_state",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
   });
 
@@ -165,12 +165,12 @@ describe("The factory function", () => {
         state: () => "connecting",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -182,12 +182,12 @@ describe("The factory function", () => {
         state: () => "connected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -204,7 +204,7 @@ describe("The factory function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
     } catch (e) {
       err = e;
@@ -212,7 +212,7 @@ describe("The factory function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error when subscribing event listeners."
+      "TRANSPORT_ERROR: Transport threw an error when subscribing event listeners.",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -225,7 +225,7 @@ describe("The factory function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     expect(eventFn.mock.calls.length).toBe(4);
@@ -242,7 +242,7 @@ describe("The factory function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     expect(eventFn.mock.calls.length).toBe(4);
@@ -259,7 +259,7 @@ describe("The factory function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     expect(eventFn.mock.calls.length).toBe(4);
@@ -276,8 +276,8 @@ describe("the state() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
-      })
+        disconnect: () => {},
+      }),
     );
     wrapper.destroy();
 
@@ -291,7 +291,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -309,7 +309,7 @@ describe("the state() function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -319,7 +319,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     transport.state = () => "junk";
@@ -328,8 +328,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'junk' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'junk' on call to state().",
+      ),
     );
   });
 
@@ -338,7 +338,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     transport.state = () => "connecting";
@@ -347,8 +347,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -357,7 +357,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     transport.state = () => "connected";
@@ -366,8 +366,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -376,7 +376,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -394,8 +394,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -404,7 +404,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -422,8 +422,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -432,7 +432,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -447,8 +447,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -457,7 +457,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -472,8 +472,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+      ),
     );
   });
 
@@ -482,7 +482,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -502,8 +502,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connecting' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connecting' was expected.",
+      ),
     );
   });
 
@@ -512,7 +512,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -532,8 +532,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'connecting' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'connecting' was expected.",
+      ),
     );
   });
 
@@ -542,7 +542,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -562,8 +562,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'disconnected' on call to state() when 'connected' was expected.",
+      ),
     );
   });
 
@@ -572,7 +572,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -592,8 +592,8 @@ describe("the state() function", () => {
       wrapper.state();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'connected' was expected."
-      )
+        "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'connected' was expected.",
+      ),
     );
   });
 
@@ -602,7 +602,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -614,7 +614,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -631,7 +631,7 @@ describe("the state() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -651,8 +651,8 @@ describe("the connect() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
-      })
+        disconnect: () => {},
+      }),
     );
     wrapper.destroy();
 
@@ -666,7 +666,7 @@ describe("the connect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -684,7 +684,7 @@ describe("the connect() function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -694,7 +694,7 @@ describe("the connect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -704,8 +704,8 @@ describe("the connect() function", () => {
       wrapper.connect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
   });
 
@@ -714,7 +714,7 @@ describe("the connect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -733,7 +733,7 @@ describe("the connect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -756,7 +756,7 @@ describe("the connect() function", () => {
           throw tErr;
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -769,7 +769,7 @@ describe("the connect() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to connect()."
+        "TRANSPORT_ERROR: Transport threw an error on call to connect().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -785,7 +785,7 @@ describe("the connect() function", () => {
           };
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -802,7 +802,7 @@ describe("the connect() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to state()."
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -815,7 +815,7 @@ describe("the connect() function", () => {
           transport.state = () => "bad_state";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -823,8 +823,8 @@ describe("the connect() function", () => {
         wrapper.connect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-        )
+          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+        ),
       );
     });
 
@@ -837,7 +837,7 @@ describe("the connect() function", () => {
             transport.state = () => "disconnected";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -858,7 +858,7 @@ describe("the connect() function", () => {
             transport.state = () => "disconnected";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -872,8 +872,8 @@ describe("the connect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
 
@@ -885,7 +885,7 @@ describe("the connect() function", () => {
             transport.state = () => "disconnected";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -899,8 +899,8 @@ describe("the connect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
     });
@@ -914,7 +914,7 @@ describe("the connect() function", () => {
             transport.state = () => "connecting";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -935,7 +935,7 @@ describe("the connect() function", () => {
             transport.state = () => "connecting";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -956,7 +956,7 @@ describe("the connect() function", () => {
             transport.state = () => "connecting";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -979,7 +979,7 @@ describe("the connect() function", () => {
             transport.state = () => "connected";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -1000,7 +1000,7 @@ describe("the connect() function", () => {
             transport.state = () => "connected";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -1014,8 +1014,8 @@ describe("the connect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+          ),
         );
       });
 
@@ -1027,7 +1027,7 @@ describe("the connect() function", () => {
             transport.state = () => "connected";
           },
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
 
@@ -1050,8 +1050,8 @@ describe("the send() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
-      })
+        disconnect: () => {},
+      }),
     );
 
     wrapper.destroy();
@@ -1066,7 +1066,7 @@ describe("the send() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1084,7 +1084,7 @@ describe("the send() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1102,7 +1102,7 @@ describe("the send() function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -1112,7 +1112,7 @@ describe("the send() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1122,8 +1122,8 @@ describe("the send() function", () => {
       wrapper.send("msg");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
   });
 
@@ -1132,7 +1132,7 @@ describe("the send() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1146,7 +1146,7 @@ describe("the send() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1169,7 +1169,7 @@ describe("the send() function", () => {
         send: () => {
           throw tErr;
         },
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1187,7 +1187,7 @@ describe("the send() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to send()."
+        "TRANSPORT_ERROR: Transport threw an error on call to send().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -1203,7 +1203,7 @@ describe("the send() function", () => {
             throw tErr;
           };
         },
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -1221,7 +1221,7 @@ describe("the send() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to state()."
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -1234,7 +1234,7 @@ describe("the send() function", () => {
           // Success
           transport.state = () => "bad_state";
         },
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1247,8 +1247,8 @@ describe("the send() function", () => {
         wrapper.send("msg");
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-        )
+          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+        ),
       );
     });
 
@@ -1261,7 +1261,7 @@ describe("the send() function", () => {
             // Success
             transport.state = () => "disconnected";
           },
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1287,7 +1287,7 @@ describe("the send() function", () => {
             // Success
             transport.state = () => "disconnected";
           },
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1306,8 +1306,8 @@ describe("the send() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
 
@@ -1319,7 +1319,7 @@ describe("the send() function", () => {
             // Success
             transport.state = () => "disconnected";
           },
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1338,8 +1338,8 @@ describe("the send() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
     });
@@ -1352,7 +1352,7 @@ describe("the send() function", () => {
           // Success
           transport.state = () => "connecting";
         },
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1365,8 +1365,8 @@ describe("the send() function", () => {
         wrapper.send("msg");
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+        ),
       );
     });
 
@@ -1376,7 +1376,7 @@ describe("the send() function", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1399,7 +1399,7 @@ describe("the send() function", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1418,8 +1418,8 @@ describe("the send() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+          ),
         );
       });
 
@@ -1428,7 +1428,7 @@ describe("the send() function", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1456,8 +1456,8 @@ describe("the disconnect() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
-      })
+        disconnect: () => {},
+      }),
     );
 
     wrapper.destroy();
@@ -1473,8 +1473,8 @@ describe("the disconnect() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
-      })
+        disconnect: () => {},
+      }),
     );
 
     expect(() => {
@@ -1487,7 +1487,7 @@ describe("the disconnect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1505,7 +1505,7 @@ describe("the disconnect() function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -1515,7 +1515,7 @@ describe("the disconnect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1525,8 +1525,8 @@ describe("the disconnect() function", () => {
       wrapper.disconnect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
   });
 
@@ -1535,7 +1535,7 @@ describe("the disconnect() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -1553,7 +1553,7 @@ describe("the disconnect() function", () => {
         send: () => {},
         disconnect: () => {
           throw tErr;
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1569,7 +1569,7 @@ describe("the disconnect() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to disconnect()."
+        "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -1585,7 +1585,7 @@ describe("the disconnect() function", () => {
           transport.state = () => {
             throw tErr;
           };
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1601,7 +1601,7 @@ describe("the disconnect() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to state()."
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -1614,7 +1614,7 @@ describe("the disconnect() function", () => {
         disconnect: () => {
           // Success
           transport.state = () => "bad_state";
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1625,8 +1625,8 @@ describe("the disconnect() function", () => {
         wrapper.disconnect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-        )
+          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+        ),
       );
     });
 
@@ -1638,7 +1638,7 @@ describe("the disconnect() function", () => {
           send: () => {},
           disconnect: () => {
             transport.state = () => "disconnected";
-          }
+          },
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1661,7 +1661,7 @@ describe("the disconnect() function", () => {
           send: () => {},
           disconnect: () => {
             transport.state = () => "disconnected";
-          }
+          },
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1678,8 +1678,8 @@ describe("the disconnect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
 
@@ -1690,7 +1690,7 @@ describe("the disconnect() function", () => {
           send: () => {},
           disconnect: () => {
             transport.state = () => "disconnected";
-          }
+          },
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1707,8 +1707,8 @@ describe("the disconnect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
     });
@@ -1721,7 +1721,7 @@ describe("the disconnect() function", () => {
         disconnect: () => {
           // Success
           transport.state = () => "connecting";
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1732,8 +1732,8 @@ describe("the disconnect() function", () => {
         wrapper.disconnect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
 
@@ -1745,7 +1745,7 @@ describe("the disconnect() function", () => {
         disconnect: () => {
           // Success
           transport.state = () => "connected";
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1756,8 +1756,8 @@ describe("the disconnect() function", () => {
         wrapper.disconnect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
   });
@@ -1771,7 +1771,7 @@ describe("the disconnect() function", () => {
         send: () => {},
         disconnect: () => {
           throw tErr;
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1789,7 +1789,7 @@ describe("the disconnect() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to disconnect()."
+        "TRANSPORT_ERROR: Transport threw an error on call to disconnect().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -1805,7 +1805,7 @@ describe("the disconnect() function", () => {
           transport.state = () => {
             throw tErr;
           };
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1823,7 +1823,7 @@ describe("the disconnect() function", () => {
 
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe(
-        "TRANSPORT_ERROR: Transport threw an error on call to state()."
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
       );
       expect(err.transportError).toBe(tErr);
     });
@@ -1836,7 +1836,7 @@ describe("the disconnect() function", () => {
         disconnect: () => {
           // Success
           transport.state = () => "bad_state";
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1849,8 +1849,8 @@ describe("the disconnect() function", () => {
         wrapper.disconnect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-        )
+          "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+        ),
       );
     });
 
@@ -1862,7 +1862,7 @@ describe("the disconnect() function", () => {
           send: () => {},
           disconnect: () => {
             transport.state = () => "disconnected";
-          }
+          },
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1881,7 +1881,7 @@ describe("the disconnect() function", () => {
           send: () => {},
           disconnect: () => {
             transport.state = () => "disconnected";
-          }
+          },
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1900,8 +1900,8 @@ describe("the disconnect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
 
@@ -1912,7 +1912,7 @@ describe("the disconnect() function", () => {
           send: () => {},
           disconnect: () => {
             transport.state = () => "disconnected";
-          }
+          },
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -1931,8 +1931,8 @@ describe("the disconnect() function", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
     });
@@ -1945,7 +1945,7 @@ describe("the disconnect() function", () => {
         disconnect: () => {
           // Success
           transport.state = () => "connecting";
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1958,8 +1958,8 @@ describe("the disconnect() function", () => {
         wrapper.disconnect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
 
@@ -1971,7 +1971,7 @@ describe("the disconnect() function", () => {
         disconnect: () => {
           // Success
           transport.state = () => "connected";
-        }
+        },
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -1984,8 +1984,8 @@ describe("the disconnect() function", () => {
         wrapper.disconnect();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
   });
@@ -1997,7 +1997,7 @@ describe("the destroy() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.destroy();
@@ -2011,7 +2011,7 @@ describe("the destroy() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2029,7 +2029,7 @@ describe("the destroy() function", () => {
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
     expect(err.transportError).toBe(tErr);
   });
@@ -2039,7 +2039,7 @@ describe("the destroy() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2049,8 +2049,8 @@ describe("the destroy() function", () => {
       wrapper.destroy();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
   });
 
@@ -2059,7 +2059,7 @@ describe("the destroy() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2078,7 +2078,7 @@ describe("the destroy() function", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2100,7 +2100,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       const wrapper = transportWrapper(transport);
 
@@ -2119,7 +2119,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       const wrapper = transportWrapper(transport);
 
@@ -2138,7 +2138,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       const wrapper = transportWrapper(transport);
 
@@ -2159,7 +2159,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       const wrapper = transportWrapper(transport);
 
@@ -2171,7 +2171,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: jest.fn()
+        disconnect: jest.fn(),
       });
       const wrapper = transportWrapper(transport);
 
@@ -2185,7 +2185,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: jest.fn()
+        disconnect: jest.fn(),
       });
       const wrapper = transportWrapper(transport);
 
@@ -2207,7 +2207,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: jest.fn()
+        disconnect: jest.fn(),
       });
       const wrapper = transportWrapper(transport);
 
@@ -2228,7 +2228,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -2256,7 +2256,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -2298,7 +2298,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -2326,7 +2326,7 @@ describe("the destroy() function", () => {
       expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
       expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-        "DESTROYED: The client instance has been destroyed."
+        "DESTROYED: The client instance has been destroyed.",
       );
       expect(wrapperListener.transportError.mock.calls.length).toBe(0);
     });
@@ -2336,7 +2336,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -2365,7 +2365,7 @@ describe("the destroy() function", () => {
       expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
       expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-        "DESTROYED: The client instance has been destroyed."
+        "DESTROYED: The client instance has been destroyed.",
       );
       expect(wrapperListener.transportError.mock.calls.length).toBe(0);
     });
@@ -2375,7 +2375,7 @@ describe("the destroy() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
 
@@ -2405,7 +2405,7 @@ describe("the destroy() function", () => {
       expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
       expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-        "DESTROYED: The client instance has been destroyed."
+        "DESTROYED: The client instance has been destroyed.",
       );
       expect(wrapperListener.transportError.mock.calls.length).toBe(0);
     });
@@ -2419,8 +2419,8 @@ describe("the destroyed() function", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
-      })
+        disconnect: () => {},
+      }),
     );
 
     expect(wrapper.destroyed()).toBe(false);
@@ -2437,7 +2437,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     transport.off = () => {
@@ -2458,7 +2458,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2473,8 +2473,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting", "JUNK ARG");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event."
-      )
+        "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2491,10 +2491,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event.",
     );
   });
 
@@ -2503,7 +2503,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -2518,8 +2518,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connecting' emission."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connecting' emission.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2537,22 +2537,22 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connecting' emission."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connecting' emission.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connecting' emission."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connecting' emission.",
     );
   });
 
@@ -2561,7 +2561,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -2578,8 +2578,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connect' emission."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connect' emission.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2597,22 +2597,22 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connect' emission."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connect' emission.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connect' emission."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'connect' emission.",
     );
   });
 
@@ -2621,7 +2621,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -2639,8 +2639,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'message' emission."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'message' emission.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2658,22 +2658,22 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'message' emission."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'message' emission.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'message' emission."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event following a 'message' emission.",
     );
   });
 
@@ -2682,7 +2682,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2697,8 +2697,8 @@ describe("the transport 'connecting' event", () => {
       wrapper.connect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to connect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to connect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2715,10 +2715,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to connect().",
     );
   });
 
@@ -2729,7 +2729,7 @@ describe("the transport 'connecting' event", () => {
         transport.state = () => "connecting";
       },
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2748,8 +2748,8 @@ describe("the transport 'connecting' event", () => {
       wrapper.send("msg");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to send()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to send().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2766,10 +2766,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to send().",
     );
   });
 
@@ -2780,7 +2780,7 @@ describe("the transport 'connecting' event", () => {
         transport.state = () => "connecting";
       },
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -2796,8 +2796,8 @@ describe("the transport 'connecting' event", () => {
       wrapper.disconnect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to disconnect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2814,10 +2814,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to disconnect().",
     );
   });
 
@@ -2826,7 +2826,7 @@ describe("the transport 'connecting' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -2836,8 +2836,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2854,10 +2854,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect().",
     );
   });
 
@@ -2870,7 +2870,7 @@ describe("the transport 'connecting' event", () => {
       send: () => {},
       disconnect: () => {
         transport.state = () => "disconnected";
-      }
+      },
     });
     const wrapper = transportWrapper(transport);
 
@@ -2890,8 +2890,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2912,10 +2912,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls[1].length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect().",
     );
   });
 
@@ -2926,7 +2926,7 @@ describe("the transport 'connecting' event", () => {
         transport.state = () => "connecting";
       },
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -2940,7 +2940,9 @@ describe("the transport 'connecting' event", () => {
     expect(() => {
       transport.emit("connecting");
     }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an error on call to state().")
+      new Error(
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -2957,10 +2959,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
   });
 
@@ -2971,7 +2973,7 @@ describe("the transport 'connecting' event", () => {
         transport.state = () => "connecting";
       },
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -2984,8 +2986,8 @@ describe("the transport 'connecting' event", () => {
       transport.emit("connecting");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3002,10 +3004,10 @@ describe("the transport 'connecting' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
   });
 
@@ -3017,7 +3019,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3055,7 +3057,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3087,8 +3089,8 @@ describe("the transport 'connecting' event", () => {
         wrapper.state();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
 
@@ -3099,7 +3101,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3131,8 +3133,8 @@ describe("the transport 'connecting' event", () => {
         wrapper.state();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
   });
@@ -3145,7 +3147,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3183,7 +3185,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3221,7 +3223,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3261,7 +3263,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3299,7 +3301,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3331,8 +3333,8 @@ describe("the transport 'connecting' event", () => {
         wrapper.state();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+        ),
       );
     });
 
@@ -3343,7 +3345,7 @@ describe("the transport 'connecting' event", () => {
           transport.state = () => "connecting";
         },
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       wrapper.connect();
@@ -3382,7 +3384,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     transport.off = () => {
@@ -3403,7 +3405,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3418,8 +3420,8 @@ describe("the transport 'connect' event", () => {
       transport.emit("connect", "JUNK ARG");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event."
-      )
+        "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3437,22 +3439,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event.",
     );
   });
 
@@ -3461,7 +3463,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -3471,8 +3473,8 @@ describe("the transport 'connect' event", () => {
       transport.emit("connect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3489,10 +3491,10 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'.",
     );
   });
 
@@ -3501,7 +3503,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3518,8 +3520,8 @@ describe("the transport 'connect' event", () => {
       transport.emit("connect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'connect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'connect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3537,22 +3539,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'connect'."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'connect'.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'connect'."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'connect'.",
     );
   });
 
@@ -3561,7 +3563,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3579,8 +3581,8 @@ describe("the transport 'connect' event", () => {
       transport.emit("connect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'message'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'message'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3598,22 +3600,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'message'."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'message'.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'message'."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'message'.",
     );
   });
 
@@ -3622,7 +3624,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -3647,8 +3649,8 @@ describe("the transport 'connect' event", () => {
       transport.emit("connect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3665,10 +3667,10 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was 'disconnect'.",
     );
   });
 
@@ -3677,7 +3679,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3698,8 +3700,8 @@ describe("the transport 'connect' event", () => {
       wrapper.connect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3717,22 +3719,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to connect().",
     );
   });
 
@@ -3741,7 +3743,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3760,8 +3762,8 @@ describe("the transport 'connect' event", () => {
       wrapper.send("msg");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3779,22 +3781,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to send().",
     );
   });
 
@@ -3803,7 +3805,7 @@ describe("the transport 'connect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3823,8 +3825,8 @@ describe("the transport 'connect' event", () => {
       wrapper.disconnect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3842,22 +3844,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to disconnect().",
     );
   });
 
@@ -3868,7 +3870,7 @@ describe("the transport 'connect' event", () => {
         transport.state = () => "connecting";
       },
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3885,7 +3887,9 @@ describe("the transport 'connect' event", () => {
     expect(() => {
       transport.emit("connect");
     }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an error on call to state().")
+      new Error(
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3903,20 +3907,20 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe("TRANSPORT_ERROR: Transport threw an error on call to state().");
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
   });
 
@@ -3927,7 +3931,7 @@ describe("the transport 'connect' event", () => {
         transport.state = () => "connecting";
       },
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -3943,8 +3947,8 @@ describe("the transport 'connect' event", () => {
       transport.emit("connect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -3962,22 +3966,22 @@ describe("the transport 'connect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
   });
 
@@ -3987,7 +3991,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4029,7 +4033,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4067,8 +4071,8 @@ describe("the transport 'connect' event", () => {
         wrapper.state();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
 
@@ -4077,7 +4081,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4115,8 +4119,8 @@ describe("the transport 'connect' event", () => {
         wrapper.state();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+        ),
       );
     });
   });
@@ -4127,7 +4131,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4169,7 +4173,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4211,7 +4215,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4255,7 +4259,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4297,7 +4301,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4335,8 +4339,8 @@ describe("the transport 'connect' event", () => {
         wrapper.state();
       }).toThrow(
         new Error(
-          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-        )
+          "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+        ),
       );
     });
 
@@ -4345,7 +4349,7 @@ describe("the transport 'connect' event", () => {
         state: () => "disconnected",
         connect: () => {},
         send: () => {},
-        disconnect: () => {}
+        disconnect: () => {},
       });
       const wrapper = transportWrapper(transport);
       transport.connect = () => {
@@ -4390,7 +4394,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     transport.off = () => {
@@ -4411,7 +4415,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4428,8 +4432,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
-      )
+        "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4447,22 +4451,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
     );
   });
 
@@ -4471,7 +4475,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4488,8 +4492,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message", "msg", "JUNK ARG");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
-      )
+        "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4507,22 +4511,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
     );
   });
 
@@ -4531,7 +4535,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4548,8 +4552,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message", 123); // Bad arg
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a non-string argument '123' with a 'message' event."
-      )
+        "TRANSPORT_ERROR: Transport emitted a non-string argument '123' with a 'message' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4567,22 +4571,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a non-string argument '123' with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted a non-string argument '123' with a 'message' event.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a non-string argument '123' with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted a non-string argument '123' with a 'message' event.",
     );
   });
 
@@ -4591,7 +4595,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -4601,8 +4605,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message", "some message");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4619,10 +4623,10 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'.",
     );
   });
 
@@ -4631,7 +4635,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4646,8 +4650,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message", "some message");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'connecting'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'connecting'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4665,22 +4669,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'connecting'."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'connecting'.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'connecting'."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'connecting'.",
     );
   });
 
@@ -4689,7 +4693,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -4714,8 +4718,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message", "some message");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4732,10 +4736,10 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was 'disconnect'.",
     );
   });
 
@@ -4744,7 +4748,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4767,8 +4771,8 @@ describe("the transport 'message' event", () => {
       wrapper.connect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4786,22 +4790,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to connect().",
     );
   });
 
@@ -4810,7 +4814,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4831,8 +4835,8 @@ describe("the transport 'message' event", () => {
       wrapper.send("msg");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4850,22 +4854,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to send().",
     );
   });
 
@@ -4874,7 +4878,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4895,8 +4899,8 @@ describe("the transport 'message' event", () => {
       wrapper.disconnect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4914,22 +4918,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to disconnect().",
     );
   });
 
@@ -4938,7 +4942,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -4958,7 +4962,9 @@ describe("the transport 'message' event", () => {
     expect(() => {
       transport.emit("message", "msg");
     }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an error on call to state().")
+      new Error(
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -4976,20 +4982,20 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe("TRANSPORT_ERROR: Transport threw an error on call to state().");
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
   });
 
@@ -4998,7 +5004,7 @@ describe("the transport 'message' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -5017,8 +5023,8 @@ describe("the transport 'message' event", () => {
       transport.emit("message", "msg");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -5036,22 +5042,22 @@ describe("the transport 'message' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
   });
 
@@ -5062,7 +5068,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5105,7 +5111,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5144,8 +5150,8 @@ describe("the transport 'message' event", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
 
@@ -5154,7 +5160,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5193,8 +5199,8 @@ describe("the transport 'message' event", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
     });
@@ -5205,7 +5211,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5248,7 +5254,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5291,7 +5297,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5336,7 +5342,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5379,7 +5385,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5418,8 +5424,8 @@ describe("the transport 'message' event", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+          ),
         );
       });
 
@@ -5428,7 +5434,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5475,7 +5481,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5519,7 +5525,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5559,8 +5565,8 @@ describe("the transport 'message' event", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
 
@@ -5569,7 +5575,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5609,8 +5615,8 @@ describe("the transport 'message' event", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+          ),
         );
       });
     });
@@ -5621,7 +5627,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5665,7 +5671,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5709,7 +5715,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5755,7 +5761,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5799,7 +5805,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5839,8 +5845,8 @@ describe("the transport 'message' event", () => {
           wrapper.state();
         }).toThrow(
           new Error(
-            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-          )
+            "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+          ),
         );
       });
 
@@ -5849,7 +5855,7 @@ describe("the transport 'message' event", () => {
           state: () => "disconnected",
           connect: () => {},
           send: () => {},
-          disconnect: () => {}
+          disconnect: () => {},
         });
         const wrapper = transportWrapper(transport);
         wrapper.connect();
@@ -5897,7 +5903,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
 
     transport.off = () => {
@@ -5918,7 +5924,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -5933,8 +5939,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect", new Error(), "JUNK ARG");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event."
-      )
+        "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -5952,22 +5958,22 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event."
+      "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event."
+      "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event.",
     );
   });
 
@@ -5976,7 +5982,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -5991,8 +5997,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect", undefined); // Bad arg
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a non-Error argument 'undefined' with a 'disconnect' event."
-      )
+        "TRANSPORT_ERROR: Transport emitted a non-Error argument 'undefined' with a 'disconnect' event.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6010,22 +6016,22 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a non-Error argument 'undefined' with a 'disconnect' event."
+      "TRANSPORT_ERROR: Transport emitted a non-Error argument 'undefined' with a 'disconnect' event.",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a non-Error argument 'undefined' with a 'disconnect' event."
+      "TRANSPORT_ERROR: Transport emitted a non-Error argument 'undefined' with a 'disconnect' event.",
     );
   });
 
@@ -6034,7 +6040,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -6044,8 +6050,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6062,10 +6068,10 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.",
     );
   });
 
@@ -6074,7 +6080,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -6098,8 +6104,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6116,10 +6122,10 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls.length).toBe(0);
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.",
     );
   });
 
@@ -6128,7 +6134,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -6149,8 +6155,8 @@ describe("the transport 'disconnect' event", () => {
       wrapper.connect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6168,22 +6174,22 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to connect().",
     );
   });
 
@@ -6192,7 +6198,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -6213,8 +6219,8 @@ describe("the transport 'disconnect' event", () => {
       wrapper.send("msg");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6232,22 +6238,22 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to send().",
     );
   });
 
@@ -6256,7 +6262,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -6276,8 +6282,8 @@ describe("the transport 'disconnect' event", () => {
       wrapper.disconnect();
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6295,22 +6301,22 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to disconnect().",
     );
   });
 
@@ -6319,7 +6325,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
     wrapper.connect();
@@ -6338,8 +6344,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6357,22 +6363,22 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
     );
   });
 
@@ -6385,7 +6391,7 @@ describe("the transport 'disconnect' event", () => {
       send: () => {},
       disconnect: () => {
         transport.state = () => "disconnected";
-      }
+      },
     });
     const wrapper = transportWrapper(transport);
 
@@ -6407,8 +6413,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
-      )
+        "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6429,32 +6435,32 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "ERROR_ONE: ..."
+      "ERROR_ONE: ...",
     );
     expect(wrapperListener.disconnect.mock.calls[1].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[1][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[1][0].message).toBe(
-      "ERROR_TWO: ..."
+      "ERROR_TWO: ...",
     );
     expect(wrapperListener.disconnect.mock.calls[2].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[2][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[2][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[2][0].transportError
+      wrapperListener.disconnect.mock.calls[2][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[2][0].transportError.message
+      wrapperListener.disconnect.mock.calls[2][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
     );
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
     );
   });
 
@@ -6463,7 +6469,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -6489,7 +6495,9 @@ describe("the transport 'disconnect' event", () => {
     expect(() => {
       transport.emit("disconnect");
     }).toThrow(
-      new Error("TRANSPORT_ERROR: Transport threw an error on call to state().")
+      new Error(
+        "TRANSPORT_ERROR: Transport threw an error on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6507,20 +6515,20 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe("TRANSPORT_ERROR: Transport threw an error on call to state().");
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport threw an error on call to state()."
+      "TRANSPORT_ERROR: Transport threw an error on call to state().",
     );
   });
 
@@ -6529,7 +6537,7 @@ describe("the transport 'disconnect' event", () => {
       state: () => "disconnected",
       connect: () => {},
       send: () => {},
-      disconnect: () => {}
+      disconnect: () => {},
     });
     const wrapper = transportWrapper(transport);
 
@@ -6554,8 +6562,8 @@ describe("the transport 'disconnect' event", () => {
       transport.emit("disconnect");
     }).toThrow(
       new Error(
-        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
-      )
+        "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
+      ),
     );
 
     expect(wrapperListener.connecting.mock.calls.length).toBe(0);
@@ -6573,23 +6581,23 @@ describe("the transport 'disconnect' event", () => {
     expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
     expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-      "DESTROYED: The transport violated a library requirement."
+      "DESTROYED: The transport violated a library requirement.",
     );
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError
+      wrapperListener.disconnect.mock.calls[0][0].transportError,
     ).toBeInstanceOf(Error);
     expect(
-      wrapperListener.disconnect.mock.calls[0][0].transportError.message
+      wrapperListener.disconnect.mock.calls[0][0].transportError.message,
     ).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
 
     expect(wrapperListener.transportError.mock.calls.length).toBe(1);
     expect(wrapperListener.transportError.mock.calls[0][0]).toBeInstanceOf(
-      Error
+      Error,
     );
     expect(wrapperListener.transportError.mock.calls[0][0].message).toBe(
-      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state()."
+      "TRANSPORT_ERROR: Transport returned invalid state 'bad_state' on call to state().",
     );
   });
 
@@ -6603,7 +6611,7 @@ describe("the transport 'disconnect' event", () => {
             send: () => {},
             disconnect: () => {
               transport.state = () => "disconnected";
-            }
+            },
           });
           const wrapper = transportWrapper(transport);
 
@@ -6636,16 +6644,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -6659,7 +6667,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -6692,16 +6700,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -6711,8 +6719,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -6721,7 +6729,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -6754,16 +6762,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -6773,8 +6781,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -6785,7 +6793,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -6825,16 +6833,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -6848,7 +6856,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -6888,16 +6896,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -6911,7 +6919,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -6951,16 +6959,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -6976,7 +6984,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7016,16 +7024,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7039,7 +7047,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7079,16 +7087,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7098,8 +7106,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -7108,7 +7116,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7148,16 +7156,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7175,7 +7183,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7209,16 +7217,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7232,7 +7240,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7266,16 +7274,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7285,8 +7293,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -7295,7 +7303,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7329,16 +7337,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7348,8 +7356,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -7360,7 +7368,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7401,16 +7409,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7424,7 +7432,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7465,16 +7473,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7488,7 +7496,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7529,16 +7537,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7554,7 +7562,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7595,16 +7603,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7618,7 +7626,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7659,16 +7667,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7678,8 +7686,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -7688,7 +7696,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7729,16 +7737,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7756,7 +7764,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7791,16 +7799,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7814,7 +7822,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7849,16 +7857,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7868,8 +7876,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -7878,7 +7886,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7913,16 +7921,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -7932,8 +7940,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -7944,7 +7952,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -7986,16 +7994,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8009,7 +8017,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8051,16 +8059,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8074,7 +8082,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8116,16 +8124,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8141,7 +8149,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8183,16 +8191,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8206,7 +8214,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8248,16 +8256,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8267,8 +8275,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -8277,7 +8285,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8319,16 +8327,16 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "TRANSPORT_FAILURE: The transport connection failed."
+            "TRANSPORT_FAILURE: The transport connection failed.",
           );
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError
+            wrapperListener.disconnect.mock.calls[0][0].transportError,
           ).toBeInstanceOf(Error);
           expect(
-            wrapperListener.disconnect.mock.calls[0][0].transportError.message
+            wrapperListener.disconnect.mock.calls[0][0].transportError.message,
           ).toBe("SOME_ERROR: ...");
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8350,7 +8358,7 @@ describe("the transport 'disconnect' event", () => {
             send: () => {},
             disconnect: () => {
               transport.state = () => "disconnected";
-            }
+            },
           });
           const wrapper = transportWrapper(transport);
 
@@ -8386,10 +8394,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8403,7 +8411,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8439,10 +8447,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8452,8 +8460,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -8462,7 +8470,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8498,10 +8506,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8511,8 +8519,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -8523,7 +8531,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8564,10 +8572,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8581,7 +8589,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8622,10 +8630,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8639,7 +8647,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8680,10 +8688,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8699,7 +8707,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8740,10 +8748,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8757,7 +8765,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8798,10 +8806,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8811,8 +8819,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -8821,7 +8829,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8862,10 +8870,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8883,7 +8891,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8920,10 +8928,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8937,7 +8945,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -8974,10 +8982,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -8987,8 +8995,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -8997,7 +9005,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9034,10 +9042,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9047,8 +9055,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -9059,7 +9067,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9101,10 +9109,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9118,7 +9126,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9160,10 +9168,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9177,7 +9185,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9219,10 +9227,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9238,7 +9246,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9280,10 +9288,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9297,7 +9305,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9339,10 +9347,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9352,8 +9360,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -9362,7 +9370,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9404,10 +9412,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9425,7 +9433,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9463,10 +9471,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9480,7 +9488,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9518,10 +9526,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9531,8 +9539,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -9541,7 +9549,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9579,10 +9587,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9592,8 +9600,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -9604,7 +9612,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9647,10 +9655,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9664,7 +9672,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9707,10 +9715,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9724,7 +9732,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9767,10 +9775,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9786,7 +9794,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9829,10 +9837,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9846,7 +9854,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9889,10 +9897,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9902,8 +9910,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -9912,7 +9920,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -9955,10 +9963,10 @@ describe("the transport 'disconnect' event", () => {
           expect(wrapperListener.disconnect.mock.calls.length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0].length).toBe(1);
           expect(wrapperListener.disconnect.mock.calls[0][0]).toBeInstanceOf(
-            Error
+            Error,
           );
           expect(wrapperListener.disconnect.mock.calls[0][0].message).toBe(
-            "SOME_ERROR: ..."
+            "SOME_ERROR: ...",
           );
           expect(wrapperListener.transportError.mock.calls.length).toBe(0);
 
@@ -9980,7 +9988,7 @@ describe("the transport 'disconnect' event", () => {
             send: () => {},
             disconnect: () => {
               transport.state = () => "disconnected";
-            }
+            },
           });
           const wrapper = transportWrapper(transport);
 
@@ -10027,7 +10035,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10070,8 +10078,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -10080,7 +10088,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10123,8 +10131,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -10135,7 +10143,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10187,7 +10195,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10239,7 +10247,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10293,7 +10301,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10345,7 +10353,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10393,8 +10401,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -10403,7 +10411,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10459,7 +10467,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10507,7 +10515,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10551,8 +10559,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -10561,7 +10569,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10605,8 +10613,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -10617,7 +10625,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10670,7 +10678,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10723,7 +10731,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10778,7 +10786,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10831,7 +10839,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10880,8 +10888,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -10890,7 +10898,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10947,7 +10955,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -10996,7 +11004,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11041,8 +11049,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
 
@@ -11051,7 +11059,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11096,8 +11104,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connected' on call to state() when 'disconnected' was expected.",
+            ),
           );
         });
       });
@@ -11108,7 +11116,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11162,7 +11170,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11216,7 +11224,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11272,7 +11280,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11326,7 +11334,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 
@@ -11376,8 +11384,8 @@ describe("the transport 'disconnect' event", () => {
             wrapper.state();
           }).toThrow(
             new Error(
-              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected."
-            )
+              "TRANSPORT_ERROR: Transport returned state 'connecting' on call to state() when 'disconnected' or 'connected' was expected.",
+            ),
           );
         });
 
@@ -11386,7 +11394,7 @@ describe("the transport 'disconnect' event", () => {
             state: () => "disconnected",
             connect: () => {},
             send: () => {},
-            disconnect: () => {}
+            disconnect: () => {},
           });
           const wrapper = transportWrapper(transport);
 

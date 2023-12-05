@@ -18,7 +18,7 @@ export default function defer(cb, ...args) {
     .then(() => {
       cb(...args);
     })
-    .catch(err => {
+    .catch((err) => {
       setTimeout(() => {
         throw err;
       }, 0);

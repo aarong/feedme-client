@@ -27,13 +27,13 @@ import targets from "../targets";
     if (
       _.includes(
         ["sauce-automatic", "sauce-automatic-hanging", "sauce-live", "local"],
-        process.argv[2].toLowerCase()
+        process.argv[2].toLowerCase(),
       )
     ) {
       mode = process.argv[2].toLowerCase();
     } else {
       throw new Error(
-        "INVALID_ARGUMENT: Mode must be local, sauce-live, sauce-automatic (default), or sauce-automatic-hanging."
+        "INVALID_ARGUMENT: Mode must be local, sauce-live, sauce-automatic (default), or sauce-automatic-hanging.",
       );
     }
   }
@@ -44,7 +44,7 @@ import targets from "../targets";
     (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY)
   ) {
     throw new Error(
-      "NO_CREDENTIALS: The SAUCE_USERNAME or SAUCE_ACCESS_KEY environmental variable is missing."
+      "NO_CREDENTIALS: The SAUCE_USERNAME or SAUCE_ACCESS_KEY environmental variable is missing.",
     );
   }
 
@@ -204,7 +204,7 @@ import targets from "../targets";
     // Sauce has Firefox 4+
     // Receiving feedmeClient not defined with no console errors to 21
     ["Linux", "Firefox", "22"],
-    ["Linux", "Firefox", "latest"]
+    ["Linux", "Firefox", "latest"],
   ];
 
   // The following platforms test successfully on sauce, judging by the video,
@@ -261,7 +261,7 @@ import targets from "../targets";
     ["macOS 10.12", "Firefox", "latest"],
 
     ["macOS 10.12", "Safari", "10"],
-    ["macOS 10.12", "Safari", "11"]
+    ["macOS 10.12", "Safari", "11"],
   ];
 
   // Retrieve an array of test files
@@ -282,7 +282,7 @@ import targets from "../targets";
             test: /\.js$/,
             exclude: [
               /\bnode_modules[\\/]{1}core-js\b/,
-              /\bnode_modules[\\/]{1}webpack\b/
+              /\bnode_modules[\\/]{1}webpack\b/,
             ],
             use: {
               loader: "babel-loader",
@@ -297,30 +297,30 @@ import targets from "../targets";
                       useBuiltIns: "usage",
                       corejs: {
                         version: "3",
-                        proposals: true
+                        proposals: true,
                       },
-                      targets: targets.browsers
+                      targets: targets.browsers,
                       // debug: true
-                    }
-                  ]
-                ]
-              }
-            }
-          }
-        ]
+                    },
+                  ],
+                ],
+              },
+            },
+          },
+        ],
       },
       output: {
         filename: "tests.js",
-        path: path.resolve(__dirname, "webroot")
+        path: path.resolve(__dirname, "webroot"),
       },
       optimization: {
-        minimize: false
+        minimize: false,
       },
       devtool: "source-map",
       performance: {
         maxAssetSize: 1000000,
-        maxEntrypointSize: 1000000
-      }
+        maxEntrypointSize: 1000000,
+      },
       // stats: "verbose"
     });
   } catch (e) {
@@ -342,18 +342,18 @@ import targets from "../targets";
   // Note that Node 6 does not have fs.copyFile()
   console.log("Copying browser bundle and sourcemaps...");
   const bundle = await promisify(fs.readFile)(
-    `${__dirname}/../build/bundle.withmaps.js`
+    `${__dirname}/../build/bundle.withmaps.js`,
   );
   await promisify(fs.writeFile)(
     `${__dirname}/webroot/bundle.withmaps.js`,
-    bundle
+    bundle,
   );
   const maps = await promisify(fs.readFile)(
-    `${__dirname}/../build/bundle.withmaps.js.map`
+    `${__dirname}/../build/bundle.withmaps.js.map`,
   );
   await promisify(fs.writeFile)(
     `${__dirname}/webroot/bundle.withmaps.js.map`,
-    maps
+    maps,
   );
 
   // Start the local webserver (adapted from Jasmine-standalone)
@@ -361,7 +361,7 @@ import targets from "../targets";
   const e = express();
   e.use("/", express.static(`${__dirname}/webroot`));
   const webserver = e.listen(port);
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     webserver.on("listening", resolve);
   });
   console.log(`Local server started on http://localhost:${port}`);
@@ -379,7 +379,7 @@ import targets from "../targets";
     console.log("Starting Sauce Connect proxy...");
     sauceConnectProcess = await promisify(sauceConnectLauncher)({
       tunnelIdentifier: sauceTunnelId,
-      logFile: null
+      logFile: null,
     });
     console.log("Sauce Connect proxy started.");
   }
@@ -396,7 +396,7 @@ import targets from "../targets";
     method: "POST",
     auth: {
       username: process.env.SAUCE_USERNAME,
-      password: process.env.SAUCE_ACCESS_KEY
+      password: process.env.SAUCE_ACCESS_KEY,
     },
     json: true,
     body: {
@@ -407,8 +407,8 @@ import targets from "../targets";
           ? saucePlatformsHanging
           : saucePlatforms,
       maxDuration: 90, // Seconds/platform; kill hanging tests quickly or they won't all run before global timeout
-      "tunnel-identifier": sauceTunnelId
-    }
+      "tunnel-identifier": sauceTunnelId,
+    },
   });
 
   // Process REST API results
@@ -431,10 +431,10 @@ import targets from "../targets";
       method: "POST",
       auth: {
         username: process.env.SAUCE_USERNAME,
-        password: process.env.SAUCE_ACCESS_KEY
+        password: process.env.SAUCE_ACCESS_KEY,
       },
       json: true,
-      body: sauceTests // From the above API call
+      body: sauceTests, // From the above API call
     });
 
     if (response2.statusCode !== 200) {
@@ -442,12 +442,12 @@ import targets from "../targets";
       throw response2.body; // Use body as error (printed)
     } else if (!response2.body.completed) {
       console.log("Sauce API indicated tests not completed. Polling again...");
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      // eslint-disable-next-line
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
     } else {
       sauceResults = response2.body["js tests"];
     }
-  } while (!sauceResults); // eslint-disable-line no-constant-conditions
+  } while (!sauceResults);
 
   // Process and display the test results
   let allPassed = true;
@@ -470,7 +470,7 @@ import targets from "../targets";
       console.log(
         `FAILED ${platformName} passed ${
           platformResult ? platformResult.passed : "???"
-        }/${platformResult ? platformResult.total : "???"} tests`
+        }/${platformResult ? platformResult.total : "???"} tests`,
       );
       console.log(`       ${platformUrl}`);
       // Print failed tests

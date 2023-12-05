@@ -11,7 +11,7 @@ Instead, run this script using babel-node.
 */
 
 // Throw on unhandled Promise rejections so that the script fails
-process.on("unhandledRejection", err => {
+process.on("unhandledRejection", (err) => {
   throw err;
 });
 
@@ -23,14 +23,14 @@ process.on("unhandledRejection", err => {
     spec_dir: path.join(__dirname, "tests"),
     spec_files: [`${__dirname}/tests/**/*.test.js`],
     random: false,
-    stopSpecOnExpectationFailure: true
+    stopSpecOnExpectationFailure: true,
   });
   jasmine.execute();
 
   // Await completion
   console.log("Awaiting completion...");
-  const passed = await new Promise(resolve => {
-    jasmine.onComplete(iPassed => {
+  const passed = await new Promise((resolve) => {
+    jasmine.onComplete((iPassed) => {
       resolve(iPassed);
     });
   });

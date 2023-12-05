@@ -104,7 +104,7 @@ export default function transportWrapperFactory(transport) {
     !check.function(transport.disconnect)
   ) {
     throw new Error(
-      "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect()."
+      "TRANSPORT_ERROR: Transport does not implement state(), connect(), send(), or disconnect().",
     );
   }
 
@@ -115,7 +115,7 @@ export default function transportWrapperFactory(transport) {
     !check.function(transport.addEventListener)
   ) {
     throw new Error(
-      "TRANSPORT_ERROR: Transport does not implement on(), addListener(), or addEventListener()."
+      "TRANSPORT_ERROR: Transport does not implement on(), addListener(), or addEventListener().",
     );
   }
   if (
@@ -124,7 +124,7 @@ export default function transportWrapperFactory(transport) {
     !check.function(transport.removeEventListener)
   ) {
     throw new Error(
-      "TRANSPORT_ERROR: Transport does not implement off(), removeListener(), or removeEventListener()."
+      "TRANSPORT_ERROR: Transport does not implement off(), removeListener(), or removeEventListener().",
     );
   }
 
@@ -224,14 +224,12 @@ export default function transportWrapperFactory(transport) {
    * @type {Object}
    */
   transportWrapper._listeners = {
-    connecting: transportWrapper._processTransportConnecting.bind(
-      transportWrapper
-    ),
+    connecting:
+      transportWrapper._processTransportConnecting.bind(transportWrapper),
     connect: transportWrapper._processTransportConnect.bind(transportWrapper),
     message: transportWrapper._processTransportMessage.bind(transportWrapper),
-    disconnect: transportWrapper._processTransportDisconnect.bind(
-      transportWrapper
-    )
+    disconnect:
+      transportWrapper._processTransportDisconnect.bind(transportWrapper),
   };
 
   // Try to listen for transport events
@@ -249,7 +247,7 @@ export default function transportWrapperFactory(transport) {
     });
   } catch (e) {
     const err = Error(
-      "TRANSPORT_ERROR: Transport threw an error when subscribing event listeners."
+      "TRANSPORT_ERROR: Transport threw an error when subscribing event listeners.",
     );
     err.transportError = e;
     throw err;
@@ -321,7 +319,7 @@ proto.state = function state() {
     transportState !== "connected"
   ) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state().`
+      `TRANSPORT_ERROR: Transport returned invalid state '${transportState}' on call to state().`,
     );
     this._destroy(err);
     throw err;
@@ -331,7 +329,7 @@ proto.state = function state() {
   if (!_includes(this._permittedStates, transportState)) {
     const permittedStates = `'${this._permittedStates.join("' or '")}'`;
     const err = new Error(
-      `TRANSPORT_ERROR: Transport returned state '${transportState}' on call to state() when ${permittedStates} was expected.`
+      `TRANSPORT_ERROR: Transport returned state '${transportState}' on call to state() when ${permittedStates} was expected.`,
     );
     this._destroy(err);
     throw err;
@@ -354,7 +352,7 @@ proto.state = function state() {
     this._permittedStatesAfterDefer = [
       "disconnected",
       "connecting",
-      "connected"
+      "connected",
     ];
   } else if (transportState === "connected") {
     this._permittedStatesAfterDefer = ["disconnected", "connected"];
@@ -519,7 +517,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
   // Were the emission arguments valid?
   if (args.length > 0) {
     const err = new Error(
-      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connecting' event.",
     );
     this._destroy(err);
     throw err;
@@ -528,7 +526,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
   // Is the emission sequence valid?
   if (this._lastEmission !== "disconnect") {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'connecting' event following a '${this._lastEmission}' emission.`
+      `TRANSPORT_ERROR: Transport emitted a 'connecting' event following a '${this._lastEmission}' emission.`,
     );
     this._destroy(err);
     throw err;
@@ -537,7 +535,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to ${this._methodRunning}().`
+      `TRANSPORT_ERROR: Transport emitted a 'connecting' event synchronously within a call to ${this._methodRunning}().`,
     );
     this._destroy(err);
     throw err;
@@ -546,7 +544,7 @@ proto._processTransportConnecting = function _processTransportConnecting(
   // Did the library call transport.connect()?
   if (this._connectCalls === 0) {
     const err = new Error(
-      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect()."
+      "TRANSPORT_ERROR: Transport emitted a 'connecting' event without a library call to connect().",
     );
     this._destroy(err);
     throw err;
@@ -583,7 +581,7 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
   // Were the emission arguments valid?
   if (args.length > 0) {
     const err = new Error(
-      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event."
+      "TRANSPORT_ERROR: Transport passed one or more extraneous arguments with a 'connect' event.",
     );
     this._destroy(err);
     throw err;
@@ -592,7 +590,7 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
   // Is the emission sequence valid?
   if (this._lastEmission !== "connecting") {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was '${this._lastEmission}'.`
+      `TRANSPORT_ERROR: Transport emitted a 'connect' event when the previous emission was '${this._lastEmission}'.`,
     );
     this._destroy(err);
     throw err;
@@ -601,7 +599,7 @@ proto._processTransportConnect = function _processTransportConnect(...args) {
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to ${this._methodRunning}().`
+      `TRANSPORT_ERROR: Transport emitted a 'connect' event synchronously within a call to ${this._methodRunning}().`,
     );
     this._destroy(err);
     throw err;
@@ -637,7 +635,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // Valid arguments?
   if (args.length !== 1) {
     const err = new Error(
-      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event."
+      "TRANSPORT_ERROR: Transport emitted an invalid number of arguments with a 'message' event.",
     );
     this._destroy(err);
     throw err;
@@ -646,7 +644,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // String argument?
   if (!check.string(args[0])) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a non-string argument '${args[0]}' with a 'message' event.`
+      `TRANSPORT_ERROR: Transport emitted a non-string argument '${args[0]}' with a 'message' event.`,
     );
     this._destroy(err);
     throw err;
@@ -655,7 +653,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // Is the emission sequence valid?
   if (this._lastEmission !== "connect" && this._lastEmission !== "message") {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was '${this._lastEmission}'.`
+      `TRANSPORT_ERROR: Transport emitted a 'message' event when the previous emission was '${this._lastEmission}'.`,
     );
     this._destroy(err);
     throw err;
@@ -664,7 +662,7 @@ proto._processTransportMessage = function _processTransportMessage(...args) {
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to ${this._methodRunning}().`
+      `TRANSPORT_ERROR: Transport emitted a 'message' event synchronously within a call to ${this._methodRunning}().`,
     );
     this._destroy(err);
     throw err;
@@ -702,7 +700,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Valid arguments?
   if (args.length > 1) {
     const err = new Error(
-      "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event."
+      "TRANSPORT_ERROR: Transport emitted one or more extraneous arguments with a 'disconnect' event.",
     );
     this._destroy(err);
     throw err;
@@ -711,7 +709,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Error valid if specified?
   if (args.length === 1 && !check.instance(args[0], Error)) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a non-Error argument '${args[0]}' with a 'disconnect' event.`
+      `TRANSPORT_ERROR: Transport emitted a non-Error argument '${args[0]}' with a 'disconnect' event.`,
     );
     this._destroy(err);
     throw err;
@@ -720,7 +718,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Is the emission sequence valid?
   if (this._lastEmission === "disconnect") {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.`
+      `TRANSPORT_ERROR: Transport emitted a 'disconnect' event when the previous emission was 'disconnect'.`,
     );
     this._destroy(err);
     throw err;
@@ -729,7 +727,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // Is the event being emitted synchronously within a method call?
   if (this._methodRunning !== null) {
     const err = new Error(
-      `TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to ${this._methodRunning}().`
+      `TRANSPORT_ERROR: Transport emitted a 'disconnect' event synchronously within a call to ${this._methodRunning}().`,
     );
     this._destroy(err);
     throw err;
@@ -739,7 +737,7 @@ proto._processTransportDisconnect = function _processTransportDisconnect(
   // That is, there must have been a call to transport.disconnect()
   if (args.length === 0 && this._disconnectCalls.length === 0) {
     const err = new Error(
-      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect()."
+      "TRANSPORT_ERROR: Transport emitted a 'disconnect' event with no error argument without a library call disconnect().",
     );
     this._destroy(err);
     throw err;
@@ -796,7 +794,7 @@ proto._runTransportMethod = function _runTransportMethod(method, ...args) {
       throw e;
     } else {
       const err = new Error(
-        `TRANSPORT_ERROR: Transport threw an error on call to ${method}().`
+        `TRANSPORT_ERROR: Transport threw an error on call to ${method}().`,
       );
       err.transportError = e;
       this._destroy(err);
@@ -869,7 +867,7 @@ proto._destroy = function _destroy(transportError) {
     let err;
     if (transportError) {
       err = new Error(
-        "DESTROYED: The transport violated a library requirement."
+        "DESTROYED: The transport violated a library requirement.",
       );
       err.transportError = transportError;
     } else {

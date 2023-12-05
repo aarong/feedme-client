@@ -39,9 +39,9 @@ function clientWrapperFactory(clientSync) {
     "disconnect",
     "badServerMessage",
     "badClientMessage",
-    "transportError"
+    "transportError",
   ];
-  evts.forEach(evt => {
+  evts.forEach((evt) => {
     clientWrapper._clientSync.on(evt, (...args) => {
       defer(clientWrapper.emit.bind(clientWrapper), evt, ...args);
     });
@@ -117,7 +117,7 @@ function feedWrapperFactory(feedSync) {
 
   // Relay FeedSync events - defer and queue
   const evts = ["opening", "open", "close", "action"];
-  evts.forEach(evt => {
+  evts.forEach((evt) => {
     feedWrapper._feedSync.on(evt, (...eargs) => {
       defer(feedWrapper.emit.bind(feedWrapper), evt, ...eargs);
     });
@@ -196,7 +196,7 @@ function feedWrapperFactory(feedSync) {
  * @instance
  */
 
-["state", "connect", "disconnect", "destroy", "destroyed"].forEach(method => {
+["state", "connect", "disconnect", "destroy", "destroyed"].forEach((method) => {
   clientWrapperProto[method] = function callMethod(...args) {
     return this._clientSync[method](...args);
   };
@@ -226,10 +226,10 @@ clientWrapperProto.action = function action(...args) {
   if (callback) {
     // Callback responses must be deferred explicitly as microtasks
     promise = undefined;
-    resolve = actionData => {
+    resolve = (actionData) => {
       defer(callback, undefined, actionData);
     };
-    reject = err => {
+    reject = (err) => {
       defer(callback, err);
     };
   } else {
@@ -321,8 +321,8 @@ clientWrapperProto.feed = function feed(...args) {
   "state",
   "data",
   "destroy",
-  "destroyed"
-].forEach(method => {
+  "destroyed",
+].forEach((method) => {
   feedWrapperProto[method] = function callMethod(...args) {
     return this._feedSync[method](...args);
   };

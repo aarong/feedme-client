@@ -13,6 +13,6 @@ export default {
     feedTimeoutMs: 10000,
     reconnect: true,
     reopenMaxAttempts: 3,
-    reopenTrailingMs: 60000
-  }
+    reopenTrailingMs: 60000,
+  },
 };

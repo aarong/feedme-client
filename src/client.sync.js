@@ -230,7 +230,7 @@ function clientSyncFactory(options) {
       check.negative(options.connectRetryMaxAttempts))
   ) {
     throw new Error(
-      "INVALID_ARGUMENT: Invalid options.connectRetryMaxAttempts."
+      "INVALID_ARGUMENT: Invalid options.connectRetryMaxAttempts.",
     );
   }
 
@@ -393,39 +393,39 @@ function clientSyncFactory(options) {
   // Listen for session events
   clientSync._sessionWrapper.on(
     "connecting",
-    clientSync._processConnecting.bind(clientSync)
+    clientSync._processConnecting.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "connect",
-    clientSync._processConnect.bind(clientSync)
+    clientSync._processConnect.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "disconnect",
-    clientSync._processDisconnect.bind(clientSync)
+    clientSync._processDisconnect.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "feedAction",
-    clientSync._processFeedAction.bind(clientSync)
+    clientSync._processFeedAction.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "unexpectedFeedClosing",
-    clientSync._processUnexpectedFeedClosing.bind(clientSync)
+    clientSync._processUnexpectedFeedClosing.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "unexpectedFeedClosed",
-    clientSync._processUnexpectedFeedClosed.bind(clientSync)
+    clientSync._processUnexpectedFeedClosed.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "badServerMessage",
-    clientSync._processBadServerMessage.bind(clientSync)
+    clientSync._processBadServerMessage.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "badClientMessage",
-    clientSync._processBadClientMessage.bind(clientSync)
+    clientSync._processBadClientMessage.bind(clientSync),
   );
   clientSync._sessionWrapper.on(
     "transportError",
-    clientSync._processTransportError.bind(clientSync)
+    clientSync._processTransportError.bind(clientSync),
   );
 
   return clientSync;
@@ -753,7 +753,7 @@ protoClientSync.action = function action(name, args, callback) {
   }
   if (!jsonExpressible(args)) {
     throw new Error(
-      "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
+      "INVALID_ARGUMENT: Action arguments must be JSON-expressible.",
     );
   }
 
@@ -779,7 +779,7 @@ protoClientSync.action = function action(name, args, callback) {
     // Timer not set if actionTimeoutMs === 0
     if (timer || this._options.actionTimeoutMs === 0) {
       dbgClient(
-        "Received pre-timeout action callback from session - calling back."
+        "Received pre-timeout action callback from session - calling back.",
       );
       if (timer) {
         dbgClient("Action timeout timer cleared");
@@ -792,7 +792,7 @@ protoClientSync.action = function action(name, args, callback) {
       }
     } else {
       dbgClient(
-        "Received post-timeout action callback from session - discarding."
+        "Received post-timeout action callback from session - discarding.",
       );
     }
   });
@@ -804,7 +804,7 @@ protoClientSync.action = function action(name, args, callback) {
       dbgClient("Action timeout timer fired");
       timer = null; // Mark fired
       const err = new Error(
-        "TIMEOUT: The server did not respond within the allocated time."
+        "TIMEOUT: The server did not respond within the allocated time.",
       );
       callback(err);
     }, this._options.actionTimeoutMs);
@@ -866,15 +866,15 @@ protoClientSync.destroy = function destroy() {
   // Desire all feeds closed and destroy all feeds
   // Do not destroy the feeds as you iterate through the array (removes from array)
   const appFeeds = [];
-  _each(this._appFeeds, arr => {
-    _each(arr, appFeed => {
+  _each(this._appFeeds, (arr) => {
+    _each(arr, (appFeed) => {
       if (appFeed._desiredState === "open") {
         this._appFeedDesireClosed(appFeed);
       }
       appFeeds.push(appFeed);
     });
   });
-  _each(appFeeds, appFeed => {
+  _each(appFeeds, (appFeed) => {
     appFeed.destroy();
   });
 };
@@ -908,7 +908,7 @@ protoClientSync._processConnecting = function _processConnecting() {
       // Can't guarantee session state due to event deferral (handlers clear timers)
       if (this._sessionWrapper.state() === "connecting") {
         this._sessionWrapper.disconnect(
-          new Error("TIMEOUT: The connection attempt timed out.")
+          new Error("TIMEOUT: The connection attempt timed out."),
         );
       }
     }, this._options.connectTimeoutMs);
@@ -981,7 +981,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
   // Reset feed reopen counts/timers
   // Other timers are reset on action/feedOpen callbacks
   this._reopenCounts = {};
-  _each(this._reopenTimers, tmr => {
+  _each(this._reopenTimers, (tmr) => {
     dbgClient("Feed re-open counter timer cleared");
     clearTimeout(tmr);
   });
@@ -1000,7 +1000,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     const feedNameArgs = FeedNameArgs(ser);
     this._informServerFeedClosed(
       feedNameArgs,
-      Error("NOT_CONNECTED: The client disconnected.")
+      Error("NOT_CONNECTED: The client disconnected."),
     );
   });
 
@@ -1027,7 +1027,7 @@ protoClientSync._processDisconnect = function _processDisconnect(err) {
     const retryMs = Math.min(
       this._options.connectRetryMs +
         this._connectRetryCount * this._options.connectRetryBackoffMs,
-      this._options.connectRetryMaxMs
+      this._options.connectRetryMaxMs,
     ); // May be zero
     this._connectRetryCount += 1;
     dbgClient("Connection retry timer created");
@@ -1075,7 +1075,7 @@ protoClientSync._processFeedAction = function _processFeedAction(
   actionName,
   actionData,
   newFeedData,
-  oldFeedData
+  oldFeedData,
 ) {
   dbgClient("Observed session feedAction event");
 
@@ -1084,7 +1084,7 @@ protoClientSync._processFeedAction = function _processFeedAction(
     actionName,
     actionData,
     newFeedData,
-    oldFeedData
+    oldFeedData,
   );
 };
 
@@ -1096,14 +1096,12 @@ protoClientSync._processFeedAction = function _processFeedAction(
  * @param {FeedNameARgs} feedNameArgs
  * @param {Error} err Passed through from session
  */
-protoClientSync._processUnexpectedFeedClosing = function _processUnexpectedFeedClosing(
-  feedNameArgs,
-  err
-) {
-  dbgClient("Observed session unexpectedFeedClosing event");
+protoClientSync._processUnexpectedFeedClosing =
+  function _processUnexpectedFeedClosing(feedNameArgs, err) {
+    dbgClient("Observed session unexpectedFeedClosing event");
 
-  this._informServerFeedClosing(feedNameArgs, err);
-};
+    this._informServerFeedClosing(feedNameArgs, err);
+  };
 
 /**
  * Processes a session unexpectedFeedClosed event.
@@ -1113,60 +1111,58 @@ protoClientSync._processUnexpectedFeedClosing = function _processUnexpectedFeedC
  * @param {FeedNameArgs} feedNameArgs
  * @param {Error} err Passed through from session
  */
-protoClientSync._processUnexpectedFeedClosed = function _processUnexpectedFeedClosed(
-  feedNameArgs,
-  err
-) {
-  dbgClient("Observed session unexpectedFeedClosed event");
+protoClientSync._processUnexpectedFeedClosed =
+  function _processUnexpectedFeedClosed(feedNameArgs, err) {
+    dbgClient("Observed session unexpectedFeedClosed event");
 
-  // Inform the app
-  this._informServerFeedClosed(feedNameArgs, err);
+    // Inform the app
+    this._informServerFeedClosed(feedNameArgs, err);
 
-  // Consider reopening on bad feed action notification
-  if (_startsWith(err.message, "BAD_FEED_ACTION:")) {
-    if (this._options.reopenMaxAttempts < 0) {
-      // If there is no limit on reopens then reopen and don't track attempts
-      this._considerFeedState(feedNameArgs);
-    } else {
-      // There is a limit on reopen attempts
+    // Consider reopening on bad feed action notification
+    if (_startsWith(err.message, "BAD_FEED_ACTION:")) {
+      if (this._options.reopenMaxAttempts < 0) {
+        // If there is no limit on reopens then reopen and don't track attempts
+        this._considerFeedState(feedNameArgs);
+      } else {
+        // There is a limit on reopen attempts
 
-      // Get the current reopen count
-      const feedSerial = feedNameArgs.serial();
-      const reopenCount = this._reopenCounts[feedSerial] || 0;
+        // Get the current reopen count
+        const feedSerial = feedNameArgs.serial();
+        const reopenCount = this._reopenCounts[feedSerial] || 0;
 
-      // Reopen the feed if the limit isn't breached
-      // reopenMaxAttempts could be zero or positive
-      if (reopenCount < this._options.reopenMaxAttempts) {
-        this._reopenCounts[feedSerial] = reopenCount + 1;
-        // Decrement after trailingMs (track reopens forever if trailingMs is 0)
-        if (this._options.reopenTrailingMs > 0) {
-          dbgClient("Feed re-open counter timer created");
-          const timer = setTimeout(() => {
-            dbgClient("Feed re-open counter timer fired");
-            // Decrement the reopen counter and stop tracking the timer
-            this._reopenCounts[feedSerial] -= 1;
-            _pull(this._reopenTimers, timer);
+        // Reopen the feed if the limit isn't breached
+        // reopenMaxAttempts could be zero or positive
+        if (reopenCount < this._options.reopenMaxAttempts) {
+          this._reopenCounts[feedSerial] = reopenCount + 1;
+          // Decrement after trailingMs (track reopens forever if trailingMs is 0)
+          if (this._options.reopenTrailingMs > 0) {
+            dbgClient("Feed re-open counter timer created");
+            const timer = setTimeout(() => {
+              dbgClient("Feed re-open counter timer fired");
+              // Decrement the reopen counter and stop tracking the timer
+              this._reopenCounts[feedSerial] -= 1;
+              _pull(this._reopenTimers, timer);
 
-            // Consider reopening the feed if we're just moving back below the threshold
-            if (
-              this._reopenCounts[feedSerial] + 1 ===
-              this._options.reopenMaxAttempts
-            ) {
-              this._considerFeedState(feedNameArgs); // Reopen it
-            }
+              // Consider reopening the feed if we're just moving back below the threshold
+              if (
+                this._reopenCounts[feedSerial] + 1 ===
+                this._options.reopenMaxAttempts
+              ) {
+                this._considerFeedState(feedNameArgs); // Reopen it
+              }
 
-            // Delete the reopen counter if it is back to 0
-            if (this._reopenCounts[feedSerial] === 0) {
-              delete this._reopenCounts[feedSerial];
-            }
-          }, this._options.reopenTrailingMs);
-          this._reopenTimers.push(timer);
+              // Delete the reopen counter if it is back to 0
+              if (this._reopenCounts[feedSerial] === 0) {
+                delete this._reopenCounts[feedSerial];
+              }
+            }, this._options.reopenTrailingMs);
+            this._reopenTimers.push(timer);
+          }
+          this._considerFeedState(feedNameArgs); // Reopen it
         }
-        this._considerFeedState(feedNameArgs); // Reopen it
       }
     }
-  }
-};
+  };
 
 /**
  * Processes a session badServerMessage event. Pass-through.
@@ -1176,7 +1172,7 @@ protoClientSync._processUnexpectedFeedClosed = function _processUnexpectedFeedCl
  * @param {Error} err
  */
 protoClientSync._processBadServerMessage = function _processBadServerMessage(
-  err
+  err,
 ) {
   dbgClient("Observed session badServerMessage event");
 
@@ -1191,7 +1187,7 @@ protoClientSync._processBadServerMessage = function _processBadServerMessage(
  * @param {Object} diagnostics
  */
 protoClientSync._processBadClientMessage = function _processBadClientMessage(
-  diagnostics
+  diagnostics,
 ) {
   dbgClient("Observed session badClientMessage event");
 
@@ -1235,7 +1231,7 @@ protoClientSync._appFeedDesireOpen = function _appFeedDesireOpen(appFeed) {
   // If not connected, emit close(NOT_CONNECTED) (new reason for closure) and stop
   if (this._sessionWrapper.state() !== "connected") {
     appFeed._emitClose(
-      new Error("NOT_CONNECTED: The client is not connected.")
+      new Error("NOT_CONNECTED: The client is not connected."),
     );
     return; // Stop
   }
@@ -1287,7 +1283,7 @@ protoClientSync._appFeedDesireClosed = function _appFeedDesireClosed(appFeed) {
   // Otherwise wait
   if (this._sessionWrapper.state() === "connected") {
     const serverFeedState = this._sessionWrapper.feedState(
-      appFeed._feedNameArgs
+      appFeed._feedNameArgs,
     );
     if (serverFeedState === "open") {
       this._considerFeedState(appFeed._feedNameArgs); // May close it
@@ -1351,7 +1347,7 @@ protoClientSync._appFeedDestroy = function _appFeedDestroy(appFeed) {
   // You can't destroy a feed desired open
   if (appFeed._desiredState !== "closed") {
     throw new Error(
-      "INVALID_FEED_STATE: Only feeds desired closed can be destroyed."
+      "INVALID_FEED_STATE: Only feeds desired closed can be destroyed.",
     );
   }
 
@@ -1410,7 +1406,7 @@ protoClientSync._appFeedData = function _appFeedData(appFeed) {
  */
 protoClientSync._informServerFeedClosed = function _informServerFeedClosed(
   feedNameArgs,
-  err
+  err,
 ) {
   dbgClient(`Informing server feed closed`);
 
@@ -1421,7 +1417,7 @@ protoClientSync._informServerFeedClosed = function _informServerFeedClosed(
   }
 
   // Inform feed objects as appropriate
-  _each(this._appFeeds[feedSerial], appFeed => {
+  _each(this._appFeeds[feedSerial], (appFeed) => {
     appFeed._serverFeedClosed(err);
   });
 };
@@ -1434,7 +1430,7 @@ protoClientSync._informServerFeedClosed = function _informServerFeedClosed(
  * @param {FeedNameArgs} feedNameArgs
  */
 protoClientSync._informServerFeedOpening = function _informServerFeedOpening(
-  feedNameArgs
+  feedNameArgs,
 ) {
   dbgClient("Informing server feed opening");
 
@@ -1445,7 +1441,7 @@ protoClientSync._informServerFeedOpening = function _informServerFeedOpening(
   }
 
   // Inform feed objects as appropriate
-  _each(this._appFeeds[feedSerial], appFeed => {
+  _each(this._appFeeds[feedSerial], (appFeed) => {
     appFeed._serverFeedOpening();
   });
 };
@@ -1460,7 +1456,7 @@ protoClientSync._informServerFeedOpening = function _informServerFeedOpening(
  */
 protoClientSync._informServerFeedOpen = function _informServerFeedOpen(
   feedNameArgs,
-  feedData
+  feedData,
 ) {
   dbgClient("Informing server feed open");
 
@@ -1471,7 +1467,7 @@ protoClientSync._informServerFeedOpen = function _informServerFeedOpen(
   }
 
   // Inform feed objects as appropriate
-  _each(this._appFeeds[feedSerial], appFeed => {
+  _each(this._appFeeds[feedSerial], (appFeed) => {
     appFeed._serverFeedOpen(feedData);
   });
 };
@@ -1487,7 +1483,7 @@ protoClientSync._informServerFeedOpen = function _informServerFeedOpen(
  */
 protoClientSync._informServerFeedClosing = function _informServerFeedClosing(
   feedNameArgs,
-  err
+  err,
 ) {
   dbgClient("Informing server feed closing");
 
@@ -1498,7 +1494,7 @@ protoClientSync._informServerFeedClosing = function _informServerFeedClosing(
   }
 
   // Inform feed objects as appropriate
-  _each(this._appFeeds[feedSerial], appFeed => {
+  _each(this._appFeeds[feedSerial], (appFeed) => {
     appFeed._serverFeedClosing(err);
   });
 };
@@ -1519,7 +1515,7 @@ protoClientSync._informServerFeedAction = function _informServerFeedAction(
   actionName,
   actionData,
   newFeedData,
-  oldFeedData
+  oldFeedData,
 ) {
   dbgClient("Informing server feed action notification");
 
@@ -1530,7 +1526,7 @@ protoClientSync._informServerFeedAction = function _informServerFeedAction(
   }
 
   // Inform feed objects as appropriate
-  _each(this._appFeeds[feedSerial], appFeed => {
+  _each(this._appFeeds[feedSerial], (appFeed) => {
     appFeed._serverFeedAction(actionName, actionData, newFeedData, oldFeedData);
   });
 };
@@ -1574,7 +1570,7 @@ protoClientSync._considerFeedState = function _considerFeedState(feedNameArgs) {
   const feedSerial = feedNameArgs.serial();
   let desiredState = "closed";
   if (this._appFeeds[feedSerial]) {
-    _each(this._appFeeds[feedSerial], element => {
+    _each(this._appFeeds[feedSerial], (element) => {
       if (element.desiredState() === "open") {
         desiredState = "open";
       }
@@ -1590,7 +1586,7 @@ protoClientSync._considerFeedState = function _considerFeedState(feedNameArgs) {
         // Timeout callback
         dbgClient("Feed open request timed out");
         const err = new Error(
-          "TIMEOUT: The server did not respond to feed open request within the allocated time."
+          "TIMEOUT: The server did not respond to feed open request within the allocated time.",
         );
         this._informServerFeedClosed(feedNameArgs, err);
       },
@@ -1605,7 +1601,7 @@ protoClientSync._considerFeedState = function _considerFeedState(feedNameArgs) {
           this._informServerFeedOpen(feedNameArgs, feedData);
           this._considerFeedState(feedNameArgs); // Desired state may have changed
         }
-      }
+      },
     );
   }
 
@@ -1628,7 +1624,7 @@ protoClientSync._considerFeedState = function _considerFeedState(feedNameArgs) {
         dbgClient("Server feed closed due to disconnect");
         this._informServerFeedClosed(
           feedNameArgs,
-          new Error("NOT_CONNECTED: The client disconnected.")
+          new Error("NOT_CONNECTED: The client disconnected."),
         );
       }
 
@@ -1661,7 +1657,7 @@ protoClientSync._considerFeedState = function _considerFeedState(feedNameArgs) {
 protoClientSync._feedOpenTimeout = function _feedOpenTimeout(
   feedNameArgs,
   callbackTimeout,
-  callbackResponse
+  callbackResponse,
 ) {
   let timer;
 
@@ -1939,7 +1935,7 @@ protoFeedSync._serverFeedAction = function _serverFeedAction(
   actionName,
   actionData,
   newFeedData,
-  oldFeedData
+  oldFeedData,
 ) {
   dbgFeed("Observed server feed action notification");
 

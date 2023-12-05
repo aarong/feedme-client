@@ -21,8 +21,8 @@ describe("The clientWrapper.state() function", () => {
     const mockFn = jest.fn();
     const wrapper = clientWrapper(
       emitter({
-        state: mockFn
-      })
+        state: mockFn,
+      }),
     );
     wrapper.state("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -37,8 +37,8 @@ describe("The clientWrapper.state() function", () => {
       emitter({
         state: () => {
           throw err;
-        }
-      })
+        },
+      }),
     );
     expect(() => {
       wrapper.state();
@@ -48,8 +48,8 @@ describe("The clientWrapper.state() function", () => {
   it("should relay return value if the underlying succeeds", () => {
     const wrapper = clientWrapper(
       emitter({
-        state: () => "some_value"
-      })
+        state: () => "some_value",
+      }),
     );
     expect(wrapper.state()).toBe("some_value");
   });
@@ -60,8 +60,8 @@ describe("The clientWrapper.connect() function", () => {
     const mockFn = jest.fn();
     const wrapper = clientWrapper(
       emitter({
-        connect: mockFn
-      })
+        connect: mockFn,
+      }),
     );
     wrapper.connect("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -76,8 +76,8 @@ describe("The clientWrapper.connect() function", () => {
       emitter({
         connect: () => {
           throw err;
-        }
-      })
+        },
+      }),
     );
     expect(() => {
       wrapper.connect();
@@ -87,8 +87,8 @@ describe("The clientWrapper.connect() function", () => {
   it("should relay return value if the underlying succeeds", () => {
     const wrapper = clientWrapper(
       emitter({
-        connect: () => "some_value"
-      })
+        connect: () => "some_value",
+      }),
     );
     expect(wrapper.connect()).toBe("some_value");
   });
@@ -99,8 +99,8 @@ describe("The clientWrapper.disconnect() function", () => {
     const mockFn = jest.fn();
     const wrapper = clientWrapper(
       emitter({
-        disconnect: mockFn
-      })
+        disconnect: mockFn,
+      }),
     );
     wrapper.disconnect("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -115,8 +115,8 @@ describe("The clientWrapper.disconnect() function", () => {
       emitter({
         disconnect: () => {
           throw err;
-        }
-      })
+        },
+      }),
     );
     expect(() => {
       wrapper.disconnect();
@@ -126,8 +126,8 @@ describe("The clientWrapper.disconnect() function", () => {
   it("should relay return value if the underlying succeeds", () => {
     const wrapper = clientWrapper(
       emitter({
-        disconnect: () => "some_value"
-      })
+        disconnect: () => "some_value",
+      }),
     );
     expect(wrapper.disconnect()).toBe("some_value");
   });
@@ -138,8 +138,8 @@ describe("The clientWrapper.destroy() function", () => {
     const mockFn = jest.fn();
     const wrapper = clientWrapper(
       emitter({
-        destroy: mockFn
-      })
+        destroy: mockFn,
+      }),
     );
     wrapper.destroy("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -154,8 +154,8 @@ describe("The clientWrapper.destroy() function", () => {
       emitter({
         destroy: () => {
           throw err;
-        }
-      })
+        },
+      }),
     );
     expect(() => {
       wrapper.destroy();
@@ -165,8 +165,8 @@ describe("The clientWrapper.destroy() function", () => {
   it("should relay return value if the underlying succeeds", () => {
     const wrapper = clientWrapper(
       emitter({
-        destroy: () => "some_value"
-      })
+        destroy: () => "some_value",
+      }),
     );
     expect(wrapper.destroy()).toBe("some_value");
   });
@@ -177,8 +177,8 @@ describe("The clientWrapper.destroyed() function", () => {
     const mockFn = jest.fn();
     const wrapper = clientWrapper(
       emitter({
-        destroyed: mockFn
-      })
+        destroyed: mockFn,
+      }),
     );
     wrapper.destroyed("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -193,8 +193,8 @@ describe("The clientWrapper.destroyed() function", () => {
       emitter({
         destroyed: () => {
           throw err;
-        }
-      })
+        },
+      }),
     );
     expect(() => {
       wrapper.destroyed();
@@ -204,8 +204,8 @@ describe("The clientWrapper.destroyed() function", () => {
   it("should relay return value if the underlying succeeds", () => {
     const wrapper = clientWrapper(
       emitter({
-        destroyed: () => "some_value"
-      })
+        destroyed: () => "some_value",
+      }),
     );
     expect(wrapper.destroyed()).toBe("some_value");
   });
@@ -224,8 +224,8 @@ describe("The clientWrapper.action() function", () => {
       const mockFn = jest.fn();
       const wrapper = clientWrapper(
         emitter({
-          action: mockFn
-        })
+          action: mockFn,
+        }),
       );
       wrapper.action("some_action", { action: "args" }, () => {});
       expect(mockFn.mock.calls.length).toBe(1);
@@ -241,8 +241,8 @@ describe("The clientWrapper.action() function", () => {
         emitter({
           action: () => {
             throw err;
-          }
-        })
+          },
+        }),
       );
       expect(() => {
         wrapper.action("some_action", { action: "args" }, () => {});
@@ -252,11 +252,11 @@ describe("The clientWrapper.action() function", () => {
     it("should relay return value if the underlying succeeds", () => {
       const wrapper = clientWrapper(
         emitter({
-          action: () => undefined
-        })
+          action: () => undefined,
+        }),
       );
       expect(wrapper.action("some_action", { action: "args" }, () => {})).toBe(
-        undefined
+        undefined,
       );
     });
 
@@ -265,8 +265,8 @@ describe("The clientWrapper.action() function", () => {
         emitter({
           action: (an, aa, cb) => {
             cb(undefined, { action: "data" });
-          }
-        })
+          },
+        }),
       );
       const mockCb = jest.fn();
       wrapper.action("some_action", { action: "args" }, mockCb);
@@ -289,8 +289,8 @@ describe("The clientWrapper.action() function", () => {
             Promise.resolve().then(() => {
               cb(undefined, { action: "data" });
             });
-          }
-        })
+          },
+        }),
       );
       const mockCb = jest.fn();
       wrapper.action("some_action", { action: "args" }, mockCb);
@@ -315,8 +315,8 @@ describe("The clientWrapper.action() function", () => {
         emitter({
           action: (an, aa, cb) => {
             cb(new Error("SOME_ERROR: ..."));
-          }
-        })
+          },
+        }),
       );
       const mockCb = jest.fn();
       wrapper.action("some_action", { action: "args" }, mockCb);
@@ -339,8 +339,8 @@ describe("The clientWrapper.action() function", () => {
             Promise.resolve().then(() => {
               cb(new Error("SOME_ERROR: ..."));
             });
-          }
-        })
+          },
+        }),
       );
       const mockCb = jest.fn();
       wrapper.action("some_action", { action: "args" }, mockCb);
@@ -366,8 +366,8 @@ describe("The clientWrapper.action() function", () => {
       const mockFn = jest.fn();
       const wrapper = clientWrapper(
         emitter({
-          action: mockFn
-        })
+          action: mockFn,
+        }),
       );
       wrapper.action("some_action", { action: "args" });
       expect(mockFn.mock.calls.length).toBe(1);
@@ -383,8 +383,8 @@ describe("The clientWrapper.action() function", () => {
         emitter({
           action: () => {
             throw err;
-          }
-        })
+          },
+        }),
       );
       expect(() => {
         wrapper.action("some_action", { action: "args" });
@@ -394,11 +394,11 @@ describe("The clientWrapper.action() function", () => {
     it("should return a promise if the underlying succeeds", () => {
       const wrapper = clientWrapper(
         emitter({
-          action: jest.fn()
-        })
+          action: jest.fn(),
+        }),
       );
       expect(wrapper.action("some_action", { action: "args" })).toBeInstanceOf(
-        Promise
+        Promise,
       );
     });
 
@@ -407,12 +407,12 @@ describe("The clientWrapper.action() function", () => {
         emitter({
           action: (an, aa, cb) => {
             cb(undefined, { action: "data" });
-          }
-        })
+          },
+        }),
       );
 
       const actionData = await wrapper.action("some_action", {
-        action: "args"
+        action: "args",
       });
 
       expect(actionData).toEqual({ action: "data" });
@@ -425,12 +425,12 @@ describe("The clientWrapper.action() function", () => {
             Promise.resolve().then(() => {
               cb(undefined, { action: "data" });
             });
-          }
-        })
+          },
+        }),
       );
 
       const actionData = await wrapper.action("some_action", {
-        action: "args"
+        action: "args",
       });
 
       expect(actionData).toEqual({ action: "data" });
@@ -441,8 +441,8 @@ describe("The clientWrapper.action() function", () => {
         emitter({
           action: (an, aa, cb) => {
             cb(new Error("SOME_ERROR: ..."));
-          }
-        })
+          },
+        }),
       );
 
       try {
@@ -460,8 +460,8 @@ describe("The clientWrapper.action() function", () => {
             Promise.resolve().then(() => {
               cb(new Error("SOME_ERROR: ..."));
             });
-          }
-        })
+          },
+        }),
       );
 
       try {
@@ -479,8 +479,8 @@ describe("The clientWrapper.feed() function", () => {
     const mockFn = jest.fn(() => emitter({})); // feed() fails if not emitter
     const wrapper = clientWrapper(
       emitter({
-        feed: mockFn
-      })
+        feed: mockFn,
+      }),
     );
     wrapper.feed("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -494,8 +494,8 @@ describe("The clientWrapper.feed() function", () => {
       emitter({
         feed: () => {
           throw new Error("SOME_ERROR: ...");
-        }
-      })
+        },
+      }),
     );
     expect(() => {
       wrapper.feed("some", "args");
@@ -505,8 +505,8 @@ describe("The clientWrapper.feed() function", () => {
   it("should return an object", () => {
     const wrapper = clientWrapper(
       emitter({
-        feed: () => emitter({})
-      })
+        feed: () => emitter({}),
+      }),
     );
     expect(check.object(wrapper.feed("some", "args"))).toBe(true);
   });
@@ -521,9 +521,9 @@ describe("The feedWrapper.desireOpen() function", () => {
       emitter({
         feed: () =>
           emitter({
-            desireOpen: mockFn
-          })
-      })
+            desireOpen: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).desireOpen("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -540,9 +540,9 @@ describe("The feedWrapper.desireOpen() function", () => {
           emitter({
             desireOpen: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).desireOpen("some", "args");
@@ -554,12 +554,12 @@ describe("The feedWrapper.desireOpen() function", () => {
       emitter({
         feed: () =>
           emitter({
-            desireOpen: () => "some_value"
-          })
-      })
+            desireOpen: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).desireOpen()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -571,9 +571,9 @@ describe("The feedWrapper.desireClosed() function", () => {
       emitter({
         feed: () =>
           emitter({
-            desireClosed: mockFn
-          })
-      })
+            desireClosed: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).desireClosed("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -590,9 +590,9 @@ describe("The feedWrapper.desireClosed() function", () => {
           emitter({
             desireClosed: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).desireClosed("some", "args");
@@ -604,12 +604,12 @@ describe("The feedWrapper.desireClosed() function", () => {
       emitter({
         feed: () =>
           emitter({
-            desireClosed: () => "some_value"
-          })
-      })
+            desireClosed: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).desireClosed()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -621,9 +621,9 @@ describe("The feedWrapper.desiredState() function", () => {
       emitter({
         feed: () =>
           emitter({
-            desiredState: mockFn
-          })
-      })
+            desiredState: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).desiredState("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -640,9 +640,9 @@ describe("The feedWrapper.desiredState() function", () => {
           emitter({
             desiredState: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).desiredState("some", "args");
@@ -654,12 +654,12 @@ describe("The feedWrapper.desiredState() function", () => {
       emitter({
         feed: () =>
           emitter({
-            desiredState: () => "some_value"
-          })
-      })
+            desiredState: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).desiredState()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -671,9 +671,9 @@ describe("The feedWrapper.state() function", () => {
       emitter({
         feed: () =>
           emitter({
-            state: mockFn
-          })
-      })
+            state: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).state("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -690,9 +690,9 @@ describe("The feedWrapper.state() function", () => {
           emitter({
             state: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).state("some", "args");
@@ -704,12 +704,12 @@ describe("The feedWrapper.state() function", () => {
       emitter({
         feed: () =>
           emitter({
-            state: () => "some_value"
-          })
-      })
+            state: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).state()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -721,9 +721,9 @@ describe("The feedWrapper.data() function", () => {
       emitter({
         feed: () =>
           emitter({
-            data: mockFn
-          })
-      })
+            data: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).data("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -740,9 +740,9 @@ describe("The feedWrapper.data() function", () => {
           emitter({
             data: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).data("some", "args");
@@ -754,12 +754,12 @@ describe("The feedWrapper.data() function", () => {
       emitter({
         feed: () =>
           emitter({
-            data: () => "some_value"
-          })
-      })
+            data: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).data()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -771,9 +771,9 @@ describe("The feedWrapper.destroy() function", () => {
       emitter({
         feed: () =>
           emitter({
-            destroy: mockFn
-          })
-      })
+            destroy: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).destroy("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -790,9 +790,9 @@ describe("The feedWrapper.destroy() function", () => {
           emitter({
             destroy: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).destroy("some", "args");
@@ -804,12 +804,12 @@ describe("The feedWrapper.destroy() function", () => {
       emitter({
         feed: () =>
           emitter({
-            destroy: () => "some_value"
-          })
-      })
+            destroy: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).destroy()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -821,9 +821,9 @@ describe("The feedWrapper.destroyed() function", () => {
       emitter({
         feed: () =>
           emitter({
-            destroyed: mockFn
-          })
-      })
+            destroyed: mockFn,
+          }),
+      }),
     );
     wrapper.feed("some_feed", { feed: "args" }).destroyed("some", "args");
     expect(mockFn.mock.calls.length).toBe(1);
@@ -840,9 +840,9 @@ describe("The feedWrapper.destroyed() function", () => {
           emitter({
             destroyed: () => {
               throw err;
-            }
-          })
-      })
+            },
+          }),
+      }),
     );
     expect(() => {
       wrapper.feed("some_feed", { feed: "args" }).destroyed("some", "args");
@@ -854,12 +854,12 @@ describe("The feedWrapper.destroyed() function", () => {
       emitter({
         feed: () =>
           emitter({
-            destroyed: () => "some_value"
-          })
-      })
+            destroyed: () => "some_value",
+          }),
+      }),
     );
     expect(wrapper.feed("some_feed", { feed: "args" }).destroyed()).toBe(
-      "some_value"
+      "some_value",
     );
   });
 });
@@ -995,7 +995,7 @@ describe("The feed opening event", () => {
       feed: () => {
         underlyingFeed = emitter({});
         return underlyingFeed;
-      }
+      },
     });
     const cWrapper = clientWrapper(underlyingClient);
     const fWrapper = cWrapper.feed("some_feed", { feed: "args" });
@@ -1023,7 +1023,7 @@ describe("The feed open event", () => {
       feed: () => {
         underlyingFeed = emitter({});
         return underlyingFeed;
-      }
+      },
     });
     const cWrapper = clientWrapper(underlyingClient);
     const fWrapper = cWrapper.feed("some_feed", { feed: "args" });
@@ -1051,7 +1051,7 @@ describe("The feed close event", () => {
       feed: () => {
         underlyingFeed = emitter({});
         return underlyingFeed;
-      }
+      },
     });
     const cWrapper = clientWrapper(underlyingClient);
     const fWrapper = cWrapper.feed("some_feed", { feed: "args" });
@@ -1079,7 +1079,7 @@ describe("The feed action event", () => {
       feed: () => {
         underlyingFeed = emitter({});
         return underlyingFeed;
-      }
+      },
     });
     const cWrapper = clientWrapper(underlyingClient);
     const fWrapper = cWrapper.feed("some_feed", { feed: "args" });
@@ -1111,7 +1111,7 @@ describe("Emissions, callbacks, and promise settlement should order correctly", 
       },
       action: (an, aa, cb) => {
         actionCallbacks.push(cb);
-      }
+      },
     });
     const cWrapper = clientWrapper(cUnderlying);
     const fWrapper = cWrapper.feed("some_feed", { feed: "args" });
@@ -1154,7 +1154,7 @@ describe("Emissions, callbacks, and promise settlement should order correctly", 
       "client connecting event",
       "promise action returned",
       "client connecting event",
-      "feed opening event"
+      "feed opening event",
     ]);
   });
 });
@@ -1166,7 +1166,7 @@ it("On disconnect, any outstanding action callbacks should be invoked before dis
   const underlying = emitter({
     action: (an, aa, cb) => {
       underlyingActionCb = cb;
-    }
+    },
   });
   const wrapper = clientWrapper(underlying);
 
@@ -1202,7 +1202,7 @@ it("On disconnect, any outstanding action rejections should be invoked before di
   const underlying = emitter({
     action: (an, aa, cb) => {
       underlyingActionCb = cb;
-    }
+    },
   });
   const wrapper = clientWrapper(underlying);
 
@@ -1239,7 +1239,7 @@ it("On disconnect, any feed close events should be invoked before disconnect eve
     feed: () => {
       underlyingFeed = emitter({});
       return underlyingFeed;
-    }
+    },
   });
   const wrapper = clientWrapper(underlying);
 
@@ -1281,7 +1281,7 @@ it("On disconnect, any action callbacks should be invoked before feed close and 
     feed: () => {
       underlyingFeed = emitter({});
       return underlyingFeed;
-    }
+    },
   });
   const wrapper = clientWrapper(underlying);
 

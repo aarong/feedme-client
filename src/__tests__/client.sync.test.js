@@ -168,7 +168,7 @@ harnessProto.createClientListener = function createClientListener() {
     disconnect: jest.fn(),
     badServerMessage: jest.fn(),
     badClientMessage: jest.fn(),
-    transportError: jest.fn()
+    transportError: jest.fn(),
   };
   l.mockClear = () => {
     l.connecting.mock.mockClear();
@@ -192,7 +192,7 @@ harnessProto.createFeedListener = function createFeedListener(feed) {
     opening: jest.fn(),
     open: jest.fn(),
     close: jest.fn(),
-    action: jest.fn()
+    action: jest.fn(),
   };
   l.mockClear = () => {
     l.opening.mock.mockClear();
@@ -213,7 +213,8 @@ harnessProto.getClientState = function getClientState() {
   state._options = _.clone(this.client._options); // Object copy
   state._sessionWrapper = this.client._sessionWrapper; // Object reference
   state._sessionWrapperState = this.client._sessionWrapper.state(); // String
-  state._lastSessionWrapperStateEmission = this.client._lastSessionWrapperStateEmission; // String
+  state._lastSessionWrapperStateEmission =
+    this.client._lastSessionWrapperStateEmission; // String
   state._appFeeds = {}; // _appFeeds[ser][i] = object reference
   state._appFeedStates = {}; // _appFeedStates[ser][i] = { _clientSync, ... }
   _.each(this.client._appFeeds, (val, ser) => {
@@ -225,7 +226,7 @@ harnessProto.getClientState = function getClientState() {
         _clientSync: feed._clientSync, // Object reference
         _feedNameArgs: feed._feedNameArgs, // Object reference
         _desiredState: feed._desiredState, // String
-        _lastStateEmission: feed._lastStateEmission // String
+        _lastStateEmission: feed._lastStateEmission, // String
       };
     });
   });
@@ -249,7 +250,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._options objects to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -259,7 +260,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._sessionWrapper objects to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -272,7 +273,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._sessionWrapper states to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -285,7 +286,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._lastSessionWrapperStateEmission to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -297,14 +298,14 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._appFeed keys to match, but they didn't";
-        }
+        },
       };
     }
 
     // Check that ._appFeed[ser] array elements are the same
     let match = true;
     // For each feed serial
-    _.each(receivedKeys, key => {
+    _.each(receivedKeys, (key) => {
       // Array lengths must be identical
       if (
         receivedClient._appFeeds[key].length !==
@@ -327,7 +328,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._appFeed objects to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -339,13 +340,13 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._appFeedStates keys to match, but they didn't";
-        }
+        },
       };
     }
 
     // Check each feed object state
     let err = null;
-    _.each(receivedKeys, key => {
+    _.each(receivedKeys, (key) => {
       // Array lengths must be identical
       if (
         receivedClient._appFeeds[key].length !==
@@ -355,7 +356,7 @@ expect.extend({
           pass: false,
           message() {
             return "expected feed array lengths to match, but they didn't";
-          }
+          },
         };
       }
       for (let i = 0; i < receivedClient._appFeeds[key].length; i += 1) {
@@ -368,7 +369,7 @@ expect.extend({
             pass: false,
             message() {
               return "expected feed _clientSync to match, but they didn't";
-            }
+            },
           };
         }
 
@@ -381,7 +382,7 @@ expect.extend({
             pass: false,
             message() {
               return "expected feed _feedNameArgs.name() to match, but they didn't";
-            }
+            },
           };
         }
 
@@ -389,14 +390,14 @@ expect.extend({
         if (
           !_.isEqual(
             receivedFeed._feedNameArgs.args(),
-            expectedFeed._feedNameArgs.args()
+            expectedFeed._feedNameArgs.args(),
           )
         ) {
           err = {
             pass: false,
             message() {
               return "expected feed _feedNameArgs.args() to match, but they didn't";
-            }
+            },
           };
         }
 
@@ -406,7 +407,7 @@ expect.extend({
             pass: false,
             message() {
               return "expected feed _desiredState to match, but they didn't";
-            }
+            },
           };
         }
 
@@ -418,7 +419,7 @@ expect.extend({
             pass: false,
             message() {
               return "expected feed _lastStateEmission to match, but they didn't";
-            }
+            },
           };
         }
       }
@@ -440,7 +441,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._connectTimeoutTimer to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -457,7 +458,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._connectRetryTimer to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -469,7 +470,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._connectRetryCount to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -479,7 +480,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._reopenCounts to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -491,7 +492,7 @@ expect.extend({
         pass: false,
         message() {
           return "expected ._reopenTimers to match, but they didn't";
-        }
+        },
       };
     }
 
@@ -499,20 +500,20 @@ expect.extend({
     if (
       !_.isEqual(
         receivedClient._feedCloseRequested,
-        expectedState._feedCloseRequested
+        expectedState._feedCloseRequested,
       )
     ) {
       return {
         pass: false,
         message() {
           return "expected ._feedCloseRequested to match, but they didn't";
-        }
+        },
       };
     }
 
     // Match
     return { pass: true };
-  }
+  },
 });
 
 // Testing: app-triggered state modifiers
@@ -531,7 +532,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: "junk" });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.sessionWrapper.")
+        new Error("INVALID_ARGUMENT: Invalid options.sessionWrapper."),
       );
     });
 
@@ -539,7 +540,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, connectTimeoutMs: -1 });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.connectTimeoutMs.")
+        new Error("INVALID_ARGUMENT: Invalid options.connectTimeoutMs."),
       );
     });
 
@@ -547,7 +548,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, connectRetryMs: "a" });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.connectRetryMs.")
+        new Error("INVALID_ARGUMENT: Invalid options.connectRetryMs."),
       );
     });
 
@@ -555,7 +556,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, connectRetryBackoffMs: -1 });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.connectRetryBackoffMs.")
+        new Error("INVALID_ARGUMENT: Invalid options.connectRetryBackoffMs."),
       );
     });
 
@@ -563,7 +564,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, connectRetryMaxMs: -1 });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxMs.")
+        new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxMs."),
       );
     });
 
@@ -571,7 +572,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, connectRetryMaxAttempts: -1 });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxAttempts.")
+        new Error("INVALID_ARGUMENT: Invalid options.connectRetryMaxAttempts."),
       );
     });
 
@@ -579,7 +580,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, actionTimeoutMs: -1 });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.actionTimeoutMs.")
+        new Error("INVALID_ARGUMENT: Invalid options.actionTimeoutMs."),
       );
     });
 
@@ -599,7 +600,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, reopenMaxAttempts: "a" });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.reopenMaxAttempts.")
+        new Error("INVALID_ARGUMENT: Invalid options.reopenMaxAttempts."),
       );
     });
 
@@ -607,7 +608,7 @@ describe("The client() factory function", () => {
       expect(() => {
         client({ sessionWrapper: {}, reopenTrailingMs: -1 });
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid options.reopenTrailingMs.")
+        new Error("INVALID_ARGUMENT: Invalid options.reopenTrailingMs."),
       );
     });
   });
@@ -636,7 +637,7 @@ describe("The client() factory function", () => {
           feedTimeoutMs: config.defaults.feedTimeoutMs,
           reconnect: config.defaults.reconnect,
           reopenMaxAttempts: config.defaults.reopenMaxAttempts,
-          reopenTrailingMs: config.defaults.reopenTrailingMs
+          reopenTrailingMs: config.defaults.reopenTrailingMs,
         },
         _sessionWrapper: harness.sessionWrapper,
         _sessionWrapperState: "disconnected",
@@ -648,7 +649,7 @@ describe("The client() factory function", () => {
         _connectRetryCount: 0,
         _reopenCounts: {},
         _reopenTimers: [],
-        _feedCloseRequested: {}
+        _feedCloseRequested: {},
       });
     });
 
@@ -912,7 +913,7 @@ describe("The client.action() function", () => {
       expect(() => {
         harness2.client.action();
       }).toThrow(
-        new Error("DESTROYED: The client instance has been destroyed.")
+        new Error("DESTROYED: The client instance has been destroyed."),
       );
     });
 
@@ -926,7 +927,7 @@ describe("The client.action() function", () => {
       expect(() => {
         harness.client.action("myAction", "junk", () => {});
       }).toThrow(
-        new Error("INVALID_ARGUMENT: Invalid action arguments object.")
+        new Error("INVALID_ARGUMENT: Invalid action arguments object."),
       );
     });
 
@@ -935,8 +936,8 @@ describe("The client.action() function", () => {
         harness.client.action("myAction", { arg: undefined }, () => {});
       }).toThrow(
         new Error(
-          "INVALID_ARGUMENT: Action arguments must be JSON-expressible."
-        )
+          "INVALID_ARGUMENT: Action arguments must be JSON-expressible.",
+        ),
       );
     });
 
@@ -1001,7 +1002,7 @@ describe("The client.action() function", () => {
       expect(cb.mock.calls[0].length).toBe(1);
       expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(cb.mock.calls[0][0].message).toBe(
-        "NOT_CONNECTED: The client is not connected."
+        "NOT_CONNECTED: The client is not connected.",
       );
       expect(cb.mock.instances[0]).toBe(undefined);
     });
@@ -1058,10 +1059,10 @@ describe("The client.action() function", () => {
       expect(harness.sessionWrapper.action.mock.calls[0].length).toBe(3);
       expect(harness.sessionWrapper.action.mock.calls[0][0]).toBe("myAction");
       expect(harness.sessionWrapper.action.mock.calls[0][1]).toEqual({
-        arg: "val"
+        arg: "val",
       });
       expect(
-        check.function(harness.sessionWrapper.action.mock.calls[0][2])
+        check.function(harness.sessionWrapper.action.mock.calls[0][2]),
       ).toBe(true);
       expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
@@ -1210,7 +1211,7 @@ describe("The client.action() function", () => {
         expect(cb.mock.calls[0].length).toBe(1);
         expect(cb.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(cb.mock.calls[0][0].message).toBe(
-          "TIMEOUT: The server did not respond within the allocated time."
+          "TIMEOUT: The server did not respond within the allocated time.",
         );
         expect(cb.mock.instances[0]).toBe(undefined);
       });
@@ -1236,7 +1237,7 @@ describe("The client.action() function", () => {
 
     it("should return void", () => {
       expect(
-        harness.client.action("myAction", { arg: "val" }, () => {})
+        harness.client.action("myAction", { arg: "val" }, () => {}),
       ).toBeUndefined();
     });
   });
@@ -1253,7 +1254,7 @@ describe("The client.feed() function", () => {
       expect(() => {
         harness.client.feed();
       }).toThrow(
-        new Error("DESTROYED: The client instance has been destroyed.")
+        new Error("DESTROYED: The client instance has been destroyed."),
       );
     });
 
@@ -1313,8 +1314,8 @@ describe("The client.feed() function", () => {
           _clientSync: harness.client,
           _feedNameArgs: FeedNameArgs("someFeed", { arg: "val" }),
           _desiredState: "closed",
-          _lastStateEmission: "close"
-        }
+          _lastStateEmission: "close",
+        },
       ];
       expect(harness.client).toHaveState(newState);
     });
@@ -1341,7 +1342,7 @@ describe("The client.feed() function", () => {
     // Return value
     it("should return an object", () => {
       expect(
-        check.object(harness.client.feed("someFeed", { arg: "val" }))
+        check.object(harness.client.feed("someFeed", { arg: "val" })),
       ).toBe(true);
     });
   });
@@ -1358,7 +1359,7 @@ describe("The client.destroy() function", () => {
       expect(() => {
         harness2.client.destroy();
       }).toThrow(
-        new Error("DESTROYED: The client instance has been destroyed.")
+        new Error("DESTROYED: The client instance has been destroyed."),
       );
     });
 
@@ -1397,12 +1398,10 @@ describe("The client.destroy() function", () => {
     it("should emit events appropriately", () => {
       const clientListener = harness.createClientListener();
       const feedDestroyedListener = harness.createFeedListener(feedDestroyed);
-      const feedDesiredClosedListener = harness.createFeedListener(
-        feedDesiredClosed
-      );
-      const feedDesiredOpenListener = harness.createFeedListener(
-        feedDesiredOpen
-      );
+      const feedDesiredClosedListener =
+        harness.createFeedListener(feedDesiredClosed);
+      const feedDesiredOpenListener =
+        harness.createFeedListener(feedDesiredOpen);
 
       harness.client.destroy();
 
@@ -1490,7 +1489,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       expect(() => {
         feed.desireOpen();
       }).toThrow(
-        new Error("INVALID_FEED_STATE: The feed is already desired open.")
+        new Error("INVALID_FEED_STATE: The feed is already desired open."),
       );
     });
   });
@@ -1523,7 +1522,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       expect(feedListener.close.mock.calls[0].length).toBe(1);
       expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(feedListener.close.mock.calls[0][0].message).toBe(
-        "NOT_CONNECTED: The client is not connected."
+        "NOT_CONNECTED: The client is not connected.",
       );
       expect(feedListener.action.mock.calls.length).toBe(0);
     });
@@ -1681,13 +1680,13 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
       expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
       expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
       expect(
-        check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+        check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
       ).toBe(true);
       expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -1700,7 +1699,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -1709,12 +1708,12 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -1740,7 +1739,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -1749,12 +1748,12 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -1772,10 +1771,10 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(1);
       expect(harness.sessionWrapper.feedData.mock.calls[0].length).toBe(1);
       expect(harness.sessionWrapper.feedData.mock.calls[0][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedData.mock.calls[0][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
       expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
@@ -1787,7 +1786,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -1796,12 +1795,12 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -1827,7 +1826,7 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -1836,12 +1835,12 @@ describe("The feed.desireOpen() and client._appFeedDesireOpen() functions", () =
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -1881,7 +1880,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       expect(() => {
         feed.desireClosed();
       }).toThrow(
-        new Error("INVALID_FEED_STATE: The feed is already desired closed.")
+        new Error("INVALID_FEED_STATE: The feed is already desired closed."),
       );
     });
   });
@@ -1944,7 +1943,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("TERMINATED: ...")
+        new Error("TERMINATED: ..."),
       ); // cause the feed to emit close
       harness.sessionWrapper.feedState.mockReturnValue("closed");
 
@@ -2036,7 +2035,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -2045,12 +2044,12 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2078,7 +2077,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -2087,12 +2086,12 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2118,13 +2117,13 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(1);
       expect(harness.sessionWrapper.feedClose.mock.calls[0].length).toBe(2);
       expect(harness.sessionWrapper.feedClose.mock.calls[0][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedClose.mock.calls[0][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
       expect(
-        check.function(harness.sessionWrapper.feedClose.mock.calls[0][1])
+        check.function(harness.sessionWrapper.feedClose.mock.calls[0][1]),
       ).toBe(true);
       expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
       for (
@@ -2135,7 +2134,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -2144,12 +2143,12 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2176,13 +2175,13 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(1);
       expect(harness.sessionWrapper.feedClose.mock.calls[0].length).toBe(2);
       expect(harness.sessionWrapper.feedClose.mock.calls[0][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedClose.mock.calls[0][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
       expect(
-        check.function(harness.sessionWrapper.feedClose.mock.calls[0][1])
+        check.function(harness.sessionWrapper.feedClose.mock.calls[0][1]),
       ).toBe(true);
       expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
       for (
@@ -2193,7 +2192,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -2202,12 +2201,12 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2242,7 +2241,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -2251,12 +2250,12 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2292,7 +2291,7 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -2301,12 +2300,12 @@ describe("The feed.desireClosed() and client._appFeedDesireClosed() functions", 
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2351,8 +2350,8 @@ describe("The feed.destroy() and client._appFeedDestroy() functions", () => {
         feed.destroy();
       }).toThrow(
         new Error(
-          "INVALID_FEED_STATE: Only feeds desired closed can be destroyed."
-        )
+          "INVALID_FEED_STATE: Only feeds desired closed can be destroyed.",
+        ),
       );
     });
   });
@@ -2540,10 +2539,10 @@ describe("The client._processConnecting() function", () => {
       expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(1);
       expect(harness.sessionWrapper.disconnect.mock.calls[0].length).toBe(1);
       expect(harness.sessionWrapper.disconnect.mock.calls[0][0]).toBeInstanceOf(
-        Error
+        Error,
       );
       expect(harness.sessionWrapper.disconnect.mock.calls[0][0].message).toBe(
-        "TIMEOUT: The connection attempt timed out."
+        "TIMEOUT: The connection attempt timed out.",
       );
       expect(harness.sessionWrapper.action.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(0);
@@ -2696,13 +2695,13 @@ describe("The client._processConnect() function", () => {
     expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
     expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
     expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-      "someFeed"
+      "someFeed",
     );
     expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual({
-      arg: "val"
+      arg: "val",
     });
     expect(
-      check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+      check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
     ).toBe(true);
     expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -2724,7 +2723,7 @@ describe("The client._processConnect() function", () => {
       const feedName = harness.sessionWrapper.feedState.mock.calls[i][0].name();
       expect(feedName === "someFeed" || feedName === "someFeed2").toBe(true);
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
     }
     expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -2780,7 +2779,7 @@ describe("The client._processDisconnect() function", () => {
     harness.client.disconnect();
     harness.sessionWrapper.emit(
       "disconnect",
-      new Error("HANDSHAKE_REJECTED: ...")
+      new Error("HANDSHAKE_REJECTED: ..."),
     );
 
     expect(clientListener.connecting.mock.calls.length).toBe(0);
@@ -2789,7 +2788,7 @@ describe("The client._processDisconnect() function", () => {
     expect(clientListener.disconnect.mock.calls[0].length).toBe(1);
     expect(clientListener.disconnect.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(clientListener.disconnect.mock.calls[0][0].message).toBe(
-      "HANDSHAKE_REJECTED: ..."
+      "HANDSHAKE_REJECTED: ...",
     );
     expect(clientListener.badServerMessage.mock.calls.length).toBe(0);
     expect(clientListener.badClientMessage.mock.calls.length).toBe(0);
@@ -2831,7 +2830,7 @@ describe("The client._processDisconnect() function", () => {
     const newState = harness.getClientState();
     harness.sessionWrapper.emit(
       "disconnect",
-      new Error("HANDSHAKE_REJECTED: ...")
+      new Error("HANDSHAKE_REJECTED: ..."),
     );
     // Cancel any connect timeout
     newState._connectTimeoutTimer = null;
@@ -2895,12 +2894,12 @@ describe("The client._processDisconnect() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("BAD_FEED_ACTION: ...")
+      new Error("BAD_FEED_ACTION: ..."),
     );
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("BAD_FEED_ACTION: ...")
+      new Error("BAD_FEED_ACTION: ..."),
     );
 
     // Disconnect and check the state
@@ -2937,12 +2936,12 @@ describe("The client._processDisconnect() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("BAD_FEED_ACTION: ...")
+      new Error("BAD_FEED_ACTION: ..."),
     );
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("BAD_FEED_ACTION: ...")
+      new Error("BAD_FEED_ACTION: ..."),
     );
     // Disconnect and check the state
     harness.sessionWrapper.state.mockReturnValue("disconnected");
@@ -2958,7 +2957,7 @@ describe("The client._processDisconnect() function", () => {
     newState._lastSessionWrapperStateEmission = "disconnect";
     harness.sessionWrapper.emit(
       "disconnect",
-      new Error("TRANSPORT_FAILURE: ...")
+      new Error("TRANSPORT_FAILURE: ..."),
     );
 
     expect(harness.client).toHaveState(newState);
@@ -2997,7 +2996,7 @@ describe("The client._processDisconnect() function", () => {
     harness.sessionWrapper.mockClear();
     harness.sessionWrapper.emit(
       "disconnect",
-      new Error("HANDSHAKE_REJECTED: ...")
+      new Error("HANDSHAKE_REJECTED: ..."),
     );
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -3038,7 +3037,7 @@ describe("The client._processDisconnect() function", () => {
     harness.sessionWrapper.mockClear();
     harness.sessionWrapper.emit(
       "disconnect",
-      new Error("TRANSPORT_FAILURE: ...")
+      new Error("TRANSPORT_FAILURE: ..."),
     );
 
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(1);
@@ -3185,7 +3184,7 @@ describe("The client._processFeedAction() function", () => {
       "someAction",
       { action: "data" },
       { new: "feedData" },
-      { old: "feedData" }
+      { old: "feedData" },
     );
 
     expect(feedListener1.opening.mock.calls.length).toBe(0);
@@ -3219,7 +3218,7 @@ describe("The client._processFeedAction() function", () => {
       "someAction",
       { action: "data" },
       { new: "feedData" },
-      { old: "feedData" }
+      { old: "feedData" },
     );
     expect(harness.client).toHaveState(newState);
   });
@@ -3239,7 +3238,7 @@ describe("The client._processFeedAction() function", () => {
       "someAction",
       { action: "data" },
       { new: "feedData" },
-      { old: "feedData" }
+      { old: "feedData" },
     );
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -3283,7 +3282,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
 
     expect(feedListener1.opening.mock.calls.length).toBe(0);
@@ -3320,7 +3319,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
 
     expect(harness.client).toHaveState(newState);
@@ -3348,7 +3347,7 @@ describe("The client._processUnexpectedFeedClosing() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -3379,13 +3378,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
     const feedListener = harness.createFeedListener(feed);
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -3405,14 +3404,14 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
 
     const feedListener = harness.createFeedListener(feed);
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("NOT_CONNECTED: ...")
+      new Error("NOT_CONNECTED: ..."),
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -3469,7 +3468,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       const newState = harness.getClientState();
@@ -3477,7 +3476,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
       expect(harness.client).toHaveState(newState);
     });
@@ -3501,7 +3500,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       const newState = harness.getClientState();
@@ -3509,7 +3508,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
       expect(harness.client).toHaveState(newState);
     });
@@ -3533,7 +3532,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       const newState = harness.getClientState();
@@ -3544,7 +3543,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       expect(harness.client).toHaveState(newState);
@@ -3569,12 +3568,12 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
       harness.sessionWrapper.feedState.mockReturnValue("closed");
 
@@ -3591,12 +3590,12 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       const newState = harness.getClientState();
@@ -3623,7 +3622,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("TERMINATED: ...")
+      new Error("TERMINATED: ..."),
     );
 
     const newState = harness.getClientState();
@@ -3631,7 +3630,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("TERMINATED: ...")
+      new Error("TERMINATED: ..."),
     );
     expect(harness.client).toHaveState(newState);
   });
@@ -3658,7 +3657,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       harness.sessionWrapper.mockClear();
@@ -3666,7 +3665,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
@@ -3675,13 +3674,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
       expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
       expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
       expect(
-        check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+        check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
       ).toBe(true);
       expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -3694,7 +3693,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -3703,12 +3702,12 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedState.mock.calls[i][0].args()
+          harness.sessionWrapper.feedState.mock.calls[i][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -3733,7 +3732,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosing",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
 
       harness.sessionWrapper.mockClear();
@@ -3741,7 +3740,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       harness.sessionWrapper.emit(
         "unexpectedFeedClosed",
         FeedNameArgs("someFeed", { arg: "val" }),
-        new Error("BAD_FEED_ACTION: ...")
+        new Error("BAD_FEED_ACTION: ..."),
       );
       expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
       expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -3758,7 +3757,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -3767,10 +3766,10 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -3795,7 +3794,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("TERMINATED: ...")
+      new Error("TERMINATED: ..."),
     );
 
     harness.sessionWrapper.mockClear();
@@ -3803,7 +3802,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("TERMINATED: ...")
+      new Error("TERMINATED: ..."),
     );
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -3828,7 +3827,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         // No feed timeouts to avoid that firing in addition to reopen decrement timer
         const harness = harnessFactory({
           reopenMaxAttempts: 1,
-          feedTimeoutMs: 0
+          feedTimeoutMs: 0,
         });
         harness.client.connect();
         harness.sessionWrapper.emit("connecting");
@@ -3847,13 +3846,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("opening"); // A re-open is attempted internally
 
@@ -3879,7 +3878,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         // No feed timeouts to avoid that firing in addition to reopen decrement timer
         const harness = harnessFactory({
           reopenMaxAttempts: 1,
-          feedTimeoutMs: 0
+          feedTimeoutMs: 0,
         });
         harness.client.connect();
         harness.sessionWrapper.emit("connecting");
@@ -3898,14 +3897,14 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.mockClear();
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         ); // Will cause a reopen attempt
 
         cb = harness.sessionWrapper.feedOpen.mock.calls[0][1]; // eslint-disable-line
@@ -3915,13 +3914,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed"); // No reopen attempt
 
@@ -3950,7 +3949,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         // No feed timeouts to avoid that firing in addition to reopen decrement timer
         const harness = harnessFactory({
           reopenMaxAttempts: 2,
-          feedTimeoutMs: 0
+          feedTimeoutMs: 0,
         });
         harness.client.connect();
         harness.sessionWrapper.emit("connecting");
@@ -3970,14 +3969,14 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.mockClear();
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
 
         // Have the feed reopen successfully
@@ -3991,13 +3990,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed"); // No reopen attempt
 
@@ -4019,7 +4018,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         // No feed timeouts to avoid that firing in addition to reopen decrement timer
         const harness = harnessFactory({
           reopenMaxAttempts: 2,
-          feedTimeoutMs: 0
+          feedTimeoutMs: 0,
         });
         harness.client.connect();
         harness.sessionWrapper.emit("connecting");
@@ -4038,13 +4037,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         ); // Triggers a reopen attempt
         harness.sessionWrapper.feedState.mockReturnValue("opening");
 
@@ -4066,7 +4065,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         // No feed timeouts to avoid that firing in addition to reopen decrement timer
         const harness = harnessFactory({
           reopenMaxAttempts: 1,
-          feedTimeoutMs: 0
+          feedTimeoutMs: 0,
         });
         harness.client.connect();
         harness.sessionWrapper.emit("connecting");
@@ -4085,13 +4084,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("opening"); // A re-open is attempted internally
 
@@ -4112,7 +4111,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -4121,12 +4120,12 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(
-            harness.sessionWrapper.feedState.mock.calls[i][0].args()
+            harness.sessionWrapper.feedState.mock.calls[i][0].args(),
           ).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -4138,7 +4137,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         // No feed timeouts to avoid that firing in addition to reopen decrement timer
         const harness = harnessFactory({
           reopenMaxAttempts: 1,
-          feedTimeoutMs: 0
+          feedTimeoutMs: 0,
         });
         harness.client.connect();
         harness.sessionWrapper.emit("connecting");
@@ -4157,14 +4156,14 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.mockClear();
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         ); // Will cause a reopen attempt
 
         cb = harness.sessionWrapper.feedOpen.mock.calls[0][1]; // eslint-disable-line
@@ -4174,13 +4173,13 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         harness.sessionWrapper.emit(
           "unexpectedFeedClosing",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed");
         harness.sessionWrapper.emit(
           "unexpectedFeedClosed",
           FeedNameArgs("someFeed", { arg: "val" }),
-          new Error("BAD_FEED_ACTION: ...")
+          new Error("BAD_FEED_ACTION: ..."),
         );
         harness.sessionWrapper.feedState.mockReturnValue("closed"); // No reopen attempt
 
@@ -4195,15 +4194,15 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
         expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
         expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual(
           {
-            arg: "val"
-          }
+            arg: "val",
+          },
         );
         expect(
-          check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+          check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
         ).toBe(true);
         expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
         expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -4216,7 +4215,7 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -4225,12 +4224,12 @@ describe("The client._processUnexpectedFeedClosed() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(
-            harness.sessionWrapper.feedState.mock.calls[i][0].args()
+            harness.sessionWrapper.feedState.mock.calls[i][0].args(),
           ).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -4316,7 +4315,7 @@ describe("The client._processBadClientMessage() function", () => {
     expect(clientListener.badClientMessage.mock.calls.length).toBe(1);
     expect(clientListener.badClientMessage.mock.calls[0].length).toBe(1);
     expect(clientListener.badClientMessage.mock.calls[0][0]).toEqual({
-      diag: "data"
+      diag: "data",
     });
     expect(clientListener.transportError.mock.calls.length).toBe(0);
   });
@@ -4383,7 +4382,7 @@ describe("The client._processTransportError() function", () => {
 
     harness.sessionWrapper.emit(
       "transportError",
-      new Error("TRANSPORT_ERROR: ...")
+      new Error("TRANSPORT_ERROR: ..."),
     );
 
     expect(harness.client).toHaveState(newState);
@@ -4398,7 +4397,7 @@ describe("The client._processTransportError() function", () => {
 
     harness.sessionWrapper.emit(
       "transportError",
-      new Error("TRANSPORT_ERROR: ...")
+      new Error("TRANSPORT_ERROR: ..."),
     );
 
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
@@ -4468,7 +4467,7 @@ describe("The client._considerFeedState() function", () => {
     expect(feedListener2.close.mock.calls[0].length).toBe(1);
     expect(feedListener2.close.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(feedListener2.close.mock.calls[0][0].message).toBe(
-      "TIMEOUT: The server did not respond to feed open request within the allocated time."
+      "TIMEOUT: The server did not respond to feed open request within the allocated time.",
     );
     expect(feedListener2.action.mock.calls.length).toBe(0);
 
@@ -4516,7 +4515,7 @@ describe("The client._considerFeedState() function", () => {
     expect(feedListener2.close.mock.calls[0].length).toBe(1);
     expect(feedListener2.close.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(feedListener2.close.mock.calls[0][0].message).toBe(
-      "TIMEOUT: The server did not respond to feed open request within the allocated time."
+      "TIMEOUT: The server did not respond to feed open request within the allocated time.",
     );
     expect(feedListener2.action.mock.calls.length).toBe(0);
 
@@ -4786,10 +4785,10 @@ describe("The client._considerFeedState() function", () => {
     ) {
       expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
     }
     expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -4813,13 +4812,13 @@ describe("The client._considerFeedState() function", () => {
     expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
     expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
     expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-      "someFeed"
+      "someFeed",
     );
     expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual({
-      arg: "val"
+      arg: "val",
     });
     expect(
-      check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+      check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
     ).toBe(true);
     expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -4839,10 +4838,10 @@ describe("The client._considerFeedState() function", () => {
     ) {
       expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
     }
     expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -4874,13 +4873,13 @@ describe("The client._considerFeedState() function", () => {
     expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(1);
     expect(harness.sessionWrapper.feedClose.mock.calls[0].length).toBe(2);
     expect(harness.sessionWrapper.feedClose.mock.calls[0][0].name()).toBe(
-      "someFeed"
+      "someFeed",
     );
     expect(harness.sessionWrapper.feedClose.mock.calls[0][0].args()).toEqual({
-      arg: "val"
+      arg: "val",
     });
     expect(
-      check.function(harness.sessionWrapper.feedClose.mock.calls[0][1])
+      check.function(harness.sessionWrapper.feedClose.mock.calls[0][1]),
     ).toBe(true);
     expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
     for (
@@ -4898,10 +4897,10 @@ describe("The client._considerFeedState() function", () => {
     ) {
       expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
     }
     expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -4933,10 +4932,10 @@ describe("The client._considerFeedState() function", () => {
     expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(1);
     expect(harness.sessionWrapper.feedData.mock.calls[0].length).toBe(1);
     expect(harness.sessionWrapper.feedData.mock.calls[0][0].name()).toBe(
-      "someFeed"
+      "someFeed",
     );
     expect(harness.sessionWrapper.feedData.mock.calls[0][0].args()).toEqual({
-      arg: "val"
+      arg: "val",
     });
     expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
@@ -4955,10 +4954,10 @@ describe("The client._considerFeedState() function", () => {
     ) {
       expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedState.mock.calls[i][0].args()).toEqual({
-        arg: "val"
+        arg: "val",
       });
     }
     expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -4990,7 +4989,7 @@ describe("The client._considerFeedState() function", () => {
       expect(feedListener.close.mock.calls[0].length).toBe(1);
       expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(feedListener.close.mock.calls[0][0].message).toBe(
-        "TIMEOUT: The server did not respond to feed open request within the allocated time."
+        "TIMEOUT: The server did not respond to feed open request within the allocated time.",
       );
       expect(feedListener.action.mock.calls.length).toBe(0);
     });
@@ -5045,7 +5044,7 @@ describe("The client._considerFeedState() function", () => {
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -5054,10 +5053,10 @@ describe("The client._considerFeedState() function", () => {
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5120,7 +5119,7 @@ describe("The client._considerFeedState() function", () => {
         expect(feedListener.close.mock.calls[0].length).toBe(1);
         expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(feedListener.close.mock.calls[0][0].message).toBe(
-          "REJECTED: ..."
+          "REJECTED: ...",
         );
         expect(feedListener.action.mock.calls.length).toBe(0);
       });
@@ -5204,7 +5203,7 @@ describe("The client._considerFeedState() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -5213,12 +5212,12 @@ describe("The client._considerFeedState() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(
-            harness.sessionWrapper.feedState.mock.calls[i][0].args()
+            harness.sessionWrapper.feedState.mock.calls[i][0].args(),
           ).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5351,15 +5350,15 @@ describe("The client._considerFeedState() function", () => {
         expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(1);
         expect(harness.sessionWrapper.feedClose.mock.calls[0].length).toBe(2); // Including callback
         expect(harness.sessionWrapper.feedClose.mock.calls[0][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(
-          harness.sessionWrapper.feedClose.mock.calls[0][0].args()
+          harness.sessionWrapper.feedClose.mock.calls[0][0].args(),
         ).toEqual({
-          arg: "val"
+          arg: "val",
         });
         expect(
-          check.function(harness.sessionWrapper.feedClose.mock.calls[0][1])
+          check.function(harness.sessionWrapper.feedClose.mock.calls[0][1]),
         ).toBe(true);
         expect(harness.sessionWrapper.state.mock.calls.length >= 0).toBe(true); // Permit calls
         for (
@@ -5370,7 +5369,7 @@ describe("The client._considerFeedState() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -5379,12 +5378,12 @@ describe("The client._considerFeedState() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(
-            harness.sessionWrapper.feedState.mock.calls[i][0].args()
+            harness.sessionWrapper.feedState.mock.calls[i][0].args(),
           ).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5492,15 +5491,15 @@ describe("The client._considerFeedState() function", () => {
         expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
         expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
         expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual(
           {
-            arg: "val"
-          }
+            arg: "val",
+          },
         );
         expect(
-          check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+          check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
         ).toBe(true);
         expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
         expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -5513,7 +5512,7 @@ describe("The client._considerFeedState() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -5522,12 +5521,12 @@ describe("The client._considerFeedState() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(
-            harness.sessionWrapper.feedState.mock.calls[i][0].args()
+            harness.sessionWrapper.feedState.mock.calls[i][0].args(),
           ).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5639,7 +5638,7 @@ describe("The client._considerFeedState() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -5648,12 +5647,12 @@ describe("The client._considerFeedState() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(1);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0].name()).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(
-            harness.sessionWrapper.feedState.mock.calls[i][0].args()
+            harness.sessionWrapper.feedState.mock.calls[i][0].args(),
           ).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5694,7 +5693,7 @@ describe("The client._considerFeedState() function", () => {
         expect(feedListener.close.mock.calls[0].length).toBe(1);
         expect(feedListener.close.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(feedListener.close.mock.calls[0][0].message).toBe(
-          "NOT_CONNECTED: The client disconnected."
+          "NOT_CONNECTED: The client disconnected.",
         );
         expect(feedListener.action.mock.calls.length).toBe(0);
       });
@@ -5776,7 +5775,7 @@ describe("The client._considerFeedState() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -5785,10 +5784,10 @@ describe("The client._considerFeedState() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5904,7 +5903,7 @@ describe("The client._considerFeedState() function", () => {
           expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
         }
         expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-          true
+          true,
         ); // Permit calls
         for (
           let i = 0;
@@ -5913,10 +5912,10 @@ describe("The client._considerFeedState() function", () => {
         ) {
           expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
           expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
-            "someFeed"
+            "someFeed",
           );
           expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
-            arg: "val"
+            arg: "val",
           });
         }
         expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -5929,7 +5928,7 @@ describe("The client._considerFeedState() function", () => {
   it("should return void", () => {
     const harness = harnessFactory();
     expect(
-      harness.client._considerFeedState("someFeed", { arg: "val" })
+      harness.client._considerFeedState("someFeed", { arg: "val" }),
     ).toBeUndefined();
   });
 });
@@ -5948,7 +5947,7 @@ describe("The client._feedOpenTimeout() function", () => {
     harness.client._feedOpenTimeout(
       FeedNameArgs("someFeed", { arg: "val" }),
       () => {},
-      () => {}
+      () => {},
     );
 
     expect(clientListener.connecting.mock.calls.length).toBe(0);
@@ -5972,7 +5971,7 @@ describe("The client._feedOpenTimeout() function", () => {
     harness.client._feedOpenTimeout(
       FeedNameArgs("someFeed", { arg: "val" }),
       () => {},
-      () => {}
+      () => {},
     );
     expect(harness.client).toHaveState(newState);
   });
@@ -5990,7 +5989,7 @@ describe("The client._feedOpenTimeout() function", () => {
     harness.client._feedOpenTimeout(
       FeedNameArgs("someFeed", { arg: "val" }),
       () => {},
-      () => {}
+      () => {},
     );
     expect(harness.sessionWrapper.connect.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.disconnect.mock.calls.length).toBe(0);
@@ -5998,13 +5997,13 @@ describe("The client._feedOpenTimeout() function", () => {
     expect(harness.sessionWrapper.feedOpen.mock.calls.length).toBe(1);
     expect(harness.sessionWrapper.feedOpen.mock.calls[0].length).toBe(2);
     expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].name()).toBe(
-      "someFeed"
+      "someFeed",
     );
     expect(harness.sessionWrapper.feedOpen.mock.calls[0][0].args()).toEqual({
-      arg: "val"
+      arg: "val",
     });
     expect(
-      check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1])
+      check.function(harness.sessionWrapper.feedOpen.mock.calls[0][1]),
     ).toBe(true);
     expect(harness.sessionWrapper.feedData.mock.calls.length).toBe(0);
     expect(harness.sessionWrapper.feedClose.mock.calls.length).toBe(0);
@@ -6024,10 +6023,10 @@ describe("The client._feedOpenTimeout() function", () => {
     ) {
       expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
       expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
-        "someFeed"
+        "someFeed",
       );
       expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
-        arg: "val"
+        arg: "val",
       });
     }
     expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -6049,7 +6048,7 @@ describe("The client._feedOpenTimeout() function", () => {
     harness.client._feedOpenTimeout(
       FeedNameArgs("someFeed", { arg: "val" }),
       cbTimeout,
-      cbResponse
+      cbResponse,
     );
     const cb = harness.sessionWrapper.feedOpen.mock.calls[0][1];
 
@@ -6086,7 +6085,7 @@ describe("The client._feedOpenTimeout() function", () => {
     harness.client._feedOpenTimeout(
       FeedNameArgs("someFeed", { arg: "val" }),
       cbTimeout,
-      cbResponse
+      cbResponse,
     );
     const cb = harness.sessionWrapper.feedOpen.mock.calls[0][1];
 
@@ -6115,7 +6114,7 @@ describe("The client._feedOpenTimeout() function", () => {
       harness.client._feedOpenTimeout(
         FeedNameArgs("someFeed", { arg: "val" }),
         () => {},
-        () => {}
+        () => {},
       );
 
       const clientListener = harness.createClientListener();
@@ -6143,7 +6142,7 @@ describe("The client._feedOpenTimeout() function", () => {
       harness.client._feedOpenTimeout(
         FeedNameArgs("someFeed", { arg: "val" }),
         () => {},
-        () => {}
+        () => {},
       );
 
       const newState = harness.getClientState();
@@ -6164,7 +6163,7 @@ describe("The client._feedOpenTimeout() function", () => {
       harness.client._feedOpenTimeout(
         FeedNameArgs("someFeed", { arg: "val" }),
         () => {},
-        () => {}
+        () => {},
       );
 
       harness.sessionWrapper.mockClear();
@@ -6186,7 +6185,7 @@ describe("The client._feedOpenTimeout() function", () => {
         expect(harness.sessionWrapper.state.mock.calls[i].length).toBe(0);
       }
       expect(harness.sessionWrapper.feedState.mock.calls.length >= 0).toBe(
-        true
+        true,
       ); // Permit calls
       for (
         let i = 0;
@@ -6195,10 +6194,10 @@ describe("The client._feedOpenTimeout() function", () => {
       ) {
         expect(harness.sessionWrapper.feedState.mock.calls[i].length).toBe(2);
         expect(harness.sessionWrapper.feedState.mock.calls[i][0]).toBe(
-          "someFeed"
+          "someFeed",
         );
         expect(harness.sessionWrapper.feedState.mock.calls[i][1]).toEqual({
-          arg: "val"
+          arg: "val",
         });
       }
       expect(harness.sessionWrapper.destroy.mock.calls.length).toBe(0);
@@ -6216,7 +6215,7 @@ describe("The client._feedOpenTimeout() function", () => {
       harness.client._feedOpenTimeout(
         FeedNameArgs("someFeed", { arg: "val" }),
         cbTimeout,
-        () => {}
+        () => {},
       );
 
       jest.advanceTimersByTime(config.defaults.feedTimeoutMs);
@@ -6236,8 +6235,8 @@ describe("The client._feedOpenTimeout() function", () => {
       harness.client._feedOpenTimeout(
         FeedNameArgs("someFeed", { arg: "val" }),
         () => {},
-        () => {}
-      )
+        () => {},
+      ),
     ).toBeUndefined();
   });
 });
@@ -6333,14 +6332,14 @@ describe("The client._informServerFeedClosed() and feed._serverFeedClosed() func
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("BAD_FEED_ACTION: ...")
+      new Error("BAD_FEED_ACTION: ..."),
     );
 
     const feedListener = harness.createFeedListener(feed);
     harness.sessionWrapper.emit(
       "unexpectedFeedClosed",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("BAD_FEED_ACTION: ...")
+      new Error("BAD_FEED_ACTION: ..."),
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -6434,8 +6433,8 @@ describe("The client._informServerFeedClosed() and feed._serverFeedClosed() func
     const harness = harnessFactory();
     expect(
       harness.client._informServerFeedClosed(
-        FeedNameArgs("someFeed", { arg: "val" })
-      )
+        FeedNameArgs("someFeed", { arg: "val" }),
+      ),
     ).toBeUndefined();
   });
 });
@@ -6543,8 +6542,8 @@ describe("The client._informServerFeedOpening() and feed._serverFeedOpening() fu
     const harness = harnessFactory();
     expect(
       harness.client._informServerFeedOpening(
-        FeedNameArgs("someFeed", { arg: "val" })
-      )
+        FeedNameArgs("someFeed", { arg: "val" }),
+      ),
     ).toBeUndefined();
   });
 });
@@ -6654,8 +6653,8 @@ describe("The client._informServerFeedOpen() and feed._serverFeedOpen() function
     const harness = harnessFactory();
     expect(
       harness.client._informServerFeedOpen(
-        FeedNameArgs("someFeed", { arg: "val" })
-      )
+        FeedNameArgs("someFeed", { arg: "val" }),
+      ),
     ).toBeUndefined();
   });
 });
@@ -6714,7 +6713,7 @@ describe("The client._informServerFeedClosing() and feed._serverFeedClosing() fu
     harness.sessionWrapper.emit(
       "unexpectedFeedClosing",
       FeedNameArgs("someFeed", { arg: "val" }),
-      new Error("TERMINATED: ...")
+      new Error("TERMINATED: ..."),
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -6749,8 +6748,8 @@ describe("The client._informServerFeedClosing() and feed._serverFeedClosing() fu
     const harness = harnessFactory();
     expect(
       harness.client._informServerFeedClosing(
-        FeedNameArgs("someFeed", { arg: "val" })
-      )
+        FeedNameArgs("someFeed", { arg: "val" }),
+      ),
     ).toBeUndefined();
   });
 });
@@ -6785,7 +6784,7 @@ describe("The client._informServerFeedAction() and feed._serverFeedAction() func
       "someAction",
       { action: "arg" },
       {},
-      {}
+      {},
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -6818,7 +6817,7 @@ describe("The client._informServerFeedAction() and feed._serverFeedAction() func
       "someAction",
       { action: "arg" },
       { new: "data" },
-      { old: "data" }
+      { old: "data" },
     );
 
     expect(feedListener.opening.mock.calls.length).toBe(0);
@@ -6857,7 +6856,7 @@ describe("The client._informServerFeedAction() and feed._serverFeedAction() func
       "someAction",
       { action: "arg" },
       { new: "data" },
-      { old: "data" }
+      { old: "data" },
     );
     expect(harness.client).toHaveState(newState);
   });
@@ -6882,8 +6881,8 @@ describe("The client._informServerFeedAction() and feed._serverFeedAction() func
         "someAction",
         { action: "arg" },
         {},
-        {}
-      )
+        {},
+      ),
     ).toBeUndefined();
   });
 });

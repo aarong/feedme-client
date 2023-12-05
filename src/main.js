@@ -28,7 +28,7 @@ export default function feedmeClient(options) {
   const clientOptions = _clone(options);
   delete clientOptions.transport;
   clientOptions.sessionWrapper = sessionWrapper(
-    sessionSync(transportWrapper(options.transport))
+    sessionSync(transportWrapper(options.transport)),
   );
   return clientWrapper(clientSync(clientOptions));
 }

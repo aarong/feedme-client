@@ -16,9 +16,9 @@ describe("The main module", () => {
           connect: () => {},
           disconnect: () => {},
           send: () => {},
-          state: () => "disconnected"
-        }
-      })
+          state: () => "disconnected",
+        },
+      }),
     ).toBeInstanceOf(Object);
   });
 });

@@ -37,7 +37,7 @@ browsers. Still setting DEFER_MS > 0 to avoid any potential issues.
 const DEFER_MS = 1;
 const realSetTimeout = setTimeout;
 const defer = () =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     realSetTimeout(resolve, DEFER_MS);
   });
 
@@ -52,11 +52,11 @@ const tryCatch = (fn, ...args) => {
   }
 };
 
-const toBe = expected => ({
+const toBe = (expected) => ({
   // Asymmetric matcher allowing strict reference comparison in toEqual()
   asymmetricMatch(actual) {
     return actual === expected;
-  }
+  },
 });
 
 const replaceErrors = (collection, processed = []) => {
@@ -75,9 +75,9 @@ const replaceErrors = (collection, processed = []) => {
     if (val instanceof Error) {
       const err = {
         name: val.name, // Error, TypeError, etc
-        message: val.message
+        message: val.message,
       };
-      _.keys(val).forEach(key => {
+      _.keys(val).forEach((key) => {
         err[key] = val[key];
       });
       collection[idx] = err; // eslint-disable-line no-param-reassign
@@ -224,15 +224,15 @@ harness.mockTransport = () => {
   // transport.state() returning disconnected and no implementation on other
   // transport functions
   const transport = emitter({});
-  ["connect", "disconnect", "send"].forEach(method => {
+  ["connect", "disconnect", "send"].forEach((method) => {
     transport[`${method}Implementation`] = () => {};
-    transport[method] = function(...args) {
+    transport[method] = function (...args) {
       harness._trace.push({
         Invocation: "CallTransportMethod",
         State: harness._state(),
         Method: method,
         Args: args,
-        Context: this
+        Context: this,
       });
       return transport[`${method}Implementation`](...args);
     };
@@ -242,7 +242,7 @@ harness.mockTransport = () => {
   return transport;
 };
 
-harness.initClient = options => {
+harness.initClient = (options) => {
   // Try to initialize the client and record result
   try {
     harness.clientActual = feedmeClient(options);
@@ -252,13 +252,13 @@ harness.initClient = options => {
     harness._trace.push({
       Invocation: "ExitFactory",
       State: harness._state(),
-      Result: { ReturnValue: harness.clientActual }
+      Result: { ReturnValue: harness.clientActual },
     });
   } catch (e) {
     harness._trace.push({
       Invocation: "ExitFactory",
       State: harness._state(),
-      Result: { Error: e }
+      Result: { Error: e },
     });
     return; // Stop
   }
@@ -269,15 +269,15 @@ harness.initClient = options => {
     "connect",
     "disconnect",
     "badServerMessage",
-    "badClientMessage"
-  ].forEach(evt => {
-    harness.clientActual.on(evt, function(...args) {
+    "badClientMessage",
+  ].forEach((evt) => {
+    harness.clientActual.on(evt, function (...args) {
       harness._trace.push({
         Invocation: "EmitClientEvent",
         State: harness._state(),
         Event: evt,
         Args: args,
-        Context: this
+        Context: this,
       });
     });
   });
@@ -302,13 +302,13 @@ harness.initClient = options => {
       // Use truthy non-function to test invalid callback errors
       let actionCb = cb;
       if (check.function(cb)) {
-        actionCb = function(...args) {
+        actionCb = function (...args) {
           harness._trace.push({
             Invocation: "CallbackAction",
             State: harness._state(),
             ActionNumber: actionNumber,
             Args: args,
-            Context: this
+            Context: this,
           });
         };
       }
@@ -316,30 +316,30 @@ harness.initClient = options => {
         harness.clientActual.action.bind(harness.clientActual),
         an,
         aa,
-        actionCb
+        actionCb,
       );
     } else {
       res = tryCatch(
         harness.clientActual.action.bind(harness.clientActual),
         an,
-        aa
+        aa,
       );
       if (!res.Error) {
-        res.ReturnValue.then(function(result) {
+        res.ReturnValue.then(function (result) {
           harness._trace.push({
             Invocation: "ResolveAction",
             State: harness._state(),
             ActionNumber: actionNumber,
             Result: result,
-            Context: this
+            Context: this,
           });
-        }).catch(function(err) {
+        }).catch(function (err) {
           harness._trace.push({
             Invocation: "RejectAction",
             State: harness._state(),
             ActionNumber: actionNumber,
             Error: err,
-            Context: this
+            Context: this,
           });
         });
       }
@@ -350,7 +350,7 @@ harness.initClient = options => {
       Invocation: "ExitClientMethod",
       State: harness._state(),
       Method: "action",
-      Result: res
+      Result: res,
     });
 
     return actionNumber;
@@ -365,7 +365,7 @@ harness.initClient = options => {
     const res = tryCatch(
       harness.clientActual.feed.bind(harness.clientActual),
       fn,
-      fa
+      fa,
     );
 
     // Add the feed to state if it was created
@@ -379,7 +379,7 @@ harness.initClient = options => {
       Invocation: "ExitClientMethod",
       State: harness._state(),
       Method: "feed",
-      Result: res
+      Result: res,
     });
 
     // Don't track feed events or method exits if feed creation failed
@@ -388,22 +388,22 @@ harness.initClient = options => {
     }
 
     // Record feed events
-    ["opening", "open", "close", "action"].forEach(evt => {
-      feedActual.on(evt, function(...args) {
+    ["opening", "open", "close", "action"].forEach((evt) => {
+      feedActual.on(evt, function (...args) {
         harness._trace.push({
           Invocation: "EmitFeedEvent",
           State: harness._state(),
           Feed: feedActual,
           Event: evt,
           Args: args,
-          Context: this
+          Context: this,
         });
       });
     });
 
     // Create a feed wrapper to track exit of state-modifying feed methods
     const feedWrapper = {};
-    ["desireOpen", "desireClosed", "destroy"].forEach(method => {
+    ["desireOpen", "desireClosed", "destroy"].forEach((method) => {
       feedWrapper[method] = (...args) => {
         const result = tryCatch(feedActual[method].bind(feedActual), ...args);
         harness._trace.push({
@@ -411,55 +411,55 @@ harness.initClient = options => {
           State: harness._state(),
           Feed: feedActual,
           Method: method,
-          Result: result
+          Result: result,
         });
       };
     });
 
     return {
       actual: feedActual,
-      wrapper: feedWrapper
+      wrapper: feedWrapper,
     };
   };
 
   // Wrap state-modifying client methods other than action() and feed() to track method exits
-  ["connect", "disconnect"].forEach(method => {
+  ["connect", "disconnect"].forEach((method) => {
     harness.clientWrapper[method] = (...args) => {
       const res = tryCatch(
         harness.clientActual[method].bind(harness.clientActual),
-        ...args
+        ...args,
       );
       harness._trace.push({
         Invocation: "ExitClientMethod",
         State: harness._state(),
         Method: method,
-        Result: res
+        Result: res,
       });
     };
   });
 };
 
-harness.trace = async fn => {
+harness.trace = async (fn) => {
   harness._trace = [];
 
   // Record starting state
   harness._trace.push({
     Phase: "Start",
-    State: harness._state()
+    State: harness._state(),
   });
 
   // Record trace results
   fn();
   harness._trace.push({
     Phase: "DoneSync",
-    State: harness._state()
+    State: harness._state(),
   });
 
   // Record deferred results
   await defer();
   harness._trace.push({
     Phase: "DoneDefer",
-    State: harness._state()
+    State: harness._state(),
   });
 
   // Record extraneous timer-initiated results - synchronous and deferred
@@ -467,7 +467,7 @@ harness.trace = async fn => {
   await defer();
   harness._trace.push({
     Phase: "DoneTimers",
-    State: harness._state()
+    State: harness._state(),
   });
 
   return replaceErrors(harness._trace);
@@ -477,7 +477,7 @@ harness.end = () => {
   // Remove harness listeners on actual client/feeds
   if (harness.clientActual) {
     harness.clientActual.removeAllListeners();
-    harness._feedActuals.forEach(feed => {
+    harness._feedActuals.forEach((feed) => {
       feed.removeAllListeners();
     });
   }
@@ -491,15 +491,15 @@ harness._state = () => {
   const state = {};
   state.state = tryCatch(harness.clientActual.state.bind(harness.clientActual));
   state.destroyed = tryCatch(
-    harness.clientActual.destroyed.bind(harness.clientActual)
+    harness.clientActual.destroyed.bind(harness.clientActual),
   );
   state.feeds = [];
-  harness._feedActuals.forEach(feed => {
+  harness._feedActuals.forEach((feed) => {
     state.feeds.push({
       destroyed: tryCatch(feed.destroyed.bind(feed)),
       desiredState: tryCatch(feed.desiredState.bind(feed)),
       state: tryCatch(feed.state.bind(feed)),
-      data: tryCatch(feed.data.bind(feed))
+      data: tryCatch(feed.data.bind(feed)),
     });
   });
   return state;
@@ -558,8 +558,8 @@ harness.makeClientConnected = async () => {
     JSON.stringify({
       MessageType: "HandshakeResponse",
       Success: true,
-      Version: "0.1"
-    })
+      Version: "0.1",
+    }),
   );
 
   await defer();
@@ -621,8 +621,8 @@ harness.makeOpenFeed = async (fn, fa, fd) => {
       FeedName: fn,
       FeedArgs: fa,
       Success: true,
-      FeedData: fd
-    })
+      FeedData: fd,
+    }),
   );
 
   await defer();
