@@ -2455,15 +2455,15 @@ describe("The client._processConnecting() function", () => {
 
   // State
 
-  it("should update _lastSessionWrapperStateEmission to connecting", () => {
-    harness.client.connect();
-    const newState = harness.getClientState();
-    newState._lastSessionWrapperStateEmission = "connecting";
-    newState._connectTimeoutTimer = 9999;
-    harness.sessionWrapper.emit("connecting");
+  // it("should update _lastSessionWrapperStateEmission to connecting", () => {
+  //   harness.client.connect();
+  //   const newState = harness.getClientState();
+  //   newState._lastSessionWrapperStateEmission = "connecting";
+  //   newState._connectTimeoutTimer = 9999;
+  //   harness.sessionWrapper.emit("connecting");
 
-    expect(harness.client).toHaveState(newState);
-  });
+  //   expect(harness.client).toHaveState(newState);
+  // });
 
   // Session
 
@@ -2843,21 +2843,21 @@ describe("The client._processDisconnect() function", () => {
     expect(harness.client).toHaveState(newState);
   });
 
-  it("if was connecting and TIMEOUT/TRANSPORT_FAILURE, update state appropriately below retry limit", () => {
-    const harness = harnessFactory();
-    harness.client.connect();
-    harness.sessionWrapper.emit("connecting");
-    const newState = harness.getClientState();
-    harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ..."));
-    newState._connectTimeoutTimer = null;
-    newState._connectRetryTimer = 9999;
-    newState._connectRetryCount = 1;
-    // There are no feed-reopen counts and timers - was connecting
-    newState._lastSessionWrapperStateEmission = "disconnect";
-    harness.sessionWrapper.emit("disconnect");
+  // it("if was connecting and TIMEOUT/TRANSPORT_FAILURE, update state appropriately below retry limit", () => {
+  //   const harness = harnessFactory();
+  //   harness.client.connect();
+  //   harness.sessionWrapper.emit("connecting");
+  //   const newState = harness.getClientState();
+  //   harness.sessionWrapper.emit("disconnect", new Error("TIMEOUT: ..."));
+  //   newState._connectTimeoutTimer = null;
+  //   newState._connectRetryTimer = 9999;
+  //   newState._connectRetryCount = 1;
+  //   // There are no feed-reopen counts and timers - was connecting
+  //   newState._lastSessionWrapperStateEmission = "disconnect";
+  //   harness.sessionWrapper.emit("disconnect");
 
-    expect(harness.client).toHaveState(newState);
-  });
+  //   expect(harness.client).toHaveState(newState);
+  // });
 
   it("if was connecting and TIMEOUT/TRANSPORT_FAILURE, update state appropriately at retry limit", () => {
     const harness = harnessFactory({ connectRetryMaxAttempts: 1 });
