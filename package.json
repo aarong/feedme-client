@@ -22,7 +22,7 @@
     "coveralls": "jest --coverage --coverageReporters=text-lcov | coveralls"
   },
   "dependencies": {
-    "check-types": "^7.4.0",
+    "check-types": "^11.2.3",
     "component-emitter": "^1.2.1",
     "debug": "^4.1.1",
     "feedme-util": "^0.3.2",
