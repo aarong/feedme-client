@@ -41,7 +41,7 @@
     "core-js": "^3.6.5",
     "coveralls": "^3.0.3",
     "del": "^4.0.0",
-    "documentation": "^9.1.1",
+    "documentation": "^14.0.2",
     "eslint": "^8.55.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^9.1.0",
