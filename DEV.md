@@ -4,19 +4,20 @@ This documentation is for developers of the Feedme client library itself.
 
 <!-- TOC depthFrom:2 -->
 
-- [Getting Started](#getting-started)
-- [Directory Structure](#directory-structure)
-- [Source Code](#source-code)
-  - [Source Files](#source-files)
-- [Target Node and NPM Versions](#target-node-and-npm-versions)
-- [NPM Scripts](#npm-scripts)
-- [Committing and Deploying](#committing-and-deploying)
-- [Contributions](#contributions)
-- [Transport API](#transport-api)
-  - [Fundamentals](#fundamentals)
-  - [Transport Events](#transport-events)
-  - [Transport Methods](#transport-methods)
-  - [Transport Errors](#transport-errors)
+- [Information for Library Developers](#information-for-library-developers)
+  - [Getting Started](#getting-started)
+  - [Directory Structure](#directory-structure)
+  - [Source Code](#source-code)
+    - [Source Files](#source-files)
+  - [Target Node and NPM Versions](#target-node-and-npm-versions)
+  - [NPM Scripts](#npm-scripts)
+  - [Committing and Deploying](#committing-and-deploying)
+  - [Contributions](#contributions)
+  - [Transport API](#transport-api)
+    - [Fundamentals](#fundamentals)
+    - [Transport Events](#transport-events)
+    - [Transport Methods](#transport-methods)
+    - [Transport Errors](#transport-errors)
 
 <!-- /TOC -->
 
@@ -148,8 +149,7 @@ babel-loader require Node 8+. Also, package-lock.json is only supported by NPM
 5+, which comes with Node 8+. So develop and build on Node 8+ and NPM 5+.
 
 Although the library needs to be developed and built on Node 8+, its production
-dependencies are more lenient and can be run on Node 6+, which is verified on
-the Travis build.
+dependencies are more lenient and can be run on Node 6+.
 
 ## NPM Scripts
 
