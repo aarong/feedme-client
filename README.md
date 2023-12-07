@@ -1,4 +1,4 @@
-[![Build](https://github.com/aarong/feedme-client/actions/workflows/build.yml/badge.svg)](https://github.com/aarong/feedme-client/actions/workflows/build.yml)
+[![CI-CD](https://github.com/aarong/feedme-client/actions/workflows/built-test-deploy.yml/badge.svg)](https://github.com/aarong/feedme-client/actions/workflows/built-test-deploy.yml)
 [![Coverage Status](https://coveralls.io/repos/github/aarong/feedme-client/badge.svg?branch=master)](https://coveralls.io/github/aarong/feedme-client?branch=master)
 
 [![Feedme](https://raw.githubusercontent.com/aarong/feedme-client/master/logo.svg?sanitize=true)](https://feedme.global)
