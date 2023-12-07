@@ -7,7 +7,7 @@ import _ from "lodash";
 import path from "path";
 import webpack from "webpack";
 import fs from "fs";
-import promisify from "util.promisify"; // Only in Node 8+ and want to test in 6+
+import util from "util"; // Only in Node 8+ and want to test in 6+
 import { glob } from "glob";
 import targets from "../targets";
 
@@ -273,7 +273,7 @@ import targets from "../targets";
   console.log("Transpiling and bundling tests...");
   let webpackStats;
   try {
-    webpackStats = await promisify(webpack)({
+    webpackStats = await util.promisify(webpack)({
       entry: tests,
       mode: "production",
       module: {
@@ -341,17 +341,17 @@ import targets from "../targets";
   // Copy the latest client browser bundle and sourcemaps into the webroot
   // Note that Node 6 does not have fs.copyFile()
   console.log("Copying browser bundle and sourcemaps...");
-  const bundle = await promisify(fs.readFile)(
+  const bundle = await util.promisify(fs.readFile)(
     `${__dirname}/../build/bundle.withmaps.js`,
   );
-  await promisify(fs.writeFile)(
+  await util.promisify(fs.writeFile)(
     `${__dirname}/webroot/bundle.withmaps.js`,
     bundle,
   );
-  const maps = await promisify(fs.readFile)(
+  const maps = await util.promisify(fs.readFile)(
     `${__dirname}/../build/bundle.withmaps.js.map`,
   );
-  await promisify(fs.writeFile)(
+  await util.promisify(fs.writeFile)(
     `${__dirname}/webroot/bundle.withmaps.js.map`,
     maps,
   );
@@ -377,7 +377,7 @@ import targets from "../targets";
     console.log("Running on Travis - no need to start Sauce Connect proxy.");
   } else {
     console.log("Starting Sauce Connect proxy...");
-    sauceConnectProcess = await promisify(sauceConnectLauncher)({
+    sauceConnectProcess = await util.promisify(sauceConnectLauncher)({
       tunnelIdentifier: sauceTunnelId,
       logFile: null,
     });
@@ -391,7 +391,7 @@ import targets from "../targets";
 
   // Call the Sauce REST API telling it to run the tests
   console.log("Calling Sauce REST API telling it to run the tests...");
-  const response = await promisify(request)({
+  const response = await util.promisify(request)({
     url: `https://saucelabs.com/rest/v1/${process.env.SAUCE_USERNAME}/js-tests`,
     method: "POST",
     auth: {
@@ -426,7 +426,7 @@ import targets from "../targets";
   do {
     console.log("Calling Sauce REST API to check test status...");
     // eslint-disable-next-line no-await-in-loop
-    const response2 = await promisify(request)({
+    const response2 = await util.promisify(request)({
       url: `https://saucelabs.com/rest/v1/${process.env.SAUCE_USERNAME}/js-tests/status`,
       method: "POST",
       auth: {
@@ -493,12 +493,12 @@ import targets from "../targets";
   // Close the Sauce Connect proxy (if not on Travis)
   if (sauceConnectProcess) {
     console.log("Stopping Sauce Connect proxy...");
-    await promisify(sauceConnectProcess.close)();
+    await util.promisify(sauceConnectProcess.close)();
   }
 
   // Stop the webserver
   console.log("Stopping the webserver...");
-  await promisify(webserver.close.bind(webserver))();
+  await util.promisify(webserver.close.bind(webserver))();
 
   // Return success/failure
   if (allPassed) {
