@@ -1,7 +1,7 @@
 import emitter from "component-emitter";
 import _ from "lodash";
 import check from "check-types";
-import feedmeClientNode from "../../build";
+import feedmeClientNode from "../../build/index"; // Don't confuse with root build.js
 
 // Use window.feedmeClient in the browser and the Node build otherwise
 const feedmeClient =

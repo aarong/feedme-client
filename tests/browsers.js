@@ -442,8 +442,8 @@ import targets from "../targets";
       throw response2.body; // Use body as error (printed)
     } else if (!response2.body.completed) {
       console.log("Sauce API indicated tests not completed. Polling again...");
-      // eslint-disable-next-line
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, pollInterval)); // eslint-disable-line no-promise-executor-return
     } else {
       sauceResults = response2.body["js tests"];
     }
