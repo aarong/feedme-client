@@ -266,7 +266,8 @@ import targets from "../targets";
 
   // Retrieve an array of test files
   console.log("Retrieving array of test files...");
-  const tests = await glob(`${__dirname}/tests/**/*.test.js`);
+  let tests = await glob(`tests/**/*.test.js`);
+  tests = tests.map((t) => `${process.cwd()}\\${t}`);
 
   // Transpile and bundle the tests and drop in webroot
   // Webpack bundling required to insert promise polyfills and dependencies like component-emitter
@@ -300,7 +301,7 @@ import targets from "../targets";
                         proposals: true,
                       },
                       targets: targets.browsers,
-                      // debug: true
+                      // debug: true,
                     },
                   ],
                 ],
@@ -308,6 +309,9 @@ import targets from "../targets";
             },
           },
         ],
+      },
+      resolve: {
+        fallback: { path: false }, // You are bundling source-maps-support (referenced by Node library), which relies on path module (use empty fallback)
       },
       output: {
         filename: "tests.js",
@@ -348,13 +352,13 @@ import targets from "../targets";
     `${__dirname}/webroot/bundle.withmaps.js`,
     bundle,
   );
-  const maps = await util.promisify(fs.readFile)(
-    `${__dirname}/../build/bundle.withmaps.js.map`,
-  );
-  await util.promisify(fs.writeFile)(
-    `${__dirname}/webroot/bundle.withmaps.js.map`,
-    maps,
-  );
+  // const maps = await util.promisify(fs.readFile)(
+  //   `${__dirname}/../build/bundle.withmaps.js.map`,
+  // );
+  // await util.promisify(fs.writeFile)(
+  //   `${__dirname}/webroot/bundle.withmaps.js.map`,
+  //   maps,
+  // );
 
   // Start the local webserver (adapted from Jasmine-standalone)
   console.log("Starting local webserver to host the tests...");

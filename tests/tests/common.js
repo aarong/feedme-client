@@ -9,8 +9,6 @@ const feedmeClient =
     ? window.feedmeClient // eslint-disable-line no-undef
     : feedmeClientNode;
 
-/* eslint-disable func-names */
-
 /*
 
 Integration/functional tests for the library build are run on Node and in the
