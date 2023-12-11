@@ -9,6 +9,10 @@ const feedmeClient =
     ? window.feedmeClient // eslint-disable-line no-undef
     : feedmeClientNode;
 
+// Don't produce eslint warnings about unnamed functoins
+// Note you can't use arrow functions because context is being checked in the tests
+/* eslint-disable func-names */
+
 /*
 
 Integration/functional tests for the library build are run on Node and in the
