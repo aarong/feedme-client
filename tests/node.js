@@ -1,7 +1,7 @@
 /* eslint-disable import/no-extraneous-dependencies, no-console */
 import "make-promises-safe"; // Exit with error on unhandled rejection
 import Jasmine from "jasmine";
-import path from "path";
+// import path from "path";
 
 /*
 
@@ -20,20 +20,11 @@ process.on("unhandledRejection", (err) => {
   console.log("Launching tests in Jasmine...");
   const jasmine = new Jasmine();
   jasmine.loadConfig({
-    spec_dir: path.join(__dirname, "tests"),
     spec_files: [`${__dirname}/tests/**/*.test.js`],
     random: false,
     stopSpecOnExpectationFailure: true,
   });
-  jasmine.execute();
-
-  // Await completion
-  console.log("Awaiting completion...");
-  const passed = await new Promise((resolve) => {
-    jasmine.onComplete((iPassed) => {
-      resolve(iPassed);
-    });
-  });
+  const passed = await jasmine.execute();
   console.log("Tests completed.");
 
   // Return script success/failure according to test results
