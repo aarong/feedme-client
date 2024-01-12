@@ -1,20 +1,24 @@
+// There is a Jasmine browser runner import map to get these working in the browser
 import emitter from "component-emitter";
 import _ from "lodash";
 import check from "check-types";
-import feedmeClientNode from "../../build/index"; // Don't confuse with root build.js
 
-// Use window.feedmeClient in the browser and the Node build otherwise
+// If this is running in the browser, load the browser bundle from the global scope
+// Otherwise dynamically load the Node build (which is a CJS module)
+// Careful not to confuse build/index.js with root build.js
+// Had to set parserOptions in eslintrc to suppress a parser error on import()
 const feedmeClient =
   typeof window !== "undefined"
     ? window.feedmeClient // eslint-disable-line no-undef
-    : feedmeClientNode;
+    : (await import("../../build/index.js")).default;
 
-// Don't produce eslint warnings about unnamed functoins
-// Note you can't use arrow functions because context is being checked in the tests
+// You need to use mjs otherwise Jasmine will try to load the index.js bundle as ESM (doesn't work)
+
+// Don't produce eslint warnings about unnamed functions
+// You can't use arrow functions because context is being checked in the tests
 /* eslint-disable func-names */
 
 /*
-
 Integration/functional tests for the library build are run on Node and in the
 browser. Assume an in-scope feedmeClient() factory function.
 

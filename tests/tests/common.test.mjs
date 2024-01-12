@@ -1,4 +1,4 @@
-import { tryCatch, toBe, replaceErrors, harness } from "./common";
+import { tryCatch, toBe, replaceErrors, harness } from "./common.mjs";
 
 it("some test", (cb) => {
   jasmine.clock().uninstall();

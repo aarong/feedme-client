@@ -20,7 +20,7 @@ process.on("unhandledRejection", (err) => {
   console.log("Launching tests in Jasmine...");
   const jasmine = new Jasmine();
   jasmine.loadConfig({
-    spec_files: [`${__dirname}/tests/**/*.test.js`],
+    spec_files: [`${__dirname}/tests/**/*.test.*js`], // mjs, js
     random: false,
     stopSpecOnExpectationFailure: true,
   });
