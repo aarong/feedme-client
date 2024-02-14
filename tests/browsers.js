@@ -378,16 +378,17 @@ import util from "util";
 
   // Start Sauce Connect proxy if you aren't on Travis
   let sauceConnectProcess;
-  if (process.env.CI) {
-    console.log("Running on Travis - no need to start Sauce Connect proxy.");
-  } else {
-    console.log("Starting Sauce Connect proxy...");
-    sauceConnectProcess = await util.promisify(sauceConnectLauncher)({
-      tunnelIdentifier: sauceTunnelId,
-      logFile: null,
-    });
-    console.log("Sauce Connect proxy started.");
-  }
+  // if (process.env.CI) {
+  //   console.log("Running on Travis - no need to start Sauce Connect proxy.");
+  // } else {
+  console.log("Starting Sauce Connect proxy...");
+  // eslint-disable-next-line
+  sauceConnectProcess = await util.promisify(sauceConnectLauncher)({
+    tunnelIdentifier: sauceTunnelId,
+    logFile: null,
+  });
+  console.log("Sauce Connect proxy started.");
+  // }
 
   // If you're running in sauce-live mode then stop here
   if (mode === "sauce-live") {
@@ -538,14 +539,14 @@ import util from "util";
 
     browser: {
       name: "chrome", /// //////////////////////////// What does this do on Sauce? Does control local
-      version: "latest", // This does nothing
+      // version: "latest", // This does nothing
       useRemoteSeleniumGrid: true,
       remoteSeleniumGrid: {
         // Jasmine Browser Runner passes this object as "capabilities" input to Sauce (excluding URL)
         url: "https://ondemand.saucelabs.com/wd/hub",
         platformName: "macOS 12",
 
-        browserName: "chrome", // This does nothing, probably overwritten by browser.name
+        // browserName: "chrome", // This does nothing, probably overwritten by browser.name
         browserVersion: "latest", // This setting works!
 
         "sauce:options": {
