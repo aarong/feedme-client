@@ -17,7 +17,7 @@
     "test": "npm run test-src",
     "test-src": "npm run lint-src && jest",
     "test-build-node": "npm run lint-build-tests && babel-node tests/node.js",
-    "test-build-browsers": "npm run lint-build-tests && npx jasmine-browser-runner runSpecs --config=tests/jasmine.config.js",
+    "test-build-browsers": "npm run lint-build-tests && babel-node tests/browsers.js",
     "coverage": "jest --coverage",
     "coveralls": "jest --coverage --coverageReporters=text-lcov | coveralls"
   },
