@@ -27,7 +27,7 @@ import targets from "./targets";
   // https://github.com/babel/babel/issues/5261
   // You can only produce external sourcemaps using the CLI, so I write
   // the maps to file myself and append a reference in the transpiled source
-  const srcFiles = await glob("!(main.browser).js", { cwd: "src" });
+  const srcFiles = await glob("!(index.browser).js", { cwd: "src" });
   await Promise.all(
     srcFiles.map((file) =>
       (async () => {
@@ -59,7 +59,7 @@ import targets from "./targets";
   // Create browser bundles
   console.log("Bundling for the browser");
   const createWebpackConfig = (sourceMaps) => ({
-    entry: "./src/main.browser.js",
+    entry: "./src/index.browser.js",
     mode: "production",
 
     module: {
@@ -117,7 +117,7 @@ import targets from "./targets";
     output: {
       filename: sourceMaps ? "bundle.withmaps.js" : "bundle.js",
       path: path.resolve(__dirname, "build"),
-      library: "feedmeClient",
+      library: "FeedmeClient",
       libraryExport: "default", // No .default()
       libraryTarget: "umd",
     },
